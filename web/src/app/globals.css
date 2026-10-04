@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/* Arus — a deep-water world: ink navy ground, one luminous current accent.
+   Data colours come from the validated dark categorical/diverging palette. */
+@theme {
+  --color-ground: #070b14;
+  --color-surface: #0c1320;
+  --color-raised: #111a2b;
+  --color-line: rgb(148 163 184 / 0.12);
+  --color-line-strong: rgb(148 163 184 / 0.22);
+  --color-ink: #e9eef6;
+  --color-ink-2: #aab5c7;
+  --color-muted: #75839a;
+  --color-arus: #5cc8ff;
+    --color-up: #3987e5;
+  --color-down: #e66767;
+  --color-aqua: #199e70;
+  --color-warn: #fab219;
+  --color-good: #0ca30c;
+  --color-crit: #d03b3b;
+
+  --font-sans: var(--font-geist-sans), system-ui, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+}
+
+::selection {
+  background: rgb(92 200 255 / 0.28);
+  color: #fff;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 0.25) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-arus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.hairline {
+  border-color: var(--color-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

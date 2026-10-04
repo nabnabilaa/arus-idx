@@ -301,7 +301,7 @@ def walk_forward(X: pd.DataFrame, aux: dict, horizon: int) -> CalibrationResult:
         "n_folds": len(folds),
     }
     # The score is only presented as evidence when all three hold out of sample; otherwise the
-    # site labels this horizon "not proven" rather than dressing up a coin flip.
+    # site and bot withhold this horizon rather than dressing up a coin flip.
     metrics["proven"] = bool(metrics["auc_model"] > 0.5
                              and 2 * metrics["folds_beating_chance"] > metrics["n_folds"]
                              and metrics["top_decile_hit"] > metrics["bottom_decile_hit"])

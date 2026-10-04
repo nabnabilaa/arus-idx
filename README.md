@@ -1,6 +1,6 @@
 # 🌊 Arus — skor peluang saham IDX yang jujur
 
-> **Untuk investor ritel IDX yang kebanjiran data tapi kekurangan keyakinan, Arus memberi setiap saham satu skor peluang yang diuji jujur ke data historis, menjelaskan alasannya dalam bahasa biasa, dan berani bilang “belum terbukti” saat buktinya tidak ada.**
+> **Untuk investor ritel IDX yang kebanjiran data tapi kekurangan keyakinan, Arus memberi setiap saham satu skor peluang yang divalidasi ke data historis, menjelaskan alasannya dalam bahasa biasa, dan hanya mempublikasikan model yang lolos uji.**
 
 Sectors Hackathon 2026 · Track 03 — Market Intelligence · Data: [Sectors API](https://sectors.app)
 
@@ -12,7 +12,7 @@ Setiap hari bursa Arus menilai 120 saham paling aktif di BEI dan menjawab satu p
 
 **“Dari 100 kondisi di masa lalu yang mirip saham ini hari ini, berapa yang berakhir lebih baik daripada separuh saham lain?”**
 
-- **Skor X/100** dengan 50 = lempar koin, untuk dua jangka waktu: **Besok** (trader harian, skor utama) dan **1 bulan** (swing/investor, saat ini ditandai *belum terbukti*).
+- **Skor X/100** dengan 50 = lempar koin, untuk hari bursa berikutnya. Model 1 bulan juga dilatih setiap hari, tapi baru dipublikasikan kalau lolos validasi.
 - **Lima tingkat yang mudah dibaca:** Sangat diunggulkan · Diunggulkan · Netral · Kurang diunggulkan · Waspada.
 - **Alasan dalam bahasa biasa** untuk setiap skor (mis. “Pergerakan tenang — di data uji, saham yang tenang lebih sering unggul”).
 - **Level penting harian:** gerak normal harian, batas bawah/atas 1 bulan, batas sinyal batal.
@@ -30,7 +30,7 @@ Banyak laporan saham menulis “Confidence 78%” tanpa pernah menguji dari mana
 | Arti “56” | Tidak jelas | 56 dari 100 kejadian serupa memang unggul (dikalibrasi) |
 | Saat bukti lemah | Tetap terdengar yakin | Skor dekat 50, label “Netral” |
 | Periode gagal | Disembunyikan | Ditampilkan di halaman Bukti |
-| Skor yang gagal uji | Tetap dijual | Ditandai “belum terbukti” secara otomatis |
+| Model yang gagal uji | Tetap ditampilkan | Otomatis tidak dipublikasikan sampai lolos lagi |
 
 ## Hasil uji (jujur, out-of-sample)
 
@@ -41,7 +41,7 @@ Banyak laporan saham menulis “Confidence 78%” tanpa pernah menguji dari mana
 
 **Skor besok:** sinyalnya nyata tapi tipis (AUC 0,513), konsisten di hampir semua bulan. Arus paling bisa diandalkan sebagai **saringan pertama**: 53 dari 100 saham bertanda Waspada memang berakhir di separuh bawah keesokan harinya. Keunggulan sekecil ini habis dimakan biaya kalau dipakai beli-jual setiap hari (simulasi: −29% terhadap IHSG setelah biaya), jadi gunakan sebagai penyaring, bukan strategi.
 
-**Skor 1 bulan: belum terbukti.** Versi awal hanya diuji April–September 2026 dan tampak +11% di atas IHSG. Setelah histori diperpanjang ke Juli 2025, Januari–Maret 2026 ternyata terbalik (AUC 0,32–0,45) dan keunggulannya hilang (AUC total 0,479). Dugaan “hanya gagal saat reli lebar” kami uji dengan aturan breadth yang ditetapkan sebelum melihat hasil, dan tidak terbukti. Kalibrasinya dibuat monoton, jadi skor 1 bulan kini datar di sekitar 50 dan situs menandainya *belum terbukti* secara otomatis. Begitu uji ulang harian menunjukkan sebaliknya, tanda itu hilang sendiri.
+**Model 1 bulan: dalam evaluasi, tidak dipublikasikan.** Versi awal hanya diuji April–September 2026 dan tampak +11% di atas IHSG. Setelah histori diperpanjang ke Juli 2025, Januari–Maret 2026 ternyata terbalik (AUC 0,32–0,45) dan keunggulannya hilang (AUC total 0,479). Dugaan “hanya gagal saat reli lebar” kami uji dengan aturan breadth yang ditetapkan sebelum melihat hasil, dan tidak terbukti. Kalibrasinya dibuat monoton, dan situs serta bot hanya menampilkan horizon yang lolos validasi (`metrics.proven`). Model 1 bulan tetap dilatih dan diuji setiap hari; begitu lolos, ia muncul kembali dengan sendirinya. Hasil ujinya tetap dibuka di bagian Tata kelola model pada halaman Bukti.
 
 Detail lengkap (AUC, kalibrasi, stabilitas per periode) ada di halaman **Bukti**.
 
@@ -115,4 +115,4 @@ Arus adalah alat informasi dan analisis, **bukan nasihat keuangan** dan bukan aj
 
 ### English summary
 
-Arus gives every one of the 120 most active IDX stocks a daily **score out of 100** — of 100 past situations that looked like this stock today, how many ended better than half of all other stocks — for two horizons (next day, the primary score; 1 month, currently labelled not proven after it failed a longer out-of-sample test). The model learns from ~15 months of Sectors data, is validated with purged walk-forward testing, calibrated so its numbers mean what they say, explains every score in plain language, shows the evidence that disagrees, and runs as a daily agent that grades itself and reports to Telegram. Information, not financial advice.
+Arus gives every one of the 120 most active IDX stocks a daily **score out of 100** — of 100 past situations that looked like this stock today, how many ended better than half of all other stocks — for the next trading day. A 1-month model is retrained daily too but only published when it passes validation; it currently doesn't, and its results are disclosed under Model governance. The model learns from ~15 months of Sectors data, is validated with purged walk-forward testing, calibrated so its numbers mean what they say, explains every score in plain language, shows the evidence that disagrees, and runs as a daily agent that grades itself and reports to Telegram. Information, not financial advice.

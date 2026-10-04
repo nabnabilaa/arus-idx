@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { Star } from "lucide-react";
 import { useId } from "react";
-import { bundle } from "@/lib/data";
+import { PUBLISHED } from "@/lib/data";
 import { describe } from "@/lib/features";
 import { useLang } from "@/lib/i18n";
 import { usePrefs } from "@/lib/prefs";
@@ -46,41 +46,21 @@ export function Segmented<T extends string | number>({
   );
 }
 
-/** False when this horizon's score failed the out-of-sample test; the site then says so wherever it shows it. */
-export function isProven(h: Horizon) {
-  return bundle.models[String(h) as "1" | "20"].metrics.proven !== false;
-}
-
-export function UnprovenNote({ className = "" }: { className?: string }) {
-  const { tx } = useLang();
-  const { horizon } = usePrefs();
-  if (isProven(horizon)) return null;
-  const m = bundle.models[String(horizon) as "1" | "20"].metrics;
-  return (
-    <p role="note" className={`rounded-lg bg-warn/10 px-3 py-2 text-[12.5px] leading-relaxed text-ink-2 ring-1 ring-warn/30 ${className}`}>
-      {tx({
-        id: `Skor ${tx(HORIZON_LABEL[horizon].name).toLowerCase()} belum terbukti: di uji historis hanya ${m.folds_beating_chance} dari ${m.n_folds} periode yang lebih baik dari lempar koin. Peringkatnya tetap ditampilkan untuk transparansi, bukan sebagai dasar keputusan.`,
-        en: `The ${tx(HORIZON_LABEL[horizon].name).toLowerCase()} score is not proven: in historical testing only ${m.folds_beating_chance} of ${m.n_folds} periods beat a coin flip. The ranking is shown for transparency, not as a basis for decisions.`,
-      })}
-    </p>
-  );
-}
-
 export function HorizonToggle({ size = "md" }: { size?: "md" | "lg" }) {
   const { tx } = useLang();
   const { horizon, setHorizon } = usePrefs();
+  if (PUBLISHED.length < 2) return null;
   return (
     <Segmented<Horizon>
       size={size}
       label={tx({ id: "Jangka waktu", en: "Time horizon" })}
       value={horizon}
       onChange={setHorizon}
-      options={([1, 20] as Horizon[]).map((h) => ({
+      options={PUBLISHED.map((h) => ({
         value: h,
         label: (
           <span className="flex items-baseline gap-1.5">
             {tx(HORIZON_LABEL[h].name)}
-            {!isProven(h) && <span className="text-[10.5px] text-warn">{tx({ id: "belum terbukti", en: "not proven" })}</span>}
             {size === "lg" && <span className="hidden text-[11px] text-muted sm:inline">{tx(HORIZON_LABEL[h].who)}</span>}
           </span>
         ),

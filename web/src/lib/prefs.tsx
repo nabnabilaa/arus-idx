@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { DEFAULT_HORIZON, PUBLISHED } from "./data";
 import type { Horizon } from "./types";
 
 type Ctx = {
@@ -12,7 +13,7 @@ type Ctx = {
 };
 
 const PrefsContext = createContext<Ctx>({
-  horizon: 1,
+  horizon: DEFAULT_HORIZON,
   setHorizon: () => {},
   watchlist: [],
   toggleWatch: () => {},
@@ -35,12 +36,12 @@ function write(key: string, v: unknown) {
 }
 
 export function PrefsProvider({ children }: { children: React.ReactNode }) {
-  const [horizon, setH] = useState<Horizon>(1);
+  const [horizon, setH] = useState<Horizon>(DEFAULT_HORIZON);
   const [watchlist, setW] = useState<string[]>([]);
 
   useEffect(() => {
-    const h = read<number>("arus.horizon", 1);
-    setH(h === 20 ? 20 : 1);
+    const h = read<number>("arus.horizon", DEFAULT_HORIZON);
+    setH(PUBLISHED.includes(h as Horizon) ? (h as Horizon) : DEFAULT_HORIZON);
     setW(read<string[]>("arus.watchlist", []));
   }, []);
 

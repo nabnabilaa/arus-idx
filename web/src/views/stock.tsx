@@ -10,7 +10,7 @@ import { DivergingBars } from "@/components/charts/analytics";
 import { BandarBars } from "@/components/charts/bandar";
 import { Tabs } from "@/components/tabs";
 import { Term } from "@/components/term";
-import { Badge, HorizonToggle, StarButton, UnprovenNote, VerdictBadge } from "@/components/ui";
+import { Badge, HorizonToggle, StarButton, VerdictBadge } from "@/components/ui";
 import { FAMILY, FEATURE, SECTOR_ID, SUBSECTOR_ID, describe } from "@/lib/features";
 import { dateLabel, idr, pct, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
@@ -153,7 +153,6 @@ export function StockView({ stock: s, candles, broker, bandar, macro, cal, weigh
           <div className="flex justify-center">
             <HorizonToggle />
           </div>
-          <UnprovenNote className="mt-3" />
           <div className="mt-3 text-center text-[12px] text-muted">
             <Term k="score">
               <T id="Probabilitas unggul" en="Win probability" /> · {tx(HORIZON_LABEL[horizon].long)}

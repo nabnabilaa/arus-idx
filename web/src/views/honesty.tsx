@@ -8,6 +8,7 @@ import { EquityChart } from "@/components/charts/equity";
 import { ChartTitle } from "@/components/charts/kit";
 import { Term } from "@/components/term";
 import { HorizonToggle } from "@/components/ui";
+import { PUBLISHED } from "@/lib/data";
 import { FAMILY, type FamilyKey } from "@/lib/features";
 import { dateLabel, signed } from "@/lib/format";
 import { T, useLang } from "@/lib/i18n";
@@ -26,13 +27,12 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
   const top = Math.round(m.top_decile_hit * 100);
   const bot = Math.round(m.bottom_decile_hit * 100);
   const when = tx(HORIZON_LABEL[horizon].long);
-  const proven = m.proven !== false;
   const topWins = top > bot;
   const netEnd = M.equity.top_net[M.equity.top_net.length - 1] ?? 0;
   const allEnd = M.equity.all[M.equity.all.length - 1] ?? 0;
-  const failed = M.folds.filter((f) => f.auc < 0.5);
   const months = Math.max(1, Math.round((Date.parse(meta.as_of) - Date.parse(meta.history_start)) / (30.44 * 864e5)));
   const cautionStronger = 50 - bot > top - 50;
+  const withheld = ([1, 20] as const).filter((h) => !PUBLISHED.includes(h));
 
   const answers = [
     {
@@ -66,21 +66,16 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
     },
     {
       q: { id: "Di mana Arus paling bisa diandalkan?", en: "Where is Arus most reliable?" },
-      big: !proven ? tx({ id: "Bukan di sini", en: "Not here" }) : cautionStronger ? tx({ id: "Tanda Waspada", en: "Caution flags" }) : tx({ id: "Tanda Unggul", en: "Strong flags" }),
-      a: !proven
+      big: cautionStronger ? tx({ id: "Tanda Waspada", en: "Caution flags" }) : tx({ id: "Tanda Unggul", en: "Strong flags" }),
+      a: cautionStronger
         ? {
-            id: `Skor ${tx(HORIZON_LABEL[horizon].name).toLowerCase()} tidak lolos uji, jadi kami menandainya "belum terbukti". Peringkatnya tetap tampil agar transparan, tapi jangan dijadikan dasar keputusan.`,
-            en: `The ${tx(HORIZON_LABEL[horizon].name).toLowerCase()} score failed testing, so we label it "not proven". Its ranking stays visible for transparency, but don't base decisions on it.`,
+            id: `Arus lebih jago mengenali saham yang akan tertinggal daripada menebak juara. ${100 - bot} dari 100 saham bertanda Waspada memang berakhir di separuh bawah. Gunakan ini sebagai saringan pertama.`,
+            en: `Arus is better at spotting laggards than picking champions. ${100 - bot} of 100 Caution-flagged stocks did end in the bottom half. Use it as a first filter.`,
           }
-        : cautionStronger
-          ? {
-              id: `Arus lebih jago mengenali saham yang akan tertinggal daripada menebak juara. ${100 - bot} dari 100 saham bertanda Waspada memang berakhir di separuh bawah. Gunakan ini sebagai saringan pertama.`,
-              en: `Arus is better at spotting laggards than picking champions. ${100 - bot} of 100 Caution-flagged stocks did end in the bottom half. Use it as a first filter.`,
-            }
-          : {
-              id: `Keunggulan Arus lebih terlihat di kelompok teratas: ${top} dari 100 saham "Sangat diunggulkan" berakhir di separuh atas.`,
-              en: `Arus' edge shows more in the top group: ${top} of 100 "Strong edge" stocks ended in the top half.`,
-            },
+        : {
+            id: `Keunggulan Arus lebih terlihat di kelompok teratas: ${top} dari 100 saham "Sangat diunggulkan" berakhir di separuh atas.`,
+            en: `Arus' edge shows more in the top group: ${top} of 100 "Strong edge" stocks ended in the top half.`,
+          },
     },
   ];
 
@@ -102,15 +97,6 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
             <T id="Periode uji" en="Test period" /> {dateLabel(m.oos_start, lang)} → {dateLabel(m.oos_end, lang)}
           </span>
         </div>
-        {!proven && (
-          <div role="note" className="mt-6 rounded-xl bg-warn/10 p-4 text-[14.5px] leading-relaxed text-ink-2 ring-1 ring-warn/30">
-            <span className="font-semibold text-ink">{tx({ id: "Skor ini belum terbukti.", en: "This score is not proven." })}</span>{" "}
-            {tx({
-              id: `AUC keseluruhan ${m.auc_model.toFixed(3)} (0,5 = lempar koin). Periode yang lebih buruk dari acak: ${failed.map((f) => dateLabel(f.test_start, lang, { year: "2-digit" })).join(", ")}. Seluruh hasilnya tetap kami tampilkan di bawah.`,
-              en: `Overall AUC ${m.auc_model.toFixed(3)} (0.5 = coin flip). Periods worse than random: ${failed.map((f) => dateLabel(f.test_start, lang, { year: "2-digit" })).join(", ")}. We still show every result below.`,
-            })}
-          </div>
-        )}
       </motion.header>
 
       <section className="mt-12 rounded-2xl bg-surface p-5 ring-1 ring-line sm:p-7">
@@ -192,20 +178,57 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
         </ul>
       </section>
 
+      {withheld.length > 0 && (
+        <section className="mt-16 max-w-3xl">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            <T id="Tata kelola model" en="Model governance" />
+          </h2>
+          <p className="mt-4 text-[15px] leading-relaxed text-ink-2">
+            <T
+              id="Setiap model melewati validasi out-of-sample yang sama setiap kali dilatih ulang. Model yang tidak lolos tidak dipublikasikan, lalu terus diuji di latar belakang sampai hasilnya berubah."
+              en="Every model goes through the same out-of-sample validation each time it retrains. Models that fail are not published, and keep being tested in the background until the evidence changes."
+            />
+          </p>
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full min-w-[480px] text-left text-[13.5px]">
+              <thead className="text-[12px] text-muted">
+                <tr>
+                  <th className="py-2 pr-4 font-normal"><T id="Model" en="Model" /></th>
+                  <th className="py-2 pr-4 font-normal">AUC</th>
+                  <th className="py-2 pr-4 font-normal"><T id="Periode di atas acak" en="Periods above chance" /></th>
+                  <th className="py-2 font-normal"><T id="Status" en="Status" /></th>
+                </tr>
+              </thead>
+              <tbody>
+                {([1, 20] as const).map((h) => {
+                  const mm = models[String(h) as "1" | "20"].metrics;
+                  const live = !withheld.includes(h);
+                  return (
+                    <tr key={h} className="border-t border-line">
+                      <td className="py-2.5 pr-4 text-ink">{tx(HORIZON_LABEL[h].name)}</td>
+                      <td className="num py-2.5 pr-4">{mm.auc_model.toFixed(3)}</td>
+                      <td className="num py-2.5 pr-4">{mm.folds_beating_chance}/{mm.n_folds}</td>
+                      <td className={`py-2.5 ${live ? "text-up" : "text-muted"}`}>{live ? tx({ id: "Dipublikasikan", en: "Published" }) : tx({ id: "Dalam evaluasi", en: "Under evaluation" })}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-4 text-[13.5px] leading-relaxed text-muted">
+            <T
+              id="Model 1 bulan sempat tampak unggul pada uji April–September 2026. Setelah histori diperpanjang ke Juli 2025, keunggulan itu tidak bertahan di Januari–Maret 2026, sehingga model ditarik dari publikasi. Data jangka panjang (arus asing sebulan, rentang harga, level penting) tetap tersedia."
+              en="The 1-month model looked strong when tested on April–September 2026. Once history was extended back to July 2025 the edge did not hold in January–March 2026, so the model was withdrawn from publication. Longer-range data (one-month foreign flow, price ranges, key levels) remains available."
+            />
+          </p>
+        </section>
+      )}
+
       <section className="mt-16 max-w-3xl">
         <h2 className="text-2xl font-semibold tracking-tight">
           <T id="Yang kami coba lalu tinggalkan" en="What we tried and dropped" />
         </h2>
         <ul className="mt-5 space-y-4 text-[15px] leading-relaxed text-ink-2">
-          <li>
-            <span className="font-medium text-ink">
-              <T id="Klaim skor 1 bulan dari histori pendek." en="A 1-month claim from a short history." />
-            </span>{" "}
-            <T
-              id="Versi awal hanya diuji April–September 2026, dan kelompok 1 bulan teratas tampak +11% di atas IHSG. Setelah histori diperpanjang ke Juli 2025, keunggulan itu hilang: pada Januari–Maret 2026 skornya terbalik. Dugaan “hanya gagal saat reli lebar” kami uji dengan aturan yang ditetapkan sebelum melihat hasil, dan dugaan itu tidak terbukti. Maka skor 1 bulan kami tandai belum terbukti. Skor Besok, yang tetap konsisten, menjadi skor utama."
-              en="The first version was tested on April–September 2026 only, where the top 1-month group looked +11% above IHSG. Once the history was extended back to July 2025 that edge vanished: in January–March 2026 the score ran backwards. We tested the idea that it “only fails in broad rallies” with a rule fixed before looking at results, and it didn't hold. So the 1-month score is labelled not proven, and the next-day score, which stayed consistent, became the primary one."
-            />
-          </li>
           <li>
             <span className="font-medium text-ink">
               <T id="Target “mengalahkan IHSG”." en="A “beat IHSG” target." />

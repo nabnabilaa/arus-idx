@@ -59,7 +59,7 @@ const STEPS: { icon: React.ReactNode; time: Bi; title: Bi; body: Bi }[] = [
 
 const COMMANDS: [string, Bi][] = [
   ["/hari_ini", { id: "Ringkasan hari ini, termasuk saham pantauan Anda", en: "Today's digest, including your watchlist" }],
-  ["/saham BBRI", { id: "Skor besok & 1 bulan, gerak normal, batas bawah/atas, batas sinyal batal", en: "Next-day & 1-month score, normal move, floor/ceiling, invalidation" }],
+  ["/saham BBRI", { id: "Skor besok, gerak normal, batas bawah/atas, batas sinyal batal", en: "Next-day score, normal move, floor/ceiling, invalidation" }],
   ["/unggul", { id: "10 saham paling diunggulkan", en: "Top 10 strong-edge stocks" }],
   ["/waspada", { id: "10 saham bertanda waspada", en: "10 caution-flagged stocks" }],
   ["/pantau KODE", { id: "Tambah saham ke pantauan (ikut dilaporkan setiap hari)", en: "Add to watchlist (reported daily)" }],

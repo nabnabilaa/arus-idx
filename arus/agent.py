@@ -121,8 +121,9 @@ def proven(bundle: dict, h: int) -> bool:
     return bool(bundle["models"][str(h)]["metrics"].get("proven", True))
 
 
-def unproven_tag(bundle: dict, h: int, lang: str) -> str:
-    return "" if proven(bundle, h) else (" (belum terbukti)" if lang == "id" else " (not proven)")
+def published(bundle: dict) -> list[int]:
+    """Horizons that passed validation; a failed model is withheld rather than shown with a caveat."""
+    return [h for h in (1, 20) if proven(bundle, h)] or [1]
 
 
 def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = None, lang: str = "id") -> str:
@@ -154,10 +155,12 @@ def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = Non
             L.append(("📋 <b>Rapor kemarin</b> (" if lang == "id" else "📋 <b>Yesterday's report card</b> (") + graded["picked_on"] + "): " + " · ".join(parts))
 
     for h, title_id, title_en in ((1, "Besok", "Next day"), (20, "1 bulan", "1 month")):
+        if h not in published(bundle):
+            continue
         top = sorted(rk, key=lambda s: -(s.get(f"q_{h}") or 0))[:5]
         bot = sorted(rk, key=lambda s: (s.get(f"q_{h}") or 0))[:5]
         L.append("")
-        L.append(f"<b>{title_id if lang == 'id' else title_en}</b>{unproven_tag(bundle, h, lang)}")
+        L.append(f"<b>{title_id if lang == 'id' else title_en}</b>")
         L.append(("🔵 " + V["strong"] + ": ") + ", ".join(f"{s['symbol']} {round((s.get(f'conf_{h}') or 0.5) * 100)}" for s in top))
         L.append(("🔴 " + V["caution"] + ": ") + ", ".join(f"{s['symbol']} {round((s.get(f'conf_{h}') or 0.5) * 100)}" for s in bot))
 
@@ -181,8 +184,10 @@ def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = Non
             s = by.get(sym)
             if not s:
                 continue
-            L.append(f"• {sym} {_pct(s.get('ret_1'))} · {'besok' if lang == 'id' else 'next day'} {round((s.get('conf_1') or .5) * 100)} {V[verdict_of(s.get('q_1'))]} · "
-                     f"{'1 bln' if lang == 'id' else '1 mo'} {round((s.get('conf_20') or .5) * 100)} {V[verdict_of(s.get('q_20'))]}{unproven_tag(bundle, 20, lang)}")
+            line = f"• {sym} {_pct(s.get('ret_1'))} · {'besok' if lang == 'id' else 'next day'} {round((s.get('conf_1') or .5) * 100)} {V[verdict_of(s.get('q_1'))]}"
+            if 20 in published(bundle):
+                line += f" · {'1 bln' if lang == 'id' else '1 mo'} {round((s.get('conf_20') or .5) * 100)} {V[verdict_of(s.get('q_20'))]}"
+            L.append(line)
 
     L.append("")
     L.append("<i>Skor = dari 100 kondisi serupa, berapa yang unggul dari separuh saham lain. 50 = lempar koin. Informasi, bukan nasihat keuangan.</i>"
@@ -198,7 +203,8 @@ def stock_text(bundle: dict, sym: str, lang: str = "id") -> str:
     L = [f"<b>{s['symbol']}</b> · {s.get('name') or ''}",
          f"{'Harga' if lang == 'id' else 'Price'} {s.get('price'):,.0f} ({_pct(s.get('ret_1'))} {'hari ini' if lang == 'id' else 'today'})", ""]
     for h, nm in ((1, "Besok" if lang == "id" else "Next day"), (20, "1 bulan" if lang == "id" else "1 month")):
-        L.append(f"{nm}: <b>{round((s.get(f'conf_{h}') or .5) * 100)}/100</b> · {V[verdict_of(s.get(f'q_{h}'))]}{unproven_tag(bundle, h, lang)}")
+        if h in published(bundle):
+            L.append(f"{nm}: <b>{round((s.get(f'conf_{h}') or .5) * 100)}/100</b> · {V[verdict_of(s.get(f'q_{h}'))]}")
     if s.get("atr_pct"):
         L += ["", f"{'Gerak normal harian' if lang == 'id' else 'Normal daily move'} ±{s['atr_pct'] * 100:.1f}%",
               f"{'Batas bawah/atas 1 bln' if lang == 'id' else '1-mo floor/ceiling'}: {s.get('support_20'):,.0f} / {s.get('resistance_20'):,.0f}",
@@ -265,7 +271,7 @@ ASK_RULES = (
     "Kamu adalah Arus, asisten informasi saham IDX. Jawab HANYA berdasarkan DATA ARUS di bawah. "
     "Skor = dari 100 kondisi serupa di masa lalu, berapa yang unggul dari separuh saham lain (50 = lempar koin). "
     "Jangan pernah menyuruh membeli atau menjual; beri informasi, pertimbangan, dan risiko. Sebut data yang bertentangan. "
-    "Skor dengan model_proven=false belum terbukti di uji historis: sebut itu dan jangan jadikan dasar argumen. "
+    "Hanya pakai skor untuk jangka waktu di published_horizons; jangan menyebut atau menebak skor jangka lain. "
     "Kalau data tidak ada, katakan tidak tahu. Jawab singkat (maks 900 karakter), bahasa sesuai pertanyaan, tanpa markdown tabel."
 )
 
@@ -291,13 +297,16 @@ def ask(question: str, bundle: dict, p: dict) -> str:
             "drivers_pos_20", "drivers_neg_20", "broker_tone", "sharia", "pe_ttm", "pb_mrq", "roe_ttm"]
     ctx = {
         "as_of": bundle["meta"]["as_of"],
-        "stocks_asked": [{k: by[m.upper()].get(k) for k in keep} for m in mentioned],
+        "stocks_asked": [{k: by[m.upper()].get(k) for k in keep
+                          if 20 in published(bundle) or k not in ("conf_20", "q_20", "drivers_pos_20", "drivers_neg_20")}
+                         for m in mentioned],
         "broker_footprint": {m.upper(): bundle["brokers"].get(m.upper(), {}).get("verdict") for m in mentioned},
-        "model_proven": {"next_day": proven(bundle, 1), "one_month": proven(bundle, 20)},
+        "published_horizons": ["next_day" if h == 1 else "one_month" for h in published(bundle)],
         "top_next_day": [s["symbol"] for s in sorted(apply_prefs(bundle["ranking"], p), key=lambda s: -(s.get("q_1") or 0))[:8]],
         "caution_next_day": [s["symbol"] for s in sorted(apply_prefs(bundle["ranking"], p), key=lambda s: (s.get("q_1") or 0))[:8]],
-        "top_1_month": [s["symbol"] for s in sorted(apply_prefs(bundle["ranking"], p), key=lambda s: -(s.get("q_20") or 0))[:8]],
-        "caution_1_month": [s["symbol"] for s in sorted(apply_prefs(bundle["ranking"], p), key=lambda s: (s.get("q_20") or 0))[:8]],
+        **({"top_1_month": [s["symbol"] for s in sorted(apply_prefs(bundle["ranking"], p), key=lambda s: -(s.get("q_20") or 0))[:8]],
+            "caution_1_month": [s["symbol"] for s in sorted(apply_prefs(bundle["ranking"], p), key=lambda s: (s.get("q_20") or 0))[:8]]}
+           if 20 in published(bundle) else {}),
         "user_filters": {"sharia_only": p.get("sharia"), "max_price": p.get("max_price")},
     }
     prompt = f"{ASK_RULES}\n\nDATA ARUS:\n{json.dumps(ctx, ensure_ascii=False, default=str)}\n\nPERTANYAAN: {question}"

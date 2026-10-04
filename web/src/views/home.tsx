@@ -8,10 +8,11 @@ import { useMemo, useState } from "react";
 import { FlowField } from "@/components/flow-field";
 import { MarketMap } from "@/components/charts/treemap";
 import { Term } from "@/components/term";
-import { Badge, HorizonToggle, Reason, UnprovenNote, ScoreBar, Segmented, StarButton, Toggle, VerdictBadge } from "@/components/ui";
+import { Badge, HorizonToggle, Reason, ScoreBar, Segmented, StarButton, Toggle, VerdictBadge } from "@/components/ui";
 import { FEATURE, SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, price, signed } from "@/lib/format";
 import { T, useLang } from "@/lib/i18n";
+import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/data";
 import { usePrefs } from "@/lib/prefs";
 import type { Bundle, FeatureKey, Horizon, Stock } from "@/lib/types";
 import { get, HORIZON_LABEL, VERDICT, VERDICT_ORDER, verdictOf, type VerdictKey } from "@/lib/verdict";
@@ -63,8 +64,8 @@ function Hero({ ranking, meta }: { ranking: Stock[]; meta: Bundle["meta"] }) {
         </h1>
         <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-ink-2 text-pretty sm:text-[17px]">
           <T
-            id={`Setiap hari Arus menilai ${meta.n_ranked} saham paling aktif di BEI memakai data Sectors, lalu memberi skor peluang yang diuji ke data historis, lengkap dengan alasannya dan catatan mana yang belum terbukti.`}
-            en={`Every day Arus scores the ${meta.n_ranked} most active IDX stocks using Sectors data, giving each one odds tested on historical data, with the reasons behind them and a note on what is not yet proven.`}
+            id={`Setiap hari Arus menilai ${meta.n_ranked} saham paling aktif di BEI memakai data Sectors, lalu memberi skor peluang yang divalidasi ke data historis, lengkap dengan alasannya.`}
+            en={`Every day Arus scores the ${meta.n_ranked} most active IDX stocks using Sectors data, giving each one odds validated on historical data, with the reasons behind them.`}
           />
         </p>
       </motion.div>
@@ -111,7 +112,6 @@ function Hero({ ranking, meta }: { ranking: Stock[]; meta: Bundle["meta"] }) {
         </div>
         <HorizonToggle size="lg" />
       </motion.div>
-      <UnprovenNote className="relative mt-3 max-w-3xl" />
     </section>
   );
 }
@@ -121,14 +121,23 @@ function HowToRead() {
   const { tx } = useLang();
   const [open, setOpen] = useState(true);
   const steps = [
-    {
-      t: { id: "Pilih jangka waktu", en: "Pick a time horizon" },
-      d: {
-        id: "“Besok” untuk trading harian. “1 bulan” untuk swing atau investasi. Arus menghitung keduanya terpisah.",
-        en: "“Next day” for day trading. “1 month” for swing or investing. Arus scores each separately.",
-      },
-      vis: <HorizonToggle />,
-    },
+    PUBLISHED.length > 1
+      ? {
+          t: { id: "Pilih jangka waktu", en: "Pick a time horizon" },
+          d: {
+            id: "“Besok” untuk trading harian. “1 bulan” untuk swing atau investasi. Arus menghitung keduanya terpisah.",
+            en: "“Next day” for day trading. “1 month” for swing or investing. Arus scores each separately.",
+          },
+          vis: <HorizonToggle />,
+        }
+      : {
+          t: { id: "Skor untuk hari bursa berikutnya", en: "A score for the next session" },
+          d: {
+            id: `Arus menilai peluang tiap saham ${tx(HORIZON_LABEL[DEFAULT_HORIZON].long)}, diperbarui setiap sore setelah bursa tutup.`,
+            en: `Arus rates each stock's odds ${tx(HORIZON_LABEL[DEFAULT_HORIZON].long)}, refreshed every afternoon after the close.`,
+          },
+          vis: <Badge>{tx(HORIZON_LABEL[DEFAULT_HORIZON].name)}</Badge>,
+        },
     {
       t: { id: "Baca skornya", en: "Read the score" },
       d: {

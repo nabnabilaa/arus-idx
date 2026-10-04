@@ -180,11 +180,11 @@ export function BrokerMapView({ map }: { map: BrokerMap }) {
   );
 }
 
-export function NewsList({ items, compact = false }: { items: NewsItem[]; compact?: boolean }) {
+export function NewsList({ items, compact = false, columns = false }: { items: NewsItem[]; compact?: boolean; columns?: boolean }) {
   const { tx, lang } = useLang();
   if (!items.length) return <p className="text-[14px] text-muted">{tx({ id: "Belum ada berita terbaru untuk saham ini.", en: "No recent news for this stock yet." })}</p>;
   return (
-    <ul className="space-y-3">
+    <ul className={columns ? "grid items-start gap-3 lg:grid-cols-2" : "space-y-3"}>
       {items.map((n) => (
         <li key={n.url} className="rounded-2xl bg-surface p-4 ring-1 ring-line">
           <div className="flex items-center gap-2 text-[11.5px] text-muted">

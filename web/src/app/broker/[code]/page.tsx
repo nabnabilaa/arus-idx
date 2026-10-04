@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import brokersJson from "@/data/brokers.json";
 import { bundle } from "@/lib/data";
+import { SECTOR_ID } from "@/lib/features";
 import type { BrokerIndex } from "@/lib/types";
 import { brokerPeriod } from "@/lib/broker-period";
 import { BrokerDetail } from "@/views/broker";
@@ -22,5 +23,6 @@ export default async function Page({ params }: { params: Promise<{ code: string 
   if (!b) notFound();
   const names = Object.fromEntries(bundle.ranking.map((r) => [r.symbol, r.name]));
   const prices = Object.fromEntries(bundle.ranking.map((r) => [r.symbol, r.price]));
-  return <BrokerDetail b={{ ...b, code }} names={names} prices={prices} period={brokerPeriod()} />;
+  const sectors = Object.fromEntries(bundle.ranking.map((r) => [r.symbol, r.sector ? SECTOR_ID[r.sector] ?? r.sector : null]));
+  return <BrokerDetail b={{ ...b, code }} names={names} prices={prices} sectors={sectors} period={brokerPeriod()} />;
 }

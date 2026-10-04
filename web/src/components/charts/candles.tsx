@@ -396,7 +396,7 @@ export function CandleChart({
           <span>· {tx({ id: "arahkan kursor untuk melihat apa yang terjadi sesudahnya", en: "hover to see what happened next" })}</span>
         </div>
       )}
-      {pinned && <DayPanel all={all} date={pinned} ihsgMap={ihsgMap} onClose={() => setPinned(null)} />}
+      {pinned && <DayPanel all={all} date={pinned} ihsgMap={ihsgMap} onClose={() => setPinned(null)} onStep={setPinned} />}
     </div>
   );
 }
@@ -404,8 +404,8 @@ export function CandleChart({
 
 type Row = { d: string; o: number; h: number; l: number; c: number; v: number; f: number; verdict: number | null };
 
-/** Everything about one clicked day: the candle, its volume against normal, foreign money, Arus' call and what followed. */
-function DayPanel({ all, date, ihsgMap, onClose }: { all: Row[]; date: string; ihsgMap: Map<string, number | null>; onClose: () => void }) {
+/** One clicked day as a small story: the candle's range, how busy it was, who bought, what Arus said, what followed. */
+function DayPanel({ all, date, ihsgMap, onClose, onStep }: { all: Row[]; date: string; ihsgMap: Map<string, number | null>; onClose: () => void; onStep: (d: string) => void }) {
   const { tx, lang } = useLang();
   const i = all.findIndex((r) => r.d === date);
   if (i < 0) return null;
@@ -413,6 +413,7 @@ function DayPanel({ all, date, ihsgMap, onClose }: { all: Row[]; date: string; i
   const prev = i > 0 ? all[i - 1].c : null;
   const chg = prev ? r.c / prev - 1 : null;
   const avgV = all.slice(Math.max(0, i - 20), i).reduce((a, b) => a + b.v, 0) / Math.max(1, Math.min(20, i));
+  const vMult = avgV ? r.v / avgV : null;
   const after = (k: number) => {
     const later = all[i + k];
     if (!later) return null;
@@ -421,60 +422,109 @@ function DayPanel({ all, date, ihsgMap, onClose }: { all: Row[]; date: string; i
     const b = ihsgMap.get(later.d);
     return { ret, rel: a && b ? ret - (b / a - 1) : null };
   };
-  const a1 = after(1);
-  const a5 = after(5);
+  const outcomes = [
+    { k: 1, l: { id: "Besok", en: "Next day" }, v: after(1) },
+    { k: 5, l: { id: "5 hari", en: "5 days" }, v: after(5) },
+  ];
   const v = r.verdict != null ? VERDICT[VCODE[r.verdict]] : null;
-  const cell = "rounded-lg bg-ground/60 p-3 ring-1 ring-line";
+  const span = r.h - r.l || 1;
+  const pos = (x: number) => `${((x - r.l) / span) * 100}%`;
+  const up = r.c >= r.o;
+  const fAbsMax = Math.max(...all.slice(Math.max(0, i - 60), i + 1).map((x) => Math.abs(x.f)), 1);
+
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mt-4 rounded-xl bg-raised/60 p-4 ring-1 ring-line-strong">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-[14px] font-semibold text-ink">{dateLabel(r.d, lang, { weekday: "long" })}</div>
-        <button onClick={onClose} className="cursor-pointer rounded-md px-2 py-1 text-[12px] text-muted ring-1 ring-line hover:text-ink">
-          {tx({ id: "Tutup", en: "Close" })}
+    <motion.div key={date} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mt-4 overflow-hidden rounded-2xl bg-raised/50 ring-1 ring-line-strong">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
+        <div className="flex items-center gap-1">
+          <button disabled={i === 0} onClick={() => onStep(all[i - 1].d)} aria-label={tx({ id: "Hari sebelumnya", en: "Previous day" })} className="grid h-7 w-7 cursor-pointer place-items-center rounded-md text-[16px] text-muted ring-1 ring-line hover:text-ink disabled:cursor-not-allowed disabled:opacity-30">
+            ‹
+          </button>
+          <button disabled={i >= all.length - 1} onClick={() => onStep(all[i + 1].d)} aria-label={tx({ id: "Hari berikutnya", en: "Next day" })} className="grid h-7 w-7 cursor-pointer place-items-center rounded-md text-[16px] text-muted ring-1 ring-line hover:text-ink disabled:cursor-not-allowed disabled:opacity-30">
+            ›
+          </button>
+          <span className="ml-2 text-[13.5px] font-semibold text-ink">{dateLabel(r.d, lang, { weekday: "long" })}</span>
+        </div>
+        <button onClick={onClose} className="cursor-pointer rounded-md px-2 py-1 text-[12px] text-muted hover:text-ink">
+          {tx({ id: "Tutup", en: "Close" })} ✕
         </button>
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-2 text-[12.5px] sm:grid-cols-3 lg:grid-cols-6">
-        <div className={cell}>
-          <dt className="text-muted">{tx({ id: "Buka → tutup", en: "Open → close" })}</dt>
-          <dd className="num mt-0.5 text-ink">
-            {price(r.o, lang)} → {price(r.c, lang)}
-          </dd>
-          <dd className={`num ${chg == null ? "text-muted" : chg >= 0 ? "text-up" : "text-down"}`}>{chg == null ? "–" : signed(chg * 100, 2, "%")}</dd>
+
+      <div className="grid gap-px bg-line md:grid-cols-[1.2fr_1fr_1fr]">
+        <div className="bg-surface p-4">
+          <div className="flex items-baseline gap-2">
+            <span className="num text-2xl font-semibold text-ink">{price(r.c, lang)}</span>
+            {chg != null && (
+              <span className={`num rounded-md px-1.5 py-0.5 text-[12.5px] font-medium ${chg >= 0 ? "bg-up/15 text-[#9cc5f5]" : "bg-down/15 text-[#f0a3a3]"}`}>{signed(chg * 100, 2, "%")}</span>
+            )}
+          </div>
+          <div className="mt-4">
+            <div className="relative h-2 rounded-full bg-raised">
+              <div className="absolute inset-y-0 rounded-full" style={{ left: pos(Math.min(r.o, r.c)), width: `${(Math.abs(r.c - r.o) / span) * 100}%`, background: up ? C.up : C.down, minWidth: 3 }} />
+              <span className="absolute -top-1 h-4 w-0.5 rounded bg-ink" style={{ left: pos(r.c) }} />
+            </div>
+            <div className="num mt-1.5 flex justify-between text-[11.5px] text-muted">
+              <span>
+                {tx({ id: "Terendah", en: "Low" })} {price(r.l, lang)}
+              </span>
+              <span>
+                {tx({ id: "Tertinggi", en: "High" })} {price(r.h, lang)}
+              </span>
+            </div>
+            <div className="num mt-1 text-[11.5px] text-muted">
+              {tx({ id: "Buka", en: "Open" })} {price(r.o, lang)} → {tx({ id: "tutup", en: "close" })} {price(r.c, lang)} · {tx({ id: "rentang", en: "range" })} {((span / r.l) * 100).toFixed(1)}%
+            </div>
+          </div>
         </div>
-        <div className={cell}>
-          <dt className="text-muted">{tx({ id: "Tertinggi / terendah", en: "High / low" })}</dt>
-          <dd className="num mt-0.5 text-ink">
-            {price(r.h, lang)} / {price(r.l, lang)}
-          </dd>
-          <dd className="num text-muted">{signed(((r.h - r.l) / r.l) * 100, 1, "%")} {tx({ id: "rentang", en: "range" })}</dd>
+
+        <div className="space-y-4 bg-surface p-4">
+          <div>
+            <div className="flex justify-between text-[12px]">
+              <span className="text-muted">Volume</span>
+              <span className="num text-ink">
+                {(r.v / 1e6).toFixed(1)} {tx({ id: "jt", en: "M" })}
+                {vMult != null && <span className={`ml-1.5 ${vMult >= 1.5 ? "text-warn" : "text-muted"}`}>{vMult.toFixed(1)}×</span>}
+              </span>
+            </div>
+            <div className="relative mt-1.5 h-2 rounded-full bg-raised">
+              <div className="h-2 rounded-full bg-[#9085e9]" style={{ width: `${Math.min(100, ((vMult ?? 0) / 3) * 100)}%` }} />
+              <span className="absolute -top-0.5 h-3 w-px bg-ink-2" style={{ left: "33.3%" }} />
+            </div>
+            <div className="mt-1 text-[11px] text-muted">{tx({ id: "garis tipis = rata-rata 20 hari", en: "tick = 20-day average" })}</div>
+          </div>
+          <div>
+            <div className="flex justify-between text-[12px]">
+              <span className="text-muted">{tx({ id: "Dana asing", en: "Foreign money" })}</span>
+              <span className={`num ${r.f >= 0 ? "text-up" : "text-down"}`}>
+                {r.f >= 0 ? tx({ id: "beli", en: "bought" }) : tx({ id: "jual", en: "sold" })} {idr(Math.abs(r.f), lang)}
+              </span>
+            </div>
+            <div className="relative mt-1.5 h-2 rounded-full bg-raised">
+              <span className="absolute left-1/2 top-0 h-2 w-px bg-line-strong" />
+              <div
+                className="absolute inset-y-0 rounded-full"
+                style={{ background: r.f >= 0 ? C.up : C.down, left: r.f >= 0 ? "50%" : `${50 - (Math.abs(r.f) / fAbsMax) * 50}%`, width: `${(Math.abs(r.f) / fAbsMax) * 50}%` }}
+              />
+            </div>
+            <div className="mt-1 text-[11px] text-muted">{tx({ id: "dibanding hari tersibuk 3 bulan", en: "vs the busiest day in 3 months" })}</div>
+          </div>
         </div>
-        <div className={cell}>
-          <dt className="text-muted">Volume</dt>
-          <dd className="num mt-0.5 text-ink">{(r.v / 1e6).toFixed(1)} {tx({ id: "jt lembar", en: "M shares" })}</dd>
-          <dd className="num text-muted">{avgV ? `${(r.v / avgV).toFixed(1)}× ${tx({ id: "rata-rata 20 hari", en: "20-day avg" })}` : "–"}</dd>
-        </div>
-        <div className={cell}>
-          <dt className="text-muted">{tx({ id: "Dana asing", en: "Foreign money" })}</dt>
-          <dd className={`num mt-0.5 ${r.f >= 0 ? "text-up" : "text-down"}`}>
-            {r.f >= 0 ? tx({ id: "beli", en: "bought" }) : tx({ id: "jual", en: "sold" })} {idr(Math.abs(r.f), lang)}
-          </dd>
-        </div>
-        <div className={cell}>
-          <dt className="text-muted">{tx({ id: "Penilaian Arus hari itu", en: "Arus' call that day" })}</dt>
-          <dd className="mt-0.5 font-medium" style={{ color: v?.color }}>
+
+        <div className="bg-surface p-4">
+          <div className="text-[12px] text-muted">{tx({ id: "Penilaian Arus hari itu", en: "Arus call that day" })}</div>
+          <div className="mt-1 text-[16px] font-semibold" style={{ color: v?.color }}>
             {v ? tx(v.label) : "–"}
-          </dd>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {outcomes.map((o) => (
+              <div key={o.k} className="rounded-lg bg-ground/60 p-2.5 ring-1 ring-line">
+                <div className="text-[11px] text-muted">{tx(o.l)}</div>
+                <div className={`num text-[17px] font-semibold ${o.v == null ? "text-muted" : o.v.ret >= 0 ? "text-up" : "text-down"}`}>{o.v ? signed(o.v.ret * 100, 1, "%") : "–"}</div>
+                {o.v?.rel != null && <div className="num text-[10.5px] text-muted">{signed(o.v.rel * 100, 1, "%")} vs IHSG</div>}
+              </div>
+            ))}
+          </div>
         </div>
-        <div className={cell}>
-          <dt className="text-muted">{tx({ id: "Sesudahnya", en: "Afterwards" })}</dt>
-          <dd className="num mt-0.5 text-ink-2">
-            {tx({ id: "Besok", en: "Next day" })} <span className={a1 ? (a1.ret >= 0 ? "text-up" : "text-down") : "text-muted"}>{a1 ? signed(a1.ret * 100, 1, "%") : "–"}</span>
-          </dd>
-          <dd className="num text-ink-2">
-            {tx({ id: "5 hari", en: "5 days" })} <span className={a5 ? (a5.ret >= 0 ? "text-up" : "text-down") : "text-muted"}>{a5 ? signed(a5.ret * 100, 1, "%") : "–"}</span>
-          </dd>
-        </div>
-      </dl>
+      </div>
     </motion.div>
   );
 }

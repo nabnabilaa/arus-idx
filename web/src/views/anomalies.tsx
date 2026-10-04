@@ -50,6 +50,62 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
     });
   };
 
+  const renderRow = (s: Stock) => {
+            const events = ORDER.filter((e) => hits(s, e, 2));
+            const up = (s.ret_1 ?? 0) >= 0;
+            const isOpen = open === s.symbol;
+            return (
+              <li key={s.symbol} className="overflow-hidden rounded-xl bg-surface ring-1 ring-line">
+                <button onClick={() => setOpen(isOpen ? null : s.symbol)} aria-expanded={isOpen} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-raised/40 sm:px-5">
+                  <span className="w-14 shrink-0 text-[15px] font-semibold text-ink">{s.symbol}</span>
+                  <span className={`num w-14 shrink-0 text-[12.5px] ${up ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</span>
+                  <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                    {events.map((e) => (
+                      <span key={e} className={`rounded-full px-2 py-0.5 text-[11.5px] ring-1 ${EVENT[e].sign > 0 && e !== "return_up" ? "bg-up/10 text-[#9cc5f5] ring-up/30" : "bg-down/10 text-[#f0a3a3] ring-down/30"}`}>
+                        {tx(EVENT[e].label)}
+                      </span>
+                    ))}
+                  </span>
+                  <ChevronDown size={16} className={`shrink-0 text-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: EASE }} className="overflow-hidden">
+                      <div className="px-4 pb-4 sm:px-5">
+                        <div className="mb-2 text-[12.5px] text-muted">
+                          {s.name} · {price(s.price, lang)}
+                        </div>
+                        <ul className="grid gap-2">
+                          {events.map((e) => {
+                            const h = history?.[e];
+                            return (
+                              <li key={e} className="rounded-lg bg-ground/60 px-3 py-2 ring-1 ring-line">
+                                <div className="flex items-center gap-1.5 text-[13px] font-medium text-ink">
+                                  <span className="text-arus">{EVENT[e].icon}</span>
+                                  {tx(EVENT[e].label)}
+                                </div>
+                                <div className="mt-0.5 text-[12.5px] text-ink-2">{detail(s, e)}</div>
+                                {h?.beat5 != null && (
+                                  <div className="mt-0.5 text-[11.5px] text-muted">
+                                    {tx({ id: `Sesudah kejadian seperti ini: unggul ${Math.round(h.beat5 * 100)} dari 100 kali dalam 5 hari`, en: `After events like this: won ${Math.round(h.beat5 * 100)} times in 100 over 5 days` })}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        <Link href={`/saham/${s.symbol}/`} className="mt-3 inline-flex items-center gap-1 text-[13px] text-arus hover:underline">
+                          {tx({ id: `Buka halaman ${s.symbol}`, en: `Open ${s.symbol}` })} <ArrowUpRight size={14} />
+                        </Link>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </li>
+            );
+  };
+  const visible = rows.slice(0, all ? rows.length : 10);
+
   return (
     <div className="pt-10 sm:pt-12">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
@@ -140,62 +196,14 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
             : tx({ id: "Untuk saham itu sendiri, kejadian seperti ini kira-kira sekali sebulan.", en: "For that stock, an event like this happens about once a month." })}
         </p>
 
-        <ul className="mt-5 grid items-start gap-2.5 lg:grid-cols-2">
-          {rows.slice(0, all ? rows.length : 10).map((s) => {
-            const events = ORDER.filter((e) => hits(s, e, 2));
-            const up = (s.ret_1 ?? 0) >= 0;
-            const isOpen = open === s.symbol;
-            return (
-              <li key={s.symbol} className="overflow-hidden rounded-xl bg-surface ring-1 ring-line">
-                <button onClick={() => setOpen(isOpen ? null : s.symbol)} aria-expanded={isOpen} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-raised/40 sm:px-5">
-                  <span className="w-14 shrink-0 text-[15px] font-semibold text-ink">{s.symbol}</span>
-                  <span className={`num w-14 shrink-0 text-[12.5px] ${up ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</span>
-                  <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                    {events.map((e) => (
-                      <span key={e} className={`rounded-full px-2 py-0.5 text-[11.5px] ring-1 ${EVENT[e].sign > 0 && e !== "return_up" ? "bg-up/10 text-[#9cc5f5] ring-up/30" : "bg-down/10 text-[#f0a3a3] ring-down/30"}`}>
-                        {tx(EVENT[e].label)}
-                      </span>
-                    ))}
-                  </span>
-                  <ChevronDown size={16} className={`shrink-0 text-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-                </button>
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: EASE }} className="overflow-hidden">
-                      <div className="px-4 pb-4 sm:px-5">
-                        <div className="mb-2 text-[12.5px] text-muted">
-                          {s.name} · {price(s.price, lang)}
-                        </div>
-                        <ul className="grid gap-2">
-                          {events.map((e) => {
-                            const h = history?.[e];
-                            return (
-                              <li key={e} className="rounded-lg bg-ground/60 px-3 py-2 ring-1 ring-line">
-                                <div className="flex items-center gap-1.5 text-[13px] font-medium text-ink">
-                                  <span className="text-arus">{EVENT[e].icon}</span>
-                                  {tx(EVENT[e].label)}
-                                </div>
-                                <div className="mt-0.5 text-[12.5px] text-ink-2">{detail(s, e)}</div>
-                                {h?.beat5 != null && (
-                                  <div className="mt-0.5 text-[11.5px] text-muted">
-                                    {tx({ id: `Sesudah kejadian seperti ini: unggul ${Math.round(h.beat5 * 100)} dari 100 kali dalam 5 hari`, en: `After events like this: won ${Math.round(h.beat5 * 100)} times in 100 over 5 days` })}
-                                  </div>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                        <Link href={`/saham/${s.symbol}/`} className="mt-3 inline-flex items-center gap-1 text-[13px] text-arus hover:underline">
-                          {tx({ id: `Buka halaman ${s.symbol}`, en: `Open ${s.symbol}` })} <ArrowUpRight size={14} />
-                        </Link>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </li>
-            );
-          })}
-        </ul>
+        <ul className="mt-5 flex flex-col gap-2.5 lg:hidden">{visible.map(renderRow)}</ul>
+        <div className="mt-5 hidden items-start gap-2.5 lg:grid lg:grid-cols-2">
+          {[0, 1].map((c) => (
+            <ul key={c} className="flex flex-col gap-2.5">
+              {visible.filter((_, i) => i % 2 === c).map(renderRow)}
+            </ul>
+          ))}
+        </div>
         {rows.length > 10 && (
           <button onClick={() => setAll((v) => !v)} className="mt-3 cursor-pointer text-[13px] text-arus hover:underline">
             {all ? tx({ id: "Tampilkan lebih sedikit", en: "Show fewer" }) : tx({ id: `Tampilkan semua (${rows.length})`, en: `Show all (${rows.length})` })}

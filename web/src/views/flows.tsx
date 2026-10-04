@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { NewsList } from "@/components/brokers";
+import { Pager } from "@/components/pager";
+import { Tabs } from "@/components/tabs";
 import { cohortDot } from "@/components/broker-summary";
 import { motion } from "motion/react";
 import { AlertTriangle, ArrowUpRight, Search } from "lucide-react";
@@ -35,6 +37,9 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
   const ff20 = market.slice(-20).reduce((a, m) => a + (m.foreign_net ?? 0), 0);
   const tone = (t: string) => (t === "pos" ? "text-[#9cc5f5]" : t === "neg" ? "text-[#f0a3a3]" : "text-ink-2");
   const [q, setQ] = useState("");
+  const [tab, setTab] = useState<"asing" | "bandar" | "berita">("asing");
+  const [page, setPage] = useState(0);
+  const PER = 20;
   const [sortBy, setSortBy] = useState<"inst" | "retail" | "foreign">("inst");
   const sum = (xs: number[] | undefined) => (xs ?? []).reduce((a, b) => a + b, 0);
   const foot = ranking
@@ -62,7 +67,22 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
         </p>
       </motion.header>
 
-      <section className="mt-12">
+      <div className="mt-10">
+        <Tabs
+          label={tx({ id: "Bagian halaman", en: "Page sections" })}
+          value={tab}
+          onChange={setTab}
+          items={[
+            { value: "asing", label: tx({ id: "Dana asing", en: "Foreign money" }) },
+            { value: "bandar", label: tx({ id: "Jejak bandar", en: "Broker footprint" }) },
+            { value: "berita", label: tx({ id: `Berita${news?.length ? ` (${news.length})` : ""}`, en: `News${news?.length ? ` (${news.length})` : ""}` }) },
+          ]}
+        />
+      </div>
+      <div className="pt-8">
+        {tab === "asing" && (
+          <>
+      <section>
         <p className="max-w-[70ch] text-[15px] leading-relaxed text-ink-2">
           <span className="font-medium text-ink">{ff20 >= 0 ? <T id="Asing sedang masuk." en="Foreigners are buying." /> : <T id="Asing sedang keluar." en="Foreigners are selling." />}</span>{" "}
           <T
@@ -112,7 +132,11 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
         ))}
       </section>
 
-      <section className="mt-16">
+          </>
+        )}
+        {tab === "bandar" && (
+          <>
+      <section>
         <h2 className="text-2xl font-semibold tracking-tight">
           <Term k="broker">
             <T id="Jejak bandar" en="Broker footprint" />
@@ -161,11 +185,11 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60 sm:max-w-80">
             <Search size={15} className="text-muted" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari saham atau kode broker (mis. BBCA, YP)", en: "Search a stock or broker code (e.g. BBCA, YP)" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
+            <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder={tx({ id: "Cari saham atau kode broker (mis. BBCA, YP)", en: "Search a stock or broker code (e.g. BBCA, YP)" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
           </label>
           <label className="flex items-center gap-2 text-[12.5px] text-muted">
             <T id="Urutkan" en="Sort" />
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="h-10 cursor-pointer rounded-lg bg-surface px-2 text-[13px] text-ink ring-1 ring-line focus:outline-none">
+            <select value={sortBy} onChange={(e) => { setSortBy(e.target.value as typeof sortBy); setPage(0); }} className="h-10 cursor-pointer rounded-lg bg-surface px-2 text-[13px] text-ink ring-1 ring-line focus:outline-none">
               <option value="inst">{tx({ id: "Paling diborong institusi", en: "Most bought by institutions" })}</option>
               <option value="retail">{tx({ id: "Paling diborong ritel", en: "Most bought by retail" })}</option>
               <option value="foreign">{tx({ id: "Paling diborong asing", en: "Most bought by foreigners" })}</option>
@@ -187,7 +211,7 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
               </tr>
             </thead>
             <tbody>
-              {foot.slice(0, 40).map((r) => (
+              {foot.slice(page * PER, page * PER + PER).map((r) => (
                 <tr key={r.sym} className="hover:bg-surface">
                   <td className="border-t border-line py-2.5 pr-4">
                     <Link href={`/saham/${r.sym}/`} className="font-semibold text-ink hover:text-arus">{r.sym}</Link>
@@ -213,7 +237,7 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
             </tbody>
           </table>
         </div>
-        {foot.length > 40 && <p className="mt-2 text-[12px] text-muted">{tx({ id: "Menampilkan 40 teratas. Gunakan pencarian untuk saham lain.", en: "Showing the top 40. Use search for other stocks." })}</p>}
+        {foot.length > PER && <Pager page={page} pages={Math.ceil(foot.length / PER)} total={foot.length} per={PER} onChange={setPage} />}
         {foot.length === 0 && (
           <p className="py-8 text-[14px] text-muted">
             <T id="Tidak ada yang cocok." en="Nothing matches." />
@@ -221,7 +245,7 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
         )}
       </section>
 
-      <Link href="/broker/" className="group mt-12 flex items-center gap-4 rounded-2xl bg-arus/10 p-5 ring-1 ring-arus/40 transition-colors duration-150 hover:bg-arus/15">
+      <Link href="/broker/" className="group mt-10 flex items-center gap-4 rounded-2xl bg-arus/10 p-5 ring-1 ring-arus/40 transition-colors duration-150 hover:bg-arus/15">
         <span className="min-w-0 flex-1">
           <span className="block text-[16px] font-semibold text-ink">
             <T id="Direktori broker" en="Broker directory" />
@@ -233,16 +257,23 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
         <ArrowUpRight size={20} className="shrink-0 text-arus transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
       </Link>
 
-      {news && news.length > 0 && (
-        <section className="mt-16 max-w-3xl">
-          <h2 className="text-2xl font-semibold tracking-tight">
-            <T id="Berita terbaru" en="Latest news" />
-          </h2>
-          <div className="mt-5">
-            <NewsList items={news.slice(0, 12)} />
-          </div>
-        </section>
-      )}
+          </>
+        )}
+        {tab === "berita" && (
+      <section>
+        {news && news.length > 0 ? (
+          <NewsList items={news} columns />
+        ) : (
+          <p className="py-10 text-[14px] text-muted">
+            <T id="Belum ada berita." en="No news yet." />
+          </p>
+        )}
+        <p className="mt-4 text-[12px] text-muted">
+          <T id="Ringkasan berita dari Sectors (berbahasa Inggris), tautan menuju sumber aslinya." en="News summaries from Sectors, linking to the original source." />
+        </p>
+      </section>
+        )}
+      </div>
     </div>
   );
 }

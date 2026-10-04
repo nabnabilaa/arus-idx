@@ -6,6 +6,7 @@ import { ArrowLeft, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cohortDot } from "@/components/broker-summary";
 import { STYLE } from "@/components/brokers";
+import { Pager } from "@/components/pager";
 import { Segmented } from "@/components/ui";
 import { idr, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
@@ -19,6 +20,48 @@ export const COHORT_LABEL: Record<string, Bi> = {
   mixed: { id: "Campuran", en: "Mixed" },
   unknown: { id: "Tidak diketahui", en: "Unknown" },
 };
+
+/** Plain-language primer on broker kinds, from the Sectors broker registry's cohort and origin. */
+export const KIND_INFO: Record<"institutional" | "retail" | "mixed" | "foreign", { title: Bi; body: Bi; read: Bi }> = {
+  institutional: {
+    title: { id: "Broker institusi", en: "Institutional broker" },
+    body: { id: "Terutama melayani nasabah besar: manajer investasi, dana pensiun, asuransi, dan investor asing.", en: "Mainly serves large clients: fund managers, pension funds, insurers and foreign investors." },
+    read: { id: "Ordernya besar dan bertahap, jadi sering dibaca sebagai jejak “uang besar” atau bandar.", en: "Orders are large and spread out, so they are often read as the footprint of “big money”." },
+  },
+  retail: {
+    title: { id: "Broker ritel", en: "Retail broker" },
+    body: { id: "Aplikasi atau sekuritas untuk investor perorangan, biasanya dengan biaya murah dan transaksi kecil-kecil.", en: "Apps or brokerages for individual investors, usually low-fee with many small trades." },
+    read: { id: "Mencerminkan minat investor ritel. Ritel memborong saat harga sudah melonjak sering jadi tanda euforia.", en: "Reflects retail appetite. Retail piling in after a spike is often a sign of euphoria." },
+  },
+  mixed: {
+    title: { id: "Broker campuran", en: "Mixed broker" },
+    body: { id: "Melayani institusi maupun perorangan, sering bagian dari grup bank atau perusahaan besar.", en: "Serves both institutions and individuals, often part of a bank or conglomerate group." },
+    read: { id: "Arah transaksinya perlu dibaca bersama data lain karena isinya campuran.", en: "Read its flow alongside other data, since it blends both kinds of client." },
+  },
+  foreign: {
+    title: { id: "Broker asing", en: "Foreign broker" },
+    body: { id: "Sekuritas yang dimiliki atau berafiliasi dengan grup keuangan luar negeri.", en: "A brokerage owned by or affiliated with an overseas financial group." },
+    read: { id: "Banyak nasabahnya investor asing, tapi tidak semua transaksinya berarti uang asing; data “asing” resmi tetap dari arus asing bursa.", en: "Many of its clients are foreign, but not every trade is foreign money; official foreign flow still comes from the exchange." },
+  },
+};
+
+export function KindPrimer() {
+  const { tx } = useLang();
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {(["institutional", "retail", "mixed", "foreign"] as const).map((k) => (
+        <div key={k} className="rounded-2xl bg-surface p-4 ring-1 ring-line">
+          <div className="flex items-center gap-2 text-[14px] font-semibold text-ink">
+            {cohortDot(k === "foreign" ? null : k, k === "foreign")}
+            {tx(KIND_INFO[k].title)}
+          </div>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-2">{tx(KIND_INFO[k].body)}</p>
+          <p className="mt-1.5 text-[12px] leading-relaxed text-muted">{tx(KIND_INFO[k].read)}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export type DirectoryRow = {
   code: string;
@@ -37,6 +80,8 @@ export function BrokerDirectory({ rows, period }: { rows: DirectoryRow[]; period
   const { tx, lang } = useLang();
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<"all" | "institutional" | "retail" | "foreign">("all");
+  const [page, setPage] = useState(0);
+  const PER = 24;
   const shown = rows.filter((r) => {
     const t = q.trim().toLowerCase();
     if (t && !r.code.toLowerCase().includes(t) && !(r.name ?? "").toLowerCase().includes(t)) return false;
@@ -58,15 +103,30 @@ export function BrokerDirectory({ rows, period }: { rows: DirectoryRow[]; period
         </p>
       </motion.header>
 
+      <section className="mt-8">
+        <h2 className="text-[15px] font-semibold">
+          <T id="Mengenal jenis broker" en="Kinds of broker" />
+        </h2>
+        <p className="mt-1 max-w-[75ch] text-[13px] leading-relaxed text-muted">
+          <T
+            id="Broker adalah perusahaan sekuritas anggota bursa: setiap order beli atau jual saham lewat salah satunya, dengan kode dua huruf. Dengan melihat broker mana yang membeli, kita bisa menebak siapa yang ada di baliknya."
+            en="A broker is an exchange-member securities firm: every buy or sell order goes through one, identified by a two-letter code. Seeing which brokers buy hints at who is behind the money."
+          />
+        </p>
+        <div className="mt-4">
+          <KindPrimer />
+        </div>
+      </section>
+
       <div className="sticky top-[94px] z-30 -mx-4 mt-8 flex flex-wrap items-center gap-3 border-y border-line bg-ground/90 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:top-14">
         <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60 sm:max-w-80">
           <Search size={15} className="text-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari kode atau nama broker", en: "Search broker code or name" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
+          <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder={tx({ id: "Cari kode atau nama broker", en: "Search broker code or name" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
         </label>
         <Segmented
           label={tx({ id: "Jenis broker", en: "Broker type" })}
           value={kind}
-          onChange={setKind}
+          onChange={(v) => { setKind(v); setPage(0); }}
           options={[
             { value: "all", label: tx({ id: "Semua", en: "All" }) },
             { value: "institutional", label: tx(COHORT_LABEL.institutional) },
@@ -78,7 +138,7 @@ export function BrokerDirectory({ rows, period }: { rows: DirectoryRow[]; period
       </div>
 
       <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {shown.map((r) => (
+        {shown.slice(page * PER, page * PER + PER).map((r) => (
           <Link key={r.code} href={`/broker/${r.code}/`} className="group rounded-2xl bg-surface p-4 ring-1 ring-line transition-colors duration-150 hover:ring-line-strong">
             <div className="flex items-baseline gap-2">
               {cohortDot(r.cohort, r.foreign)}
@@ -109,6 +169,7 @@ export function BrokerDirectory({ rows, period }: { rows: DirectoryRow[]; period
           </Link>
         ))}
       </div>
+      {shown.length > PER && <Pager page={page} pages={Math.ceil(shown.length / PER)} total={shown.length} per={PER} onChange={(p) => { setPage(p); window.scrollTo({ top: 0, behavior: "smooth" }); }} noun={{ id: "broker", en: "brokers" }} />}
       {shown.length === 0 && (
         <p className="py-14 text-center text-[14px] text-muted">
           <T id="Tidak ada broker yang cocok." en="No broker matches." />
@@ -121,10 +182,22 @@ export function BrokerDirectory({ rows, period }: { rows: DirectoryRow[]; period
 type Detail = BrokerIndex[string] & { code: string };
 
 /** One broker across every tracked stock: where it buys, at what price, how, and what followed. */
-export function BrokerDetail({ b, names, prices, period }: { b: Detail; names: Record<string, string | null>; prices: Record<string, number | null>; period: string }) {
+export function BrokerDetail({ b, names, prices, sectors, period }: { b: Detail; names: Record<string, string | null>; prices: Record<string, number | null>; sectors: Record<string, string | null>; period: string }) {
   const { tx, lang } = useLang();
   const [q, setQ] = useState("");
   const [side, setSide] = useState<"all" | "buy" | "sell">("all");
+  const [page, setPage] = useState(0);
+  const PER = 20;
+  const bySector = useMemo(() => {
+    const m: Record<string, number> = {};
+    b.stocks.forEach((x) => {
+      const k = sectors[x.s] ?? "–";
+      m[k] = (m[k] ?? 0) + x.gross;
+    });
+    const tot = Object.values(m).reduce((a, v) => a + v, 0) || 1;
+    return Object.entries(m).sort((a, z) => z[1] - a[1]).slice(0, 3).map(([k, v]) => ({ k, share: v / tot }));
+  }, [b.stocks, sectors]);
+  const kinds = [...(b.cohort && b.cohort in KIND_INFO ? [b.cohort as "institutional" | "retail" | "mixed"] : []), ...(b.foreign ? (["foreign"] as const) : [])];
   const acc = [...b.stocks].filter((x) => x.net > 0).sort((a, z) => z.net - a.net).slice(0, 5);
   const dist = [...b.stocks].filter((x) => x.net < 0).sort((a, z) => a.net - z.net).slice(0, 5);
   const styles = useMemo(() => {
@@ -184,6 +257,30 @@ export function BrokerDetail({ b, names, prices, period }: { b: Detail; names: R
             </dd>
           </div>
         </dl>
+        <div className="mt-5 rounded-xl bg-ground/60 p-4 ring-1 ring-line">
+          <div className="text-[13.5px] font-semibold text-ink">
+            <T id="Tentang broker ini" en="About this broker" />
+          </div>
+          <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-2">
+            {tx({
+              id: `${b.code} adalah kode bursa untuk ${b.name ?? "broker ini"}, perusahaan sekuritas anggota Bursa Efek Indonesia.`,
+              en: `${b.code} is the exchange code of ${b.name ?? "this broker"}, a member firm of the Indonesia Stock Exchange.`,
+            })}{" "}
+            {kinds.map((k) => `${tx(KIND_INFO[k].body)} ${tx(KIND_INFO[k].read)}`).join(" ")}
+          </p>
+          {bySector.length > 0 && (
+            <p className="mt-2 text-[13px] leading-relaxed text-ink-2">
+              {tx({ id: "Di periode ini paling aktif di sektor ", en: "This period it was most active in " })}
+              {bySector.map((x, i) => (
+                <span key={x.k}>
+                  {i > 0 && (i === bySector.length - 1 ? tx({ id: " dan ", en: " and " }) : ", ")}
+                  <span className="font-medium text-ink">{x.k}</span> ({Math.round(x.share * 100)}%)
+                </span>
+              ))}
+              {tx({ id: " dari nilai transaksinya.", en: " of its traded value." })}
+            </p>
+          )}
+        </div>
         {styles.length > 0 && (
           <p className="mt-4 text-[13.5px] leading-relaxed text-ink-2">
             {tx({ id: "Kebiasaan yang paling sering terlihat: ", en: "Most common habits: " })}
@@ -239,12 +336,12 @@ export function BrokerDetail({ b, names, prices, period }: { b: Detail; names: R
           </h2>
           <label className="ml-auto flex h-9 min-w-48 items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60">
             <Search size={14} className="text-muted" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari saham", en: "Search stock" })} className="w-full bg-transparent text-[13px] text-ink placeholder:text-muted focus:outline-none" />
+            <input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} placeholder={tx({ id: "Cari saham", en: "Search stock" })} className="w-full bg-transparent text-[13px] text-ink placeholder:text-muted focus:outline-none" />
           </label>
           <Segmented
             label={tx({ id: "Arah", en: "Side" })}
             value={side}
-            onChange={setSide}
+            onChange={(v) => { setSide(v); setPage(0); }}
             options={[
               { value: "all", label: tx({ id: "Semua", en: "All" }) },
               { value: "buy", label: tx({ id: "Beli bersih", en: "Net buy" }) },
@@ -266,7 +363,7 @@ export function BrokerDetail({ b, names, prices, period }: { b: Detail; names: R
               </tr>
             </thead>
             <tbody>
-              {rows.map((x) => {
+              {rows.slice(page * PER, page * PER + PER).map((x) => {
                 const g = gapOf(x);
                 return (
                   <tr key={x.s} className="num text-right hover:bg-surface">
@@ -291,6 +388,7 @@ export function BrokerDetail({ b, names, prices, period }: { b: Detail; names: R
             </tbody>
           </table>
         </div>
+        {rows.length > PER && <Pager page={page} pages={Math.ceil(rows.length / PER)} total={rows.length} per={PER} onChange={setPage} />}
         <p className="mt-3 text-[12px] leading-relaxed text-muted">
           <T
             id="“vs harga kini” membandingkan harga penutupan terakhir dengan harga rata-rata beli (atau jual) broker ini. Peringkat #1 berarti broker paling aktif di saham itu. Data broker harian dari Sectors; periodenya beberapa minggu, jadi ini kebiasaan terbaru, bukan pola yang terbukti."

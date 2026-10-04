@@ -9,6 +9,7 @@ import { CandleChart, type Cone } from "@/components/charts/candles";
 import { DivergingBars } from "@/components/charts/analytics";
 import { BandarBars } from "@/components/charts/bandar";
 import { Tabs } from "@/components/tabs";
+import { TradeSim } from "@/components/trade-sim";
 import { Term } from "@/components/term";
 import { Badge, HorizonToggle, StarButton, VerdictBadge } from "@/components/ui";
 import { FAMILY, FEATURE, SECTOR_ID, SUBSECTOR_ID, describe } from "@/lib/features";
@@ -37,7 +38,7 @@ type Props = {
   coneCoverage?: Bundle["coneCoverage"] | null;
 };
 
-type Tab = "ringkasan" | "alasan" | "bandar" | "global" | "harian" | "fundamental" | "risiko";
+type Tab = "ringkasan" | "simulasi" | "alasan" | "bandar" | "global" | "harian" | "fundamental" | "risiko";
 const EASE = [0.23, 1, 0.32, 1] as const;
 
 const MACRO_INFO: Record<MacroKey, { name: Bi; unit: Bi; scale: number; up: Bi; down: Bi }> = {
@@ -76,6 +77,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, cal, weigh
 
   const tabs: { value: Tab; label: string }[] = [
     { value: "ringkasan", label: tx({ id: "Ringkasan", en: "Summary" }) },
+    { value: "simulasi", label: tx({ id: "Simulasi CL/TP", en: "Stop/target sim" }) },
     { value: "alasan", label: tx({ id: "Alasan skor", en: "Why this score" }) },
     { value: "bandar", label: tx({ id: "Bandar harian", en: "Daily brokers" }) },
     { value: "global", label: tx({ id: "Pengaruh global", en: "Global influence" }) },
@@ -194,6 +196,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, cal, weigh
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.25, ease: EASE }} className="pt-7">
             {tab === "ringkasan" && <SummaryTab s={s} horizon={horizon} />}
+            {tab === "simulasi" && candles && <TradeSim candles={candles} />}
             {tab === "alasan" && <ReasonsTab s={s} horizon={horizon} weights={weights} families={families} pctl={pctl} />}
             {tab === "bandar" && <BandarTab s={s} bandar={bandar} broker={broker} />}
             {tab === "global" && <GlobalTab s={s} macro={macro} />}

@@ -10,7 +10,7 @@ const EASE = [0.23, 1, 0.32, 1] as const;
 const STEPS: { title: Bi; body: Bi }[] = [
   { title: { id: "Data dari Sectors", en: "Data from Sectors" }, body: { id: "Harga, volume, dana asing, broker, fundamental, orang dalam", en: "Prices, volume, foreign flow, brokers, fundamentals, insiders" } },
   { title: { id: "14 kondisi per saham", en: "14 conditions per stock" }, body: { id: "Dikelompokkan jadi 5: dana asing, arah harga, jejak pembelian, sektor, risiko", en: "Grouped into 5: foreign money, price direction, buying footprint, sector, risk" } },
-  { title: { id: "Belajar dari setahun", en: "Learn from a year" }, body: { id: "Model mencari kombinasi kondisi yang benar-benar menang", en: "The model finds which combinations actually won" } },
+  { title: { id: "Belajar dari ±15 bulan data", en: "Learn from ~15 months" }, body: { id: "Model mencari kombinasi kondisi yang benar-benar menang", en: "The model finds which combinations actually won" } },
   { title: { id: "Diuji seperti nyata", en: "Tested like real life" }, body: { id: "Hanya boleh belajar dari masa lalu, dinilai pada masa sesudahnya", en: "Learns only from the past, graded on what came after" } },
   { title: { id: "Diubah jadi “X dari 100”", en: "Turned into “X out of 100”" }, body: { id: "Skor mentah dipetakan ke frekuensi yang benar-benar terjadi", en: "Raw scores mapped to frequencies that actually happened" } },
   { title: { id: "Web + Telegram", en: "Web + Telegram" }, body: { id: "Skor, alasan, level penting, dan risiko setiap hari", en: "Score, reasons, key levels and risks every day" } },
@@ -27,12 +27,12 @@ const DECISIONS: { chose: Bi; why: Bi; rejected: Bi; term?: string }[] = [
     term: "coin",
   },
   {
-    chose: { id: "Dua jangka waktu: besok dan 1 bulan.", en: "Two horizons: next day and 1 month." },
+    chose: { id: "Tiga sudut pandang, masing-masing dengan alat yang lolos ujinya sendiri.", en: "Three viewpoints, each with a tool that passes its own test." },
     why: {
-      id: "Trader harian dan investor butuh jawaban berbeda. Uji kami menunjukkan skor besok paling konsisten (lebih baik dari acak di 6 dari 7 periode), sedangkan skor 1 bulan selisihnya lebih besar tapi lebih naik-turun. Keduanya ditampilkan apa adanya.",
-      en: "Day traders and investors need different answers. Our tests show the next-day score is the most consistent (beat random in 6 of 7 periods), while the 1-month score has a bigger gap but swings more. Both are shown as they are.",
+      id: "Trader harian, swing, dan investor butuh jawaban berbeda. Untuk besok: skor peluang (lebih baik dari acak di 7 dari 10 periode). Untuk beberapa minggu: rentang harga wajar yang terbukti memuat 8 dari 10 hasil. Untuk jangka panjang: kesehatan keuangan dari laporan tahunan. Skor peluang 1 bulan juga dicoba, tapi tidak lolos uji, jadi tidak dipublikasikan.",
+      en: "Day traders, swing traders and investors need different answers. Next day: an odds score (beat random in 7 of 10 periods). A few weeks: a typical price range proven to hold 8 in 10 outcomes. Long term: financial health from annual reports. A 1-month odds score was tried too, but failed testing, so it isn't published.",
     },
-    rejected: { id: "Satu skor untuk semua gaya trading.", en: "One score for every trading style." },
+    rejected: { id: "Satu skor untuk semua gaya trading, atau skor yang tidak lolos uji.", en: "One score for every style, or a score that failed testing." },
     term: "horizon",
   },
   {
@@ -46,8 +46,8 @@ const DECISIONS: { chose: Bi; why: Bi; rejected: Bi; term?: string }[] = [
   {
     chose: { id: "Model sederhana yang bisa dijelaskan, bukan kotak hitam.", en: "A simple, explainable model, not a black box." },
     why: {
-      id: "Dengan data setahun, model rumit cenderung menghafal kebetulan. Model sederhana bisa diurai: setiap skor di halaman saham dipecah menjadi alasan-alasannya, sehingga Anda tahu persis kenapa.",
-      en: "With a year of data, complex models memorise coincidences. A simple model can be unpacked: every score on a stock page breaks into its reasons, so you know exactly why.",
+      id: "Dengan data ±15 bulan, model rumit cenderung menghafal kebetulan. Model sederhana bisa diurai: setiap skor di halaman saham dipecah menjadi alasan-alasannya, sehingga Anda tahu persis kenapa.",
+      en: "With ~15 months of data, complex models memorise coincidences. A simple model can be unpacked: every score on a stock page breaks into its reasons, so you know exactly why.",
     },
     rejected: { id: "Model kompleks dengan angka uji tinggi tapi tidak bisa menjelaskan diri.", en: "Complex models that test well but can't explain themselves." },
   },
@@ -114,8 +114,8 @@ export function MethodView({ meta }: Pick<Bundle, "meta">) {
             {
               t: { id: "Belajar, bukan diatur", en: "It learns, not follows rules" },
               d: {
-                id: "Banyak screener memakai aturan buatan manusia, misalnya “beli kalau harga di atas rata-rata 50 hari”. Arus tidak. Ia mempelajari sendiri dari data setahun kondisi mana yang benar-benar menang, dan belajar ulang setiap hari saat pasar berubah. Hasilnya bahkan membantah kebiasaan umum: di periode ini, mengejar momentum justru kalah.",
-                en: "Many screeners use human rules like “buy above the 50-day average”. Arus doesn't. It learns from a year of data which conditions actually won, and relearns daily as markets change. It even contradicts common habit: in this period, chasing momentum lost.",
+                id: "Banyak screener memakai aturan buatan manusia, misalnya “beli kalau harga di atas rata-rata 50 hari”. Arus tidak. Ia mempelajari sendiri dari data historis kondisi mana yang benar-benar menang, dan belajar ulang setiap hari saat pasar berubah. Hasilnya bahkan membantah kebiasaan umum: di periode ini, mengejar momentum justru kalah.",
+                en: "Many screeners use human rules like “buy above the 50-day average”. Arus doesn't. It learns from historical data which conditions actually won, and relearns daily as markets change. It even contradicts common habit: in this period, chasing momentum lost.",
               },
             },
             {
@@ -210,8 +210,8 @@ export function MethodView({ meta }: Pick<Bundle, "meta">) {
           </h2>
           <p className="mt-4 text-[14px] leading-relaxed text-ink-2">
             <T
-              id="Setiap jawaban dari Sectors disimpan permanen, jadi tidak ada data yang dibayar dua kali. Riwayat setahun cukup 4 panggilan per saham, data fundamental 200 emiten cukup 2 panggilan, dan pembaruan harian memakai data seluruh pasar sekaligus."
-              en="Every Sectors response is stored permanently, so nothing is paid for twice. A year of history takes 4 calls per stock, fundamentals for 200 companies take 2 calls, and daily updates use market-wide feeds."
+              id="Setiap jawaban dari Sectors disimpan permanen, jadi tidak ada data yang dibayar dua kali. Riwayat ±15 bulan cukup 5 panggilan per saham, data fundamental 200 emiten cukup 2 panggilan, laporan keuangan 5 tahun seluruh emiten cukup 2 panggilan, dan pembaruan harian memakai data seluruh pasar sekaligus."
+              en="Every Sectors response is stored permanently, so nothing is paid for twice. ~15 months of history takes 5 calls per stock, fundamentals for 200 companies take 2 calls, five years of statements for every company take 2 calls, and daily updates use market-wide feeds."
             />
           </p>
           <dl className="mt-6 grid grid-cols-2 gap-6">

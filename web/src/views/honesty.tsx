@@ -15,10 +15,18 @@ import { T, useLang } from "@/lib/i18n";
 import { usePrefs } from "@/lib/prefs";
 import type { Bundle } from "@/lib/types";
 import { HORIZON_LABEL } from "@/lib/verdict";
+import type { Bi } from "@/lib/i18n";
+
+type Status = "pass" | "describe" | "withheld";
+const STATUS: Record<Status, { label: Bi; cls: string }> = {
+  pass: { label: { id: "Lolos uji", en: "Passed testing" }, cls: "bg-aqua/10 text-[#7fd4a8] ring-aqua/30" },
+  describe: { label: { id: "Deskriptif", en: "Descriptive" }, cls: "bg-raised text-ink-2 ring-line-strong" },
+  withheld: { label: { id: "Tidak dipublikasikan", en: "Not published" }, cls: "bg-down/10 text-[#f0a3a3] ring-down/30" },
+};
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
+export function HonestyView({ meta, models, coneCoverage, anomalyHistory }: Pick<Bundle, "meta" | "models" | "coneCoverage" | "anomalyHistory">) {
   const { tx, lang } = useLang();
   const { horizon } = usePrefs();
   const [tech, setTech] = useState(false);
@@ -32,7 +40,53 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
   const allEnd = M.equity.all[M.equity.all.length - 1] ?? 0;
   const months = Math.max(1, Math.round((Date.parse(meta.as_of) - Date.parse(meta.history_start)) / (30.44 * 864e5)));
   const cautionStronger = 50 - bot > top - 50;
+  const proven1 = models["1"].metrics.proven !== false;
   const withheld = ([1, 20] as const).filter((h) => !PUBLISHED.includes(h));
+  const m20 = models["20"].metrics;
+  const cw = coneCoverage?.["1"];
+  const cm = coneCoverage?.["20"];
+  const fu = anomalyHistory?.foreign_up;
+  const rd = anomalyHistory?.return_down;
+  const report: { what: Bi; claim: Bi; test: Bi; result: Bi; status: Status }[] = [
+    {
+      what: { id: "Skor besok", en: "Next-day score" },
+      claim: { id: "Peringkat peluang saham untuk hari bursa berikutnya", en: "Ranks each stock's odds for the next session" },
+      test: { id: `Walk-forward ${m.n_folds} periode, ${dateLabel(m.oos_start, lang)} – ${dateLabel(m.oos_end, lang)}, tanpa data masa depan.`, en: `Walk-forward over ${m.n_folds} periods, ${dateLabel(m.oos_start, lang)} – ${dateLabel(m.oos_end, lang)}, no look-ahead.` },
+      result: { id: `Unggul di ${m.folds_beating_chance}/${m.n_folds} periode · ${top} vs ${bot}`, en: `Ahead in ${m.folds_beating_chance}/${m.n_folds} periods · ${top} vs ${bot}` },
+      status: proven1 ? "pass" : "withheld",
+    },
+    {
+      what: { id: "Rentang wajar harga", en: "Typical price range" },
+      claim: { id: "8 dari 10 kali harga berakhir di dalam rentang", en: "Price ends inside the range 8 times in 10" },
+      test: { id: "Rentang dari gerak saham itu sendiri, dicocokkan dengan harga sebenarnya di seluruh histori.", en: "Ranges from each stock's own moves, checked against actual prices across the history." },
+      result: { id: `1 minggu ${cw ? Math.round(cw.calibrated * 100) : "–"}% · 1 bulan ${cm ? Math.round(cm.calibrated * 100) : "–"}%`, en: `1 week ${cw ? Math.round(cw.calibrated * 100) : "–"}% · 1 month ${cm ? Math.round(cm.calibrated * 100) : "–"}%` },
+      status: "pass",
+    },
+    {
+      what: { id: "Kejadian tidak biasa", en: "Unusual activity" },
+      claim: { id: "Apa yang biasanya terjadi sesudah kejadian serupa", en: "What usually followed similar events" },
+      test: { id: "Semua kejadian di histori Arus dihitung apa adanya; bukan model, jadi tidak ada yang disetel.", en: "Every event in Arus' history counted as is; not a model, so nothing is tuned." },
+      result: {
+        id: `Asing borong: ${fu?.beat5 != null ? Math.round(fu.beat5 * 100) : "–"}/100 unggul 5 hari · turun tajam: ${rd?.beat1 != null ? Math.round(rd.beat1 * 100) : "–"}/100 memantul besok`,
+        en: `Foreign buying: ${fu?.beat5 != null ? Math.round(fu.beat5 * 100) : "–"}/100 ahead after 5 days · sharp drop: ${rd?.beat1 != null ? Math.round(rd.beat1 * 100) : "–"}/100 rebound next day`,
+      },
+      status: "describe",
+    },
+    {
+      what: { id: "Kesehatan keuangan", en: "Financial health" },
+      claim: { id: "Kondisi perusahaan dari laporan tahunan", en: "Company condition from annual reports" },
+      test: { id: "9 pemeriksaan F-Score Piotroski, kerangka akademik yang mapan. Tidak diuji ke harga karena histori harga baru ±15 bulan.", en: "Piotroski's 9 F-Score checks, an established academic framework. Not tested against prices: the price history is only ~15 months." },
+      result: { id: "Menggambarkan kondisi, bukan menebak harga", en: "Describes condition, doesn't forecast price" },
+      status: "describe",
+    },
+    {
+      what: { id: "Skor 1 bulan", en: "1-month score" },
+      claim: { id: "Peluang saham dalam 20 hari bursa", en: "Each stock's odds over 20 sessions" },
+      test: { id: `Walk-forward ${m20.n_folds} periode setelah histori diperpanjang ke Juli 2025.`, en: `Walk-forward over ${m20.n_folds} periods after extending history to July 2025.` },
+      result: { id: `Unggul hanya di ${m20.folds_beating_chance}/${m20.n_folds} periode`, en: `Ahead in only ${m20.folds_beating_chance}/${m20.n_folds} periods` },
+      status: withheld.includes(20) ? "withheld" : "pass",
+    },
+  ];
 
   const answers = [
     {
@@ -40,8 +94,8 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
       big: `${top} vs ${bot}`,
       a: topWins
         ? {
-            id: `Ya, walau selisihnya tipis. Pada periode uji, saham "Sangat diunggulkan" unggul ${top} dari 100 kali ${when}, sedangkan saham "Waspada" ${bot} dari 100. Lempar koin = 50.`,
-            en: `Yes, though narrowly. In testing, "Strong edge" stocks won ${top} of 100 times ${when}, while "Caution" stocks won ${bot} of 100. A coin flip = 50.`,
+            id: `Ya, walau selisihnya tipis. Pada periode uji, saham "Sangat diunggulkan" unggul ${top} dari 100 kali ${when}, sedangkan saham "Waspada" ${bot} dari 100. Memilih acak = 50.`,
+            en: `Yes, though narrowly. In testing, "Strong edge" stocks won ${top} of 100 times ${when}, while "Caution" stocks won ${bot} of 100. Random picking = 50.`,
           }
         : {
             id: `Tidak. Pada periode uji, saham "Sangat diunggulkan" unggul ${top} dari 100 kali ${when}, sedangkan saham "Waspada" justru ${bot} dari 100. Untuk jangka ini, skornya tidak bisa dipercaya.`,
@@ -60,8 +114,8 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
       q: { id: "Apakah hasilnya konsisten dari waktu ke waktu?", en: "Is it consistent over time?" },
       big: `${m.folds_beating_chance}/${m.n_folds}`,
       a: {
-        id: `Kami membagi masa uji menjadi ${m.n_folds} periode berurutan. Arus lebih baik dari lempar koin di ${m.folds_beating_chance} periode. ${m.folds_beating_chance < m.n_folds ? "Ada periode di mana Arus tidak bekerja, dan kami menampilkannya." : ""}`,
-        en: `We split testing into ${m.n_folds} consecutive periods. Arus beat a coin flip in ${m.folds_beating_chance}. ${m.folds_beating_chance < m.n_folds ? "There were periods where it didn't work, and we show them." : ""}`,
+        id: `Kami membagi masa uji menjadi ${m.n_folds} periode berurutan. Arus lebih baik dari memilih acak di ${m.folds_beating_chance} periode. ${m.folds_beating_chance < m.n_folds ? "Ada periode di mana Arus tidak bekerja, dan kami menampilkannya." : ""}`,
+        en: `We split testing into ${m.n_folds} consecutive periods. Arus beat random picking in ${m.folds_beating_chance}. ${m.folds_beating_chance < m.n_folds ? "There were periods where it didn't work, and we show them." : ""}`,
       },
     },
     {
@@ -83,12 +137,12 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
     <div className="pt-10 sm:pt-12">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
         <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
-          <T id="Apakah Arus benar-benar bekerja?" en="Does Arus actually work?" />
+          <T id="Seberapa bisa dipercaya angka-angka Arus?" en="How far can you trust Arus' numbers?" />
         </h1>
         <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
           <T
-            id="Kami menguji Arus seperti dipakai sungguhan: model hanya belajar dari masa lalu, lalu dinilai pada bulan-bulan sesudahnya yang belum pernah ia lihat. Ini hasilnya, apa adanya."
-            en="We tested Arus as if used for real: the model learns only from the past, then is graded on later months it has never seen. Here are the results, as they are."
+            id="Setiap angka di Arus punya rapor di sini: apa yang diklaim, bagaimana diuji, dan hasilnya. Pengujiannya seperti dipakai sungguhan: model hanya belajar dari masa lalu, lalu dinilai pada bulan-bulan sesudahnya yang belum pernah ia lihat."
+            en="Every number in Arus has a report card here: what it claims, how it was tested, and the result. Testing mimics real use: the model learns only from the past, then is graded on later months it has never seen."
           />
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3 text-[13px] text-muted">
@@ -99,7 +153,35 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
         </div>
       </motion.header>
 
-      <section className="mt-12 rounded-2xl bg-surface p-5 ring-1 ring-line sm:p-7">
+      <section className="mt-12">
+        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          <T id="Rapor Arus" en="Arus report card" />
+        </h2>
+        <div className="mt-5 grid gap-3">
+          {report.map((r, i) => (
+            <motion.div
+              key={r.what.en}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.05 + i * 0.05, ease: EASE }}
+              className="grid gap-3 rounded-2xl bg-surface p-5 ring-1 ring-line md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,0.9fr)_auto] md:items-center md:gap-6"
+            >
+              <div>
+                <div className="text-[15px] font-semibold text-ink">{tx(r.what)}</div>
+                <div className="mt-0.5 text-[12.5px] text-muted">{tx(r.claim)}</div>
+              </div>
+              <div className="text-[13px] leading-relaxed text-ink-2">{tx(r.test)}</div>
+              <div className="num text-[15px] font-semibold text-ink">{tx(r.result)}</div>
+              <span className={`justify-self-start rounded-full px-3 py-1 text-[12px] font-medium ring-1 md:justify-self-end ${STATUS[r.status].cls}`}>{tx(STATUS[r.status].label)}</span>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      <h2 className="mt-16 text-xl font-semibold tracking-tight sm:text-2xl">
+        <T id="Rincian skor besok" en="Next-day score in detail" />
+      </h2>
+      <section className="mt-5 rounded-2xl bg-surface p-5 ring-1 ring-line sm:p-7">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           {tx({ id: `Kalau sejak ${dateLabel(m.oos_start, lang)} mengikuti Arus`, en: `If you had followed Arus since ${dateLabel(m.oos_start, lang)}` })}
         </h2>
@@ -134,8 +216,8 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
       <section className="mt-16">
         <ChartTitle
           note={tx({
-            id: "Setiap hari semua saham dibagi 10 kelompok menurut skornya. Kalau skor berarti, batang kanan lebih tinggi dari kiri. Garis kuning = lempar koin.",
-            en: "Each day all stocks are split into 10 groups by score. If the score means anything, right bars stand taller than left. Yellow line = coin flip.",
+            id: "Setiap hari semua saham dibagi 10 kelompok menurut skornya. Kalau skor berarti, batang kanan lebih tinggi dari kiri. Garis kuning = 50, sama dengan memilih acak.",
+            en: "Each day all stocks are split into 10 groups by score. If the score means anything, right bars stand taller than left. Yellow line = 50, the same as picking at random.",
           })}
         >
           <T id="Seberapa sering setiap kelompok skor unggul" en="How often each score group won" />
@@ -178,52 +260,6 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
         </ul>
       </section>
 
-      {withheld.length > 0 && (
-        <section className="mt-16 max-w-3xl">
-          <h2 className="text-2xl font-semibold tracking-tight">
-            <T id="Tata kelola model" en="Model governance" />
-          </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-ink-2">
-            <T
-              id="Setiap model melewati validasi out-of-sample yang sama setiap kali dilatih ulang. Model yang tidak lolos tidak dipublikasikan, lalu terus diuji di latar belakang sampai hasilnya berubah."
-              en="Every model goes through the same out-of-sample validation each time it retrains. Models that fail are not published, and keep being tested in the background until the evidence changes."
-            />
-          </p>
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[480px] text-left text-[13.5px]">
-              <thead className="text-[12px] text-muted">
-                <tr>
-                  <th className="py-2 pr-4 font-normal"><T id="Model" en="Model" /></th>
-                  <th className="py-2 pr-4 font-normal">AUC</th>
-                  <th className="py-2 pr-4 font-normal"><T id="Periode di atas acak" en="Periods above chance" /></th>
-                  <th className="py-2 font-normal"><T id="Status" en="Status" /></th>
-                </tr>
-              </thead>
-              <tbody>
-                {([1, 20] as const).map((h) => {
-                  const mm = models[String(h) as "1" | "20"].metrics;
-                  const live = !withheld.includes(h);
-                  return (
-                    <tr key={h} className="border-t border-line">
-                      <td className="py-2.5 pr-4 text-ink">{tx(HORIZON_LABEL[h].name)}</td>
-                      <td className="num py-2.5 pr-4">{mm.auc_model.toFixed(3)}</td>
-                      <td className="num py-2.5 pr-4">{mm.folds_beating_chance}/{mm.n_folds}</td>
-                      <td className={`py-2.5 ${live ? "text-up" : "text-muted"}`}>{live ? tx({ id: "Dipublikasikan", en: "Published" }) : tx({ id: "Dalam evaluasi", en: "Under evaluation" })}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-4 text-[13.5px] leading-relaxed text-muted">
-            <T
-              id="Model 1 bulan sempat tampak unggul pada uji April–September 2026. Setelah histori diperpanjang ke Juli 2025, keunggulan itu tidak bertahan di Januari–Maret 2026, sehingga model ditarik dari publikasi. Data jangka panjang (arus asing sebulan, rentang harga, level penting) tetap tersedia."
-              en="The 1-month model looked strong when tested on April–September 2026. Once history was extended back to July 2025 the edge did not hold in January–March 2026, so the model was withdrawn from publication. Longer-range data (one-month foreign flow, price ranges, key levels) remains available."
-            />
-          </p>
-        </section>
-      )}
-
       <section className="mt-16 max-w-3xl">
         <h2 className="text-2xl font-semibold tracking-tight">
           <T id="Yang kami coba lalu tinggalkan" en="What we tried and dropped" />
@@ -252,8 +288,8 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
               <T id="Mengejar momentum dan dana asing." en="Chasing momentum and foreign money." />
             </span>{" "}
             <T
-              id="Banyak screener memberi nilai tinggi pada saham yang sedang naik dan diborong asing. Di data uji, untuk jangka 1 bulan cara itu justru sedikit di bawah lempar koin, dan untuk besok hanya sedikit di atasnya. Arus belajar dari data, bukan dari kebiasaan."
-              en="Many screeners rate stocks highly when they're rising and foreigners are buying. In our test data, over one month that approach did slightly worse than a coin flip, and next-day only slightly better. Arus learns from data, not habit."
+              id="Banyak screener memberi nilai tinggi pada saham yang sedang naik dan diborong asing. Di data uji, untuk jangka 1 bulan cara itu justru sedikit di bawah memilih acak, dan untuk besok hanya sedikit di atasnya. Arus belajar dari data, bukan dari kebiasaan."
+              en="Many screeners rate stocks highly when they're rising and foreigners are buying. In our test data, over one month that approach did slightly worse than random picking, and next-day only slightly better. Arus learns from data, not habit."
             />
           </li>
         </ul>

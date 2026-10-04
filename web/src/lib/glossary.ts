@@ -6,12 +6,12 @@ export const GLOSSARY: Record<string, Term> = {
   score: {
     title: { id: "Skor Arus (X dari 100)", en: "Arus score (X out of 100)" },
     body: {
-      id: "Arus mencari semua kejadian di masa lalu yang kondisinya mirip saham ini hari ini. Skor 56 artinya: dari 100 kejadian mirip itu, 56 bergerak lebih baik daripada separuh saham lainnya. Angka 50 sama dengan lempar koin.",
-      en: "Arus finds every past situation that looked like this stock today. A score of 56 means: of 100 such situations, 56 ended better than half of all other stocks. 50 equals a coin flip.",
+      id: "Arus mencari semua kejadian di masa lalu yang kondisinya mirip saham ini hari ini. Skor 56 artinya: dari 100 kejadian mirip itu, 56 bergerak lebih baik daripada separuh saham lainnya. Angka 50 berarti sama saja dengan memilih saham secara acak.",
+      en: "Arus finds every past situation that looked like this stock today. A score of 56 means: of 100 such situations, 56 ended better than half of all other stocks. 50 means no better than picking at random.",
     },
   },
   coin: {
-    title: { id: "Kenapa 50 = lempar koin?", en: "Why is 50 a coin flip?" },
+    title: { id: "Kenapa 50 = memilih acak?", en: "Why does 50 mean random?" },
     body: {
       id: "Kami membandingkan setiap saham dengan saham lain. Kalau dipilih acak, peluang sebuah saham masuk separuh teratas pasti 50 dari 100. Jadi skor di atas 50 berarti ada keunggulan, di bawah 50 berarti lebih sering kalah.",
       en: "We compare each stock with the others. Picked at random, a stock lands in the top half exactly 50 times out of 100. Above 50 means an edge; below 50 means it lags more often.",
@@ -111,8 +111,8 @@ export const GLOSSARY: Record<string, Term> = {
   auc: {
     title: { id: "AUC", en: "AUC" },
     body: {
-      id: "Ukuran teknis kemampuan membedakan saham yang menang dan kalah. 0,50 = lempar koin, 1,00 = sempurna. Di pasar saham, 0,52–0,56 yang konsisten sudah bermakna; angka di atas 0,60 patut dicurigai.",
-      en: "A technical measure of telling winners from losers. 0.50 = coin flip, 1.00 = perfect. In equities a consistent 0.52–0.56 is meaningful; above 0.60 deserves suspicion.",
+      id: "Ukuran teknis kemampuan membedakan saham yang menang dan kalah. 0,50 = sama dengan menebak acak, 1,00 = sempurna. Di pasar saham, 0,52–0,56 yang konsisten sudah bermakna; angka di atas 0,60 patut dicurigai.",
+      en: "A technical measure of telling winners from losers. 0.50 = random guessing, 1.00 = perfect. In equities a consistent 0.52–0.56 is meaningful; above 0.60 deserves suspicion.",
     },
   },
   brier: {

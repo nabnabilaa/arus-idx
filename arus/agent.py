@@ -190,8 +190,8 @@ def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = Non
             L.append(line)
 
     L.append("")
-    L.append("<i>Skor = dari 100 kondisi serupa, berapa yang unggul dari separuh saham lain. 50 = lempar koin. Informasi, bukan nasihat keuangan.</i>"
-             if lang == "id" else "<i>Score = of 100 similar cases, how many beat half of all stocks. 50 = coin flip. Information, not financial advice.</i>")
+    L.append("<i>Skor = dari 100 kondisi serupa, berapa yang unggul dari separuh saham lain. 50 = sama dengan memilih acak. Informasi, bukan nasihat keuangan.</i>"
+             if lang == "id" else "<i>Score = of 100 similar cases, how many beat half of all stocks. 50 = no better than random. Information, not financial advice.</i>")
     return "\n".join(L)
 
 
@@ -269,7 +269,7 @@ def set_pref(db, chat_id: int, col: str, val):
 
 ASK_RULES = (
     "Kamu adalah Arus, asisten informasi saham IDX. Jawab HANYA berdasarkan DATA ARUS di bawah. "
-    "Skor = dari 100 kondisi serupa di masa lalu, berapa yang unggul dari separuh saham lain (50 = lempar koin). "
+    "Skor = dari 100 kondisi serupa di masa lalu, berapa yang unggul dari separuh saham lain (50 = sama dengan memilih acak). "
     "Jangan pernah menyuruh membeli atau menjual; beri informasi, pertimbangan, dan risiko. Sebut data yang bertentangan. "
     "Hanya pakai skor untuk jangka waktu di published_horizons; jangan menyebut atau menebak skor jangka lain. "
     "Kalau data tidak ada, katakan tidak tahu. Jawab singkat (maks 900 karakter), bahasa sesuai pertanyaan, tanpa markdown tabel."

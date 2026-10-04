@@ -21,7 +21,7 @@ export const VERDICT: Record<VerdictKey, { label: Bi; short: Bi; color: string; 
     text: "text-[#8fbcf3]",
     ring: "ring-up/40",
     bg: "bg-up/10",
-    explain: { id: "Di atas rata-rata hari ini. Peluangnya sedikit lebih baik dari lempar koin.", en: "Above average today. Odds slightly better than a coin flip." },
+    explain: { id: "Di atas rata-rata hari ini. Peluangnya sedikit lebih baik dari kebanyakan saham.", en: "Above average today. Odds slightly better than most stocks." },
   },
   neutral: {
     label: { id: "Netral", en: "Neutral" },
@@ -30,7 +30,7 @@ export const VERDICT: Record<VerdictKey, { label: Bi; short: Bi; color: string; 
     text: "text-ink-2",
     ring: "ring-line-strong",
     bg: "bg-raised",
-    explain: { id: "Tidak ada keunggulan yang jelas. Arus tidak lebih yakin dari lempar koin.", en: "No clear edge. Arus is no surer than a coin flip." },
+    explain: { id: "Tidak ada keunggulan yang jelas. Peluangnya sama dengan saham pada umumnya.", en: "No clear edge. Its odds match a typical stock." },
   },
   weak: {
     label: { id: "Kurang diunggulkan", en: "Weak" },

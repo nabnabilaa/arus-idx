@@ -11,8 +11,8 @@ export function headline(s: Stock, h: Horizon): Bi {
   const v = verdictOf(g.q);
   if (v === "neutral")
     return {
-      id: `Untuk ${s.symbol}, Arus tidak melihat keunggulan yang jelas ${when.id}: ${n} dari 100, hampir sama dengan lempar koin. Itu jawaban jujur, bukan kegagalan.`,
-      en: `For ${s.symbol}, Arus sees no clear edge ${when.en}: ${n} out of 100, close to a coin flip. That's an honest answer, not a failure.`,
+      id: `Untuk ${s.symbol}, Arus tidak melihat keunggulan yang jelas ${when.id}: ${n} dari 100, tidak lebih baik dari memilih acak. Itu jawaban jujur, bukan kegagalan.`,
+      en: `For ${s.symbol}, Arus sees no clear edge ${when.en}: ${n} out of 100, no better than picking at random. That's an honest answer, not a failure.`,
     };
   if (v === "strong" || v === "edge")
     return {

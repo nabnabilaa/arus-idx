@@ -38,7 +38,9 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
       peers={bundle.ranking
         .filter((r) => r.sub_sector === stock.sub_sector && r.symbol !== symbol)
         .slice(0, 8)
-        .map((r) => ({ symbol: r.symbol, name: r.name, q_1: r.q_1, q_20: r.q_20, conf_1: r.conf_1, conf_20: r.conf_20 }))}
+        .map((r) => ({ symbol: r.symbol, name: r.name, fin_grade: r.fin_grade, fin_score: r.fin_score, fin_n: r.fin_n, pct_value: r.pct_value, rev_cagr: r.rev_cagr }))}
+      fin={bundle.financials?.[symbol] ?? null}
+      asOf={bundle.meta.as_of}
     />
   );
 }

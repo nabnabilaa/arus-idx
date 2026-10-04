@@ -301,6 +301,37 @@ def pull_broker_top(c, conn, symbols, days: int = 20):
     conn.commit()
 
 
+FIN_FIELDS = ["revenue", "gross_profit", "earnings", "total_assets", "total_liabilities", "total_equity",
+              "current_assets", "current_liabilities", "operating_cash_flow", "free_cash_flow",
+              "total_debt", "outstanding_shares", "total_dividend"]
+FIN_YEARS = [2021, 2022, 2023, 2024, 2025]
+
+
+def pull_financials(c: SectorsClient, conn):
+    """Five years of annual statements for the whole universe in two screener calls: every
+    `field[year]` named in the where-clause comes back through include_query_values."""
+    try:
+        conn.execute("ALTER TABLE companies ADD COLUMN financials TEXT")
+    except sqlite3.OperationalError:
+        pass
+    wanted = {r[0] for r in conn.execute("SELECT symbol FROM companies WHERE history=1")}
+    fin: dict[str, dict] = {}
+    for part in (FIN_FIELDS[:7], FIN_FIELDS[7:]):           # two calls keep the request line under 4 KB
+        any_ = " or ".join(f"{f}[{y}] != 0" for f in part for y in FIN_YEARS)
+        body = c.get("/v2/companies/", {"where": f"market_cap > 1000000000000 and ({any_})",
+                                        "order_by": "-market_cap", "limit": N_CANDIDATES,
+                                        "include_query_values": "true"})
+        for r in (body or {}).get("results", []):
+            sym = _bare(r["symbol"])
+            if sym in wanted:
+                qv = r["query_values"]
+                fin.setdefault(sym, {}).update({f: {str(y): qv.get(f"{f}[{y}]") for y in FIN_YEARS} for f in part})
+    for sym, d in fin.items():
+        conn.execute("UPDATE companies SET financials=? WHERE symbol=?", (json.dumps(d), sym))
+    conn.commit()
+    print(f"[ingest] financials for {len(fin)}/{len(wanted)} companies", flush=True)
+
+
 # ----------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser()
@@ -308,7 +339,7 @@ def main():
     ap.add_argument("--cap", type=float, default=1200)
     ap.add_argument("--step", default="all",
                     choices=["all", "universe", "current", "history", "market", "context",
-                             "sharia"])
+                             "sharia", "financials"])
     args = ap.parse_args()
 
     c = SectorsClient(dry_run=args.dry_run, credit_cap=args.cap)
@@ -335,6 +366,8 @@ def main():
             pull_sharia(c, conn)
         elif step == "sharia":
             pull_sharia(c, conn)
+        elif step == "financials":
+            pull_financials(c, conn)
         print(f"[ingest] {step} done · {c.summary()}", flush=True)
 
 

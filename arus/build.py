@@ -17,7 +17,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from arus import config, context
+from arus import config, context, financial
 from arus.client import SectorsClient
 from arus.features import FEATURES, FEATURE_NAMES, build_features, load_panel
 from arus.ingest import pull_broker_daily, pull_broker_top
@@ -278,6 +278,11 @@ def main():
 
     rank = rank.merge(fund, on="symbol", how="left").merge(insider, on="symbol", how="left") \
         .merge(anomalies, on="symbol", how="left").merge(levels, on="symbol", how="left")
+    health = financial.load(conn)
+    rank["fin_score"] = rank["symbol"].map(lambda s: health.get(s, {}).get("score"))
+    rank["fin_n"] = rank["symbol"].map(lambda s: health.get(s, {}).get("n"))
+    rank["fin_grade"] = rank["symbol"].map(lambda s: health.get(s, {}).get("grade"))
+    rank["rev_cagr"] = rank["symbol"].map(lambda s: health.get(s, {}).get("rev_cagr"))
     rank["suspended_recent"] = rank["symbol"].map(lambda s: s in susp)
     rank["broker_tone"] = rank["symbol"].map(lambda s: brokers.get(s, {}).get("tone"))
     rank["price"] = rank["symbol"].map(aux["close"].iloc[-1])
@@ -333,7 +338,7 @@ def main():
               "macro": {"recent": macro_recent, "series": macro_series},
               "ranking": _records(rank), "sectors": _records(sectors),
               "sectorTs": _records(sector_ts), "market": _records(mkt), "brokers": brokers, "bandar": bandar,
-              "cones": cones, "coneCoverage": cone_cov,
+              "cones": cones, "coneCoverage": cone_cov, "financials": health,
               "families": fam}
 
     snap = config.SNAPSHOT_DIR

@@ -4,21 +4,21 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, ShieldAlert } from "lucide-react";
 import { useState } from "react";
-import { ArusMeter } from "@/components/arus-meter";
 import { CandleChart, type Cone } from "@/components/charts/candles";
 import { DivergingBars } from "@/components/charts/analytics";
 import { BandarBars } from "@/components/charts/bandar";
+import { FinanceTab } from "@/components/finance";
+import { Perspectives } from "@/components/perspectives";
 import { Tabs } from "@/components/tabs";
 import { TradeSim } from "@/components/trade-sim";
 import { Term } from "@/components/term";
-import { Badge, HorizonToggle, StarButton, VerdictBadge } from "@/components/ui";
-import { FAMILY, FEATURE, SECTOR_ID, SUBSECTOR_ID, describe } from "@/lib/features";
+import { Badge, Reason, StarButton, VerdictBadge } from "@/components/ui";
+import { SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, pct, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
-import { BROKER_VERDICT, headline, reasonMeaning, risks } from "@/lib/narrative";
-import { usePrefs } from "@/lib/prefs";
-import type { Broker, Bundle, Candles, FeatureKey, Horizon, MacroKey, Stock } from "@/lib/types";
-import { get, HORIZON_LABEL, VERDICT, verdictOf } from "@/lib/verdict";
+import { BROKER_VERDICT, reasonMeaning, risks } from "@/lib/narrative";
+import type { Broker, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, MacroKey, Stock } from "@/lib/types";
+import { get, verdictOf } from "@/lib/verdict";
 
 type BandarDaily = NonNullable<Bundle["bandar"]>[string];
 
@@ -32,13 +32,15 @@ type Props = {
   weights: Record<Horizon, Record<string, number>>;
   families: Record<string, FeatureKey[]>;
   total: number;
-  peers: { symbol: string; name: string | null; q_1: number | null; q_20: number | null; conf_1: number | null; conf_20: number | null }[];
+  peers: { symbol: string; name: string | null; fin_grade?: FinGrade | null; fin_score?: number | null; fin_n?: number | null; pct_value?: number | null; rev_cagr?: number | null }[];
+  fin: FinHealth | null;
+  asOf: string;
   ihsg: { date: string; v: number | null }[];
   cone?: Record<Horizon, Cone> | null;
   coneCoverage?: Bundle["coneCoverage"] | null;
 };
 
-type Tab = "ringkasan" | "simulasi" | "alasan" | "bandar" | "global" | "harian" | "fundamental" | "risiko";
+type Tab = "ringkasan" | "simulasi" | "bandar" | "keuangan" | "global" | "harian";
 const EASE = [0.23, 1, 0.32, 1] as const;
 
 const MACRO_INFO: Record<MacroKey, { name: Bi; unit: Bi; scale: number; up: Bi; down: Bi }> = {
@@ -50,13 +52,11 @@ const MACRO_INFO: Record<MacroKey, { name: Bi; unit: Bi; scale: number; up: Bi; 
   us10y: { name: { id: "Bunga AS 10 tahun", en: "US 10-year yield" }, unit: { id: "yield naik 0,1 poin", en: "yield rises 0.1 pt" }, scale: 0.1, up: { id: "naik", en: "rose" }, down: { id: "turun", en: "fell" } },
 };
 
-export function StockView({ stock: s, candles, broker, bandar, macro, cal, weights, families, peers, ihsg, cone, coneCoverage }: Props) {
+export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf }: Props) {
   const { tx, lang } = useLang();
-  const { horizon } = usePrefs();
+  const horizon: Horizon = 1;
   const [tab, setTab] = useState<Tab>("ringkasan");
   const g = get(s, horizon);
-  const other: Horizon = horizon === 1 ? 20 : 1;
-  const go = get(s, other);
   const v = verdictOf(g.q);
   const pctl = (k: FeatureKey) => (s as unknown as Record<string, number | null>)[k];
   const sub = s.sub_sector ? (lang === "id" ? SUBSECTOR_ID[s.sub_sector] ?? s.sub_sector : s.sub_sector) : "";
@@ -77,13 +77,11 @@ export function StockView({ stock: s, candles, broker, bandar, macro, cal, weigh
 
   const tabs: { value: Tab; label: string }[] = [
     { value: "ringkasan", label: tx({ id: "Ringkasan", en: "Summary" }) },
-    { value: "simulasi", label: tx({ id: "Simulasi CL/TP", en: "Stop/target sim" }) },
-    { value: "alasan", label: tx({ id: "Alasan skor", en: "Why this score" }) },
-    { value: "bandar", label: tx({ id: "Bandar harian", en: "Daily brokers" }) },
+    { value: "simulasi", label: tx({ id: "Rencana trade", en: "Trade plan" }) },
+    ...(bandar || broker ? [{ value: "bandar" as Tab, label: tx({ id: "Bandar & asing", en: "Brokers & foreign" }) }] : []),
+    { value: "keuangan", label: tx({ id: "Keuangan", en: "Financials" }) },
     { value: "global", label: tx({ id: "Pengaruh global", en: "Global influence" }) },
     { value: "harian", label: tx({ id: "Data harian", en: "Daily data" }) },
-    { value: "fundamental", label: tx({ id: "Fundamental", en: "Fundamentals" }) },
-    { value: "risiko", label: tx({ id: "Risiko", en: "Risks" }) },
   ];
 
   return (
@@ -139,70 +137,30 @@ export function StockView({ stock: s, candles, broker, bandar, macro, cal, weigh
         </dl>
       </motion.header>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
-        <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }} className="min-w-0 rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
-          {candles ? <CandleChart data={candles} levels={levels} ihsg={ihsg} horizon={horizon} cone={cone?.[horizon]} height={500} /> : null}
-          {coneCoverage?.[String(horizon) as "1" | "20"] && (
-            <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
-              <T
-                id={`Perkiraan: rentang 80% untuk ${coneCoverage[String(horizon) as "1" | "20"].steps} hari bursa ke depan, dari sebaran gerak saham ini sendiri. Diuji ke data lalu: rentang mentah hanya memuat ${Math.round(coneCoverage[String(horizon) as "1" | "20"].raw * 100)}% hasil, jadi dilebarkan ×${coneCoverage[String(horizon) as "1" | "20"].factor} hingga memuat ${Math.round(coneCoverage[String(horizon) as "1" | "20"].calibrated * 100)}%. Garis tengah = harga sekarang; Arus tidak menebak arah dari rentang ini.`}
-                en={`Forecast: 80% range for the next ${coneCoverage[String(horizon) as "1" | "20"].steps} sessions, from this stock's own move distribution. Tested on the past: the raw range held only ${Math.round(coneCoverage[String(horizon) as "1" | "20"].raw * 100)}% of outcomes, so it is widened ×${coneCoverage[String(horizon) as "1" | "20"].factor} to hold ${Math.round(coneCoverage[String(horizon) as "1" | "20"].calibrated * 100)}%. Centre line = today's price; the range makes no directional call.`}
-              />
-            </p>
-          )}
-        </motion.section>
-        <motion.aside initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.15 }} className="rounded-2xl bg-surface p-5 ring-1 ring-line lg:sticky lg:top-20 lg:self-start">
-          <div className="flex justify-center">
-            <HorizonToggle />
-          </div>
-          <div className="mt-3 text-center text-[12px] text-muted">
-            <Term k="score">
-              <T id="Probabilitas unggul" en="Win probability" /> · {tx(HORIZON_LABEL[horizon].long)}
-            </Term>
-          </div>
-          <div className="mt-2">
-            <ArusMeter value={g.conf} q={g.q} cal={cal[horizon]} size={280} />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-            <div className="rounded-lg bg-ground/60 p-2.5 ring-1 ring-line">
-              <div className="text-[11px] text-muted">
-                <Term k="range">
-                  <T id="Rentang kepercayaan 95%" en="95% confidence" />
-                </Term>
-              </div>
-              <div className="num text-[15px] text-ink">{g.lo != null && g.hi != null ? `${Math.round(g.lo * 100)}–${Math.round(g.hi * 100)}%` : "–"}</div>
-            </div>
-            <div className="rounded-lg bg-ground/60 p-2.5 ring-1 ring-line">
-              <div className="text-[11px] text-muted">
-                <Term k="evidence">
-                  <T id="Kasus serupa" en="Similar cases" />
-                </Term>
-              </div>
-              <div className="num text-[15px] text-ink">≈{Math.round(g.nEff)}</div>
-            </div>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-ground/60 px-3 py-2 text-[12.5px] ring-1 ring-line">
-            <span className="text-muted">{tx(HORIZON_LABEL[other].name)}</span>
-            <span className="flex items-center gap-2">
-              <span className="num font-semibold">{Math.round(go.conf * 100)}%</span>
-              <VerdictBadge v={verdictOf(go.q)} />
-            </span>
-          </div>
-        </motion.aside>
-      </div>
+      <Perspectives s={s} candles={candles} cone={cone ?? null} fin={fin} />
+
+      <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }} className="mt-6 min-w-0 rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
+        {candles ? <CandleChart data={candles} levels={levels} ihsg={ihsg} horizon={horizon} cone={cone?.[20]} height={480} /> : null}
+        {coneCoverage?.["20"] && (
+          <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
+            <T
+              id="Area biru di kanan grafik: rentang harga wajar sebulan ke depan. Dari data lalu, 8 dari 10 kali harga berakhir di dalam area ini. Area ini tidak menebak arah."
+              en="The blue area on the right: the typical price range over the next month. In past data, 8 times in 10 the price ended inside it. It doesn't call a direction."
+            />
+          </p>
+        )}
+      </motion.section>
 
       <div className="mt-10">
         <Tabs label={tx({ id: "Bagian halaman", en: "Page sections" })} value={tab} onChange={setTab} items={tabs} />
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.25, ease: EASE }} className="pt-7">
-            {tab === "ringkasan" && <SummaryTab s={s} horizon={horizon} />}
+            {tab === "ringkasan" && <SummaryTab s={s} broker={broker} weights={weights[1]} pctl={pctl} asOf={asOf} />}
             {tab === "simulasi" && candles && <TradeSim candles={candles} />}
-            {tab === "alasan" && <ReasonsTab s={s} horizon={horizon} weights={weights} families={families} pctl={pctl} />}
             {tab === "bandar" && <BandarTab s={s} bandar={bandar} broker={broker} />}
+            {tab === "keuangan" && <FinanceTab s={s} fin={fin} peers={peers} />}
             {tab === "global" && <GlobalTab s={s} macro={macro} />}
             {tab === "harian" && candles && <DailyTab candles={candles} />}
-            {tab === "fundamental" && <FundamentalTab s={s} />}
-            {tab === "risiko" && <RiskTab s={s} broker={broker} peers={peers} horizon={horizon} />}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -220,104 +178,64 @@ function Tile({ label, value, note, tone }: { label: React.ReactNode; value: Rea
   );
 }
 
-function SummaryTab({ s, horizon }: { s: Stock; horizon: Horizon }) {
+function SummaryTab({ s, broker, weights, pctl, asOf }: { s: Stock; broker: Broker | null; weights: Record<string, number>; pctl: (k: FeatureKey) => number | null; asOf: string }) {
   const { tx, lang } = useLang();
-  const g = get(s, horizon);
+  const g = get(s, 1);
   const rel = (x: number | null) => (s.price && x ? signed((x / s.price - 1) * 100, 1, "%") : "");
-  const lo = g.p25 ?? 0;
-  const hi = g.p75 ?? 0;
-  const mid = g.excess ?? 0;
-  const span = Math.max(Math.abs(lo), Math.abs(hi), Math.abs(mid), 0.01) * 1.4;
-  const pos = (x: number) => `${50 + (x / span) * 50}%`;
+  const reasons = [...g.pos.map((k) => ({ k, helps: true })), ...g.neg.map((k) => ({ k, helps: false }))]
+    .sort((a, b) => Math.abs(g.contrib(b.k)) - Math.abs(g.contrib(a.k)))
+    .slice(0, 4);
   return (
-    <div className="space-y-8">
-      <p className="max-w-[75ch] text-[15px] leading-relaxed text-ink-2">{tx(headline(s, horizon))}</p>
-      <div>
-        <h3 className="mb-3 text-[15px] font-semibold">
-          <T id="Level penting hari ini" en="Key levels today" />
-        </h3>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Tile label={<Term k="normalRange"><T id="Gerak normal harian" en="Normal daily move" /></Term>} value={`±${pct(s.atr_pct, 1)}`} note={`≈ Rp${price(s.atr_pct && s.price ? s.atr_pct * s.price : null, lang)}`} />
-          <Tile label={<Term k="supportResistance"><T id="Batas bawah 1 bln" en="1-mo floor" /></Term>} value={price(s.support_20, lang)} note={rel(s.support_20)} />
-          <Tile label={<Term k="supportResistance"><T id="Batas atas 1 bln" en="1-mo ceiling" /></Term>} value={price(s.resistance_20, lang)} note={rel(s.resistance_20)} />
-          <Tile label={<Term k="invalidate"><T id="Batas sinyal batal" en="Signal void below" /></Term>} value={price(s.invalidate, lang)} note={rel(s.invalidate)} tone="text-[#f0a3a3]" />
-        </div>
-      </div>
-      <div className="rounded-2xl bg-surface p-5 ring-1 ring-line">
-        <h3 className="text-[15px] font-semibold">
-          <T id="Hasil kasus serupa di masa lalu" en="Outcomes of similar past cases" />
-        </h3>
-        <p className="mt-1 text-[13px] text-muted">
-          <T id={`Selisih return terhadap IHSG ${tx(HORIZON_LABEL[horizon].long)}. Kotak = separuh kejadian di tengah; garis = rata-rata.`} en={`Excess return vs IHSG ${tx(HORIZON_LABEL[horizon].long)}. Box = middle half of cases; line = average.`} />
-        </p>
-        <div className="relative mt-8 h-10">
-          <div className="absolute inset-x-0 top-1/2 h-px bg-line-strong" />
-          <div className="absolute left-1/2 top-1 h-8 w-px bg-muted" />
-          <span className="absolute left-1/2 -top-5 -translate-x-1/2 text-[11px] text-muted">IHSG</span>
-          <motion.div className="absolute top-2 h-6 rounded-md bg-arus/20 ring-1 ring-arus/50" initial={{ left: "50%", width: 0 }} animate={{ left: pos(lo), width: `calc(${pos(hi)} - ${pos(lo)})` }} transition={{ duration: 0.7, ease: EASE }} />
-          <motion.div className="absolute top-0.5 h-9 w-0.5 rounded bg-arus" initial={{ left: "50%" }} animate={{ left: pos(mid) }} transition={{ duration: 0.7, ease: EASE }} />
-        </div>
-        <div className="num mt-2 flex justify-between text-[12px] text-muted">
-          <span>{signed(lo * 100, 1, "%")}</span>
-          <span className="text-arus">
-            {tx({ id: "rata-rata", en: "average" })} {signed(mid * 100, 1, "%")}
-          </span>
-          <span>{signed(hi * 100, 1, "%")}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+      <div className="space-y-9">
+        <section>
+          <h3 className="text-[15px] font-semibold">
+            <T id="Kenapa skor besoknya segini" en="Why tomorrow's score is what it is" />
+          </h3>
+          <p className="mt-1 text-[12.5px] text-muted">
+            {tx({ id: `Berdasarkan data penutupan ${dateLabel(asOf, lang)}. Dihitung ulang setiap hari bursa.`, en: `Based on the ${dateLabel(asOf, lang)} close. Recalculated every trading day.` })}
+          </p>
+          <ul className="mt-4 space-y-3.5">
+            {reasons.map(({ k, helps }) => (
+              <li key={k} className="flex gap-3">
+                <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[13px] font-bold ${helps ? "bg-up/15 text-[#9cc5f5]" : "bg-down/15 text-[#f0a3a3]"}`}>{helps ? "+" : "−"}</span>
+                <div className="min-w-0">
+                  <Reason k={k} pctl={pctl(k)} helps={helps} />
+                  <p className="mt-1 text-[13px] leading-relaxed text-ink-2">{tx(reasonMeaning(k, weights[k] ?? 0, pctl(k)))}</p>
+                </div>
+              </li>
+            ))}
+            {reasons.length === 0 && <li className="text-[13.5px] text-ink-2">{tx({ id: "Tidak ada sinyal yang menonjol hari ini.", en: "No signal stands out today." })}</li>}
+          </ul>
+        </section>
 
-function ReasonsTab({ s, horizon, weights, families, pctl }: { s: Stock; horizon: Horizon; weights: Record<Horizon, Record<string, number>>; families: Record<string, FeatureKey[]>; pctl: (k: FeatureKey) => number | null }) {
-  const { tx } = useLang();
-  const g = get(s, horizon);
-  const all = (Object.keys(FEATURE) as FeatureKey[]).map((k) => ({ k, c: g.contrib(k) })).filter((r) => Math.abs(r.c) > 0.0005);
-  const sorted = [...all].sort((a, b) => b.c - a.c);
-  const top = [...all].sort((a, b) => Math.abs(b.c) - Math.abs(a.c)).slice(0, 4);
-  return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-      <div>
-        <h3 className="text-[15px] font-semibold">
-          <Term k="contribution">
-            <T id="Kontribusi tiap sinyal terhadap skor" en="Each signal's contribution to the score" />
-          </Term>
-        </h3>
-        <p className="mt-1 text-[13px] text-muted">
-          <T
-            id={`Biru mendorong probabilitas naik, merah menahan. Bobot dipelajari dari data setahun, disesuaikan untuk kelompok ${s.group ?? "sektor"}.`}
-            en={`Blue pushes the probability up, red holds it back. Weights are learned from a year of data, tuned for the ${s.group ?? "sector"} group.`}
-          />
-        </p>
-        <div className="mt-4">
-          <DivergingBars rowHeight={28} rows={sorted.map((r) => ({ key: r.k, label: tx(describe(r.k, pctl(r.k))), sub: tx(FAMILY[FEATURE[r.k].family].label), value: r.c }))} format={(v) => signed(v, 3)} />
-        </div>
+        <section>
+          <h3 className="mb-3 text-[15px] font-semibold">
+            <T id="Level harga penting" en="Key price levels" />
+          </h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Tile label={<Term k="normalRange"><T id="Gerak normal harian" en="Normal daily move" /></Term>} value={`±${pct(s.atr_pct, 1)}`} note={`≈ Rp${price(s.atr_pct && s.price ? s.atr_pct * s.price : null, lang)}`} />
+            <Tile label={<Term k="supportResistance"><T id="Batas bawah 1 bln" en="1-mo floor" /></Term>} value={price(s.support_20, lang)} note={rel(s.support_20)} />
+            <Tile label={<Term k="supportResistance"><T id="Batas atas 1 bln" en="1-mo ceiling" /></Term>} value={price(s.resistance_20, lang)} note={rel(s.resistance_20)} />
+            <Tile label={<Term k="invalidate"><T id="Batas sinyal batal" en="Signal void below" /></Term>} value={price(s.invalidate, lang)} note={rel(s.invalidate)} tone="text-[#f0a3a3]" />
+          </div>
+        </section>
       </div>
-      <div>
-        <h3 className="text-[15px] font-semibold">
-          <T id="Yang paling berpengaruh" en="What matters most" />
+
+      <section>
+        <h3 className="flex items-center gap-2 text-[15px] font-semibold">
+          <ShieldAlert size={17} className="text-warn" />
+          <T id="Perlu diperhatikan" en="Worth watching" />
         </h3>
-        <ul className="mt-4 space-y-4">
-          {top.map((r) => (
-            <li key={r.k} className="flex gap-3">
-              <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[13px] font-bold ${r.c >= 0 ? "bg-up/15 text-[#9cc5f5]" : "bg-down/15 text-[#f0a3a3]"}`}>{r.c >= 0 ? "+" : "−"}</span>
-              <div>
-                <div className="text-[14.5px] font-medium text-ink">{tx(describe(r.k, pctl(r.k)))}</div>
-                <p className="mt-0.5 text-[13px] leading-relaxed text-ink-2">{tx(reasonMeaning(r.k, weights[horizon][r.k] ?? 0, pctl(r.k)))}</p>
-                <div className="mt-1.5 h-1.5 w-full max-w-56 rounded-full bg-raised">
-                  <div className="h-1.5 rounded-full bg-arus" style={{ width: `${Math.round((pctl(r.k) ?? 0.5) * 100)}%` }} />
-                </div>
-                <div className="mt-0.5 text-[11.5px] text-muted">
-                  <T id="lebih tinggi dari" en="higher than" /> {Math.round((pctl(r.k) ?? 0.5) * 100)}% <T id="saham lain hari ini" en="of stocks today" />
-                </div>
-              </div>
+        <ul className="mt-4 space-y-2.5 text-[13.5px] leading-relaxed text-ink-2">
+          {risks(s, broker).map((r, i) => (
+            <li key={i} className="flex gap-3 rounded-xl bg-surface p-3.5 ring-1 ring-line">
+              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-warn" />
+              {tx(r)}
             </li>
           ))}
         </ul>
-        <p className="mt-6 text-[12px] text-muted">
-          {Object.keys(families).length} {tx({ id: "kelompok sinyal dipertimbangkan", en: "signal families considered" })}
-        </p>
-      </div>
+      </section>
     </div>
   );
 }
@@ -325,16 +243,14 @@ function ReasonsTab({ s, horizon, weights, families, pctl }: { s: Stock; horizon
 function BandarTab({ s, bandar, broker }: { s: Stock; bandar: BandarDaily | null; broker: Broker | null }) {
   const { tx, lang } = useLang();
   if (!bandar) {
-    return (
-      <div className="rounded-2xl bg-surface p-6 text-[14px] leading-relaxed text-ink-2 ring-1 ring-line">
-        <T id="Data broker harian diambil untuk 30 saham (20 teratas dan 10 bertanda Waspada) supaya kuota data dipakai di tempat paling penting." en="Daily broker data is pulled for 30 stocks (top 20 and 10 caution-flagged) so data quota goes where it matters most." />
-        {broker && (
-          <p className="mt-3">
-            <T id="Ringkasan 20 hari:" en="20-day summary:" /> <span className="text-ink">{tx(BROKER_VERDICT[broker.verdict] ?? { id: broker.verdict, en: broker.verdict })}</span>
-          </p>
-        )}
+    return broker ? (
+      <div className="rounded-2xl bg-surface p-6 ring-1 ring-line">
+        <div className="text-[12.5px] text-muted">
+          <T id="Pola broker 20 hari terakhir" en="Broker pattern, last 20 days" />
+        </div>
+        <div className="mt-1 text-[18px] font-semibold text-ink">{tx(BROKER_VERDICT[broker.verdict] ?? { id: broker.verdict, en: broker.verdict })}</div>
       </div>
-    );
+    ) : null;
   }
   const instTot = bandar.inst.reduce((a, b) => a + b, 0);
   const retailTot = bandar.retail.reduce((a, b) => a + b, 0);
@@ -425,7 +341,7 @@ function BandarTab({ s, bandar, broker }: { s: Stock; bandar: BandarDaily | null
 }
 
 function GlobalTab({ s, macro }: { s: Stock; macro: Bundle["macro"] }) {
-  const { tx } = useLang();
+  const { tx, lang } = useLang();
   const keys: MacroKey[] = ["idr", "oil", "spx", "vix", "usd", "us10y"];
   const rows = keys
     .map((k) => {
@@ -458,7 +374,7 @@ function GlobalTab({ s, macro }: { s: Stock; macro: Bundle["macro"] }) {
         <ul className="mt-4 space-y-2.5">
           {rows.map((r) => {
             const d = r.d20 ?? 0;
-            const shown = r.k === "vix" || r.k === "us10y" ? signed(d, 2) : signed(d * 100, 1, "%");
+            const shown = r.k === "vix" ? `${Math.abs(d).toFixed(1)} ${tx({ id: "poin", en: "pts" })}` : r.k === "us10y" ? `${Math.abs(d).toFixed(2)} ${tx({ id: "poin", en: "pts" })}` : `${Math.abs(d * 100).toFixed(1).replace(".", lang === "id" ? "," : ".")}%`;
             return (
               <li key={r.k} className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2.5 text-[13.5px] ring-1 ring-line">
                 <span className="text-ink-2">{tx(MACRO_INFO[r.k].name)}</span>
@@ -549,118 +465,6 @@ function DailyTab({ candles }: { candles: Candles }) {
       <p className="mt-3 text-[12px] text-muted">
         <T id="Data harian final dari Sectors, diperbarui setiap hari bursa setelah penutupan. Data per menit tidak tersedia di Sectors." en="Final daily data from Sectors, updated after each close. Minute data isn't available from Sectors." />
       </p>
-    </div>
-  );
-}
-
-function FundamentalTab({ s }: { s: Stock }) {
-  const { tx, lang } = useLang();
-  const stats: [Bi, string][] = [
-    [{ id: "PER (TTM)", en: "P/E (TTM)" }, s.pe_ttm != null ? `${s.pe_ttm.toFixed(1)}×` : "–"],
-    [{ id: "PBV", en: "P/B" }, s.pb_mrq != null ? `${s.pb_mrq.toFixed(2)}×` : "–"],
-    [{ id: "ROE", en: "ROE" }, pct(s.roe_ttm, 1)],
-    [{ id: "DER", en: "D/E" }, s.der_mrq != null ? `${s.der_mrq.toFixed(2)}×` : "–"],
-    [{ id: "Dividen yield", en: "Dividend yield" }, pct(s.yield_ttm, 1)],
-    [{ id: "Kapitalisasi", en: "Market cap" }, idr(s.market_cap, lang)],
-    [{ id: "Nilai intrinsik vs harga", en: "Intrinsic vs price" }, s.upside_intrinsic != null ? signed(s.upside_intrinsic * 100, 0, "%") : "–"],
-    [{ id: "Posisi 52 minggu", en: "52-week position" }, pct(s.pos_52w)],
-  ];
-  return (
-    <div className="grid gap-10 lg:grid-cols-2">
-      <div>
-        <h3 className="mb-3 text-[15px] font-semibold">
-          <T id="Statistik kunci" en="Key stats" />
-        </h3>
-        <dl className="grid grid-cols-2 gap-3">
-          {stats.map(([l, val]) => (
-            <div key={l.en} className="rounded-xl bg-surface p-3.5 ring-1 ring-line">
-              <dt className="text-[11.5px] text-muted">{tx(l)}</dt>
-              <dd className="num mt-0.5 text-[16px] text-ink">{val}</dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-      <div>
-        <h3 className="mb-3 text-[15px] font-semibold">
-          <T id="Dibanding sesama sektor" en="Versus sector peers" />
-        </h3>
-        <div className="space-y-5">
-          {(
-            [
-              [{ id: "Seberapa murah", en: "How cheap" }, s.pct_value],
-              [{ id: "Kualitas bisnis", en: "Business quality" }, s.pct_quality],
-              [{ id: "Pertumbuhan", en: "Growth" }, s.pct_growth],
-            ] as [Bi, number | null][]
-          ).map(([l, val]) => (
-            <div key={l.en}>
-              <div className="mb-1.5 flex justify-between text-[13px]">
-                <span className="text-ink-2">{tx(l)}</span>
-                <span className="num text-ink">{val != null ? `P${Math.round(val * 100)}` : "–"}</span>
-              </div>
-              <div className="relative h-2 rounded-full bg-raised">
-                <div className="absolute left-1/3 top-0 h-2 w-px bg-line-strong" />
-                <div className="absolute left-2/3 top-0 h-2 w-px bg-line-strong" />
-                {val != null && <motion.div className="h-2 rounded-full bg-arus" initial={{ width: 0 }} animate={{ width: `${Math.max(3, val * 100)}%` }} transition={{ duration: 0.7, ease: EASE }} />}
-              </div>
-              <div className="mt-1 flex justify-between text-[10.5px] text-muted">
-                <span>{tx({ id: "di bawah rata-rata", en: "below average" })}</span>
-                <span>{tx({ id: "di atas rata-rata", en: "above average" })}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="mt-5 text-[12px] text-muted">
-          <T id="Snapshot terkini dari Sectors; tidak memengaruhi skor karena tidak tersedia per hari di masa lalu." en="Current snapshot from Sectors; it doesn't affect the score because it isn't available for each past day." />
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function RiskTab({ s, broker, peers, horizon }: { s: Stock; broker: Broker | null; peers: Props["peers"]; horizon: Horizon }) {
-  const { tx } = useLang();
-  return (
-    <div className="grid gap-12 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-      <div>
-        <h3 className="flex items-center gap-2 text-[15px] font-semibold">
-          <ShieldAlert size={17} className="text-warn" />
-          <T id="Perlu diperhatikan" en="Worth watching" />
-        </h3>
-        <ul className="mt-4 space-y-3 text-[14px] leading-relaxed text-ink-2">
-          {risks(s, broker).map((r, i) => (
-            <li key={i} className="flex gap-3 rounded-xl bg-surface p-3.5 ring-1 ring-line">
-              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-warn" />
-              {tx(r)}
-            </li>
-          ))}
-        </ul>
-      </div>
-      {peers.length > 0 && (
-        <div>
-          <h3 className="text-[15px] font-semibold">
-            <T id="Sesama sektor" en="Sector peers" />
-          </h3>
-          <ul className="mt-4 divide-y divide-line border-y border-line">
-            {peers.map((p) => {
-              const conf = horizon === 1 ? p.conf_1 : p.conf_20;
-              const q = horizon === 1 ? p.q_1 : p.q_20;
-              return (
-                <li key={p.symbol}>
-                  <Link href={`/saham/${p.symbol}/`} className="flex items-center justify-between gap-3 py-3 text-[14px] hover:text-arus">
-                    <span className="min-w-0 truncate">
-                      <span className="font-medium">{p.symbol}</span> <span className="text-[12px] text-muted">{p.name}</span>
-                    </span>
-                    <span className="flex shrink-0 items-center gap-3">
-                      <span className="num w-9 text-right text-ink">{Math.round((conf ?? 0.5) * 100)}%</span>
-                      <span className="h-2 w-2 rounded-full" style={{ background: VERDICT[verdictOf(q)].color }} />
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
     </div>
   );
 }

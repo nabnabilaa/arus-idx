@@ -65,6 +65,10 @@ export type Stock = {
   beta_vix?: number | null;
   beta_usd?: number | null;
   beta_us10y?: number | null;
+  fin_score?: number | null;
+  fin_n?: number | null;
+  fin_grade?: FinGrade | null;
+  rev_cagr?: number | null;
 } & { [K in FeatureKey]: number | null } & PerHorizon<1> & PerHorizon<20>;
 
 export type Sector = {
@@ -139,6 +143,27 @@ export type Model = {
   groupWeights: Record<string, Record<FeatureKey, number>>;
 };
 
+export type FinGrade = "strong" | "fair" | "weak";
+export type FinCheck = "profit" | "cash" | "roa_up" | "cash_backed" | "leverage_down" | "liquidity_up" | "no_dilution" | "margin_up" | "turnover_up";
+export type FinHealth = {
+  year: string;
+  prev: string;
+  score: number;
+  n: number;
+  grade: FinGrade;
+  checks: { k: FinCheck; ok: boolean }[];
+  years: string[];
+  series: Record<"revenue" | "earnings" | "operating_cash_flow" | "free_cash_flow" | "total_equity" | "total_debt", (number | null)[]>;
+  rev_cagr: number | null;
+  eps_cagr: number | null;
+  profitable_years: number;
+  net_margin: number | null;
+  roa: number | null;
+  leverage: number | null;
+  current_ratio: number | null;
+  dividend_years: number;
+};
+
 export type MacroKey = "idr" | "oil" | "spx" | "vix" | "usd" | "us10y";
 
 export type Bundle = {
@@ -176,6 +201,7 @@ export type Bundle = {
   }>;
   families: Record<string, FeatureKey[]>;
   cones?: Record<string, Partial<Record<"1" | "20", { steps: number; lo: number; mid: number; hi: number }[]>>>;
+  financials?: Record<string, FinHealth>;
   coneCoverage?: Record<"1" | "20", { raw: number; calibrated: number; factor: number; target: number; steps: number; n: number }>;
 };
 

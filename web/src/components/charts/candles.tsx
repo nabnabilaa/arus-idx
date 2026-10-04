@@ -23,8 +23,8 @@ const RANGES: { key: string; n: number; label: Bi }[] = [
 
 type Toggle = "ma20" | "ma50" | "vp" | "ihsg" | "arus" | "cone";
 const TOGGLES: { key: Toggle; label: Bi; color: string }[] = [
-  { key: "arus", label: { id: "Jejak Arus", en: "Arus trail" }, color: "#5cc8ff" },
-  { key: "cone", label: { id: "Perkiraan", en: "Forecast" }, color: "#5cc8ff" },
+  { key: "arus", label: { id: "Riwayat skor", en: "Score history" }, color: "#5cc8ff" },
+  { key: "cone", label: { id: "Rentang wajar", en: "Typical range" }, color: "#5cc8ff" },
   { key: "ma20", label: { id: "MA20", en: "MA20" }, color: "#fab219" },
   { key: "ma50", label: { id: "MA50", en: "MA50" }, color: "#e87ba4" },
   { key: "vp", label: { id: "Profil volume", en: "Volume profile" }, color: "#9085e9" },
@@ -60,7 +60,7 @@ export function CandleChart({
   const { tx, lang } = useLang();
   const [ref, w] = useWidth<HTMLDivElement>();
   const [range, setRange] = useState("3m");
-  const [on, setOn] = useState<Record<Toggle, boolean>>({ arus: true, cone: true, ma20: false, ma50: false, vp: false, ihsg: false });
+  const [on, setOn] = useState<Record<Toggle, boolean>>({ arus: false, cone: true, ma20: false, ma50: false, vp: false, ihsg: false });
   const [hover, setHover] = useState<number | null>(null);
   const flip = (k: Toggle) => setOn((s) => ({ ...s, [k]: !s[k] }));
 
@@ -281,7 +281,7 @@ export function CandleChart({
                 />
                 <path d={`M ${cx(last)} ${yP(rows[last].c)} ${cone!.map((c) => `L ${cx(last + c.steps)} ${yP(c.mid)}`).join(" ")}`} fill="none" stroke="#5cc8ff" strokeWidth={1.5} strokeDasharray="2 3" />
                 <text x={cx(last + coneSteps)} y={yP(cone![cone!.length - 1].hi) - 6} fontSize={10.5} fill="#5cc8ff" textAnchor="end">
-                  {tx({ id: "rentang 80%", en: "80% range" })}
+                  {tx({ id: "rentang wajar", en: "typical range" })}
                 </text>
               </g>
             )}
@@ -319,7 +319,7 @@ export function CandleChart({
 
             {on.arus && (
               <text x={4} y={stripTop - 3} fontSize={10.5} fill={C.muted}>
-                {tx({ id: horizon === 1 ? "Jejak penilaian Arus (besok)" : "Jejak penilaian Arus (1 bulan)", en: horizon === 1 ? "Arus verdict trail (next day)" : "Arus verdict trail (1 month)" })}
+                {tx({ id: "Skor besok yang diberikan Arus pada hari itu", en: "The next-day score Arus gave on that day" })}
               </text>
             )}
             <text x={4} y={vTop + 12} fontSize={10.5} fill={C.muted}>
@@ -376,7 +376,7 @@ export function CandleChart({
       </div>
       {on.arus && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
-          <span>{tx({ id: "Warna jejak:", en: "Trail colours:" })}</span>
+          <span>{tx({ id: "Pita warna di bawah harga = penilaian Arus setiap hari. Arahkan kursor ke satu hari untuk melihat hasilnya keesokan hari.", en: "The colour strip under the price = Arus’ verdict each day. Hover a day to see what happened next." })}</span>
           {VERDICT_ORDER.slice().reverse().map((k) => (
             <span key={k} className="inline-flex items-center gap-1">
               <span className="h-2 w-3 rounded-sm" style={{ background: VERDICT[k].color }} />

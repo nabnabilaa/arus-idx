@@ -64,6 +64,91 @@ function Bars({ years, rows }: { years: string[]; rows: { key: string; label: st
   );
 }
 
+function fmt(v: number, u: "idr" | "pct" | "x" | "shares", lang: "id" | "en") {
+  if (u === "idr") return idr(v, lang);
+  if (u === "pct") return pct(v, 1);
+  if (u === "x") return `${v.toFixed(2)}×`;
+  return `${(v / 1e9).toFixed(2)} ${lang === "id" ? "miliar lembar" : "bn shares"}`;
+}
+
+type Row = { l: Bi; v: (number | null)[]; kind: "idr" | "pct" | "dps"; strong?: boolean };
+
+/** Full five-year statement in rupiah, with the latest year-on-year change. */
+function Statement({ fin }: { fin: FinHealth }) {
+  const { tx, lang } = useLang();
+  const S = fin.series;
+  const ratio = (a: (number | null)[], b: (number | null)[]) => a.map((x, i) => (x != null && b[i] ? x / (b[i] as number) : null));
+  const all: Row[] = [
+    { l: { id: "Pendapatan", en: "Revenue" }, v: S.revenue, kind: "idr", strong: true },
+    { l: { id: "Laba kotor", en: "Gross profit" }, v: S.gross_profit, kind: "idr" },
+    { l: { id: "Margin kotor", en: "Gross margin" }, v: ratio(S.gross_profit, S.revenue), kind: "pct" },
+    { l: { id: "Laba bersih", en: "Net profit" }, v: S.earnings, kind: "idr", strong: true },
+    { l: { id: "Margin bersih", en: "Net margin" }, v: ratio(S.earnings, S.revenue), kind: "pct" },
+    { l: { id: "Arus kas operasi", en: "Operating cash flow" }, v: S.operating_cash_flow, kind: "idr" },
+    { l: { id: "Free cash flow", en: "Free cash flow" }, v: S.free_cash_flow, kind: "idr" },
+    { l: { id: "Total aset", en: "Total assets" }, v: S.total_assets, kind: "idr" },
+    { l: { id: "Total liabilitas", en: "Total liabilities" }, v: S.total_liabilities, kind: "idr" },
+    { l: { id: "Ekuitas", en: "Equity" }, v: S.total_equity, kind: "idr", strong: true },
+    { l: { id: "Utang berbunga", en: "Interest-bearing debt" }, v: S.total_debt, kind: "idr" },
+    { l: { id: "ROE", en: "ROE" }, v: ratio(S.earnings, S.total_equity), kind: "pct" },
+    { l: { id: "Dividen per saham", en: "Dividend per share" }, v: S.total_dividend, kind: "dps" },
+  ];
+  const rows = all.filter((r) => r.v.some((x) => x != null));
+  const show = (x: number | null, k: Row["kind"]) =>
+    x == null ? "–" : k === "idr" ? idr(x, lang) : k === "pct" ? pct(x, 1) : `Rp${x.toLocaleString(lang === "id" ? "id-ID" : "en-US", { maximumFractionDigits: 1 })}`;
+  const change = (r: Row) => {
+    const last = r.v.at(-1) ?? null;
+    const prev = r.v.at(-2) ?? null;
+    if (last == null || prev == null) return null;
+    if (r.kind === "pct") return { v: (last - prev) * 100, pts: true };
+    if (!prev) return null;
+    return { v: ((last - prev) / Math.abs(prev)) * 100, pts: false };
+  };
+  return (
+    <section className="rounded-2xl bg-surface p-5 ring-1 ring-line">
+      <h3 className="text-[16px] font-semibold">
+        <T id="Laporan keuangan tahunan" en="Annual statements" />
+      </h3>
+      <p className="mt-1 text-[12.5px] text-muted">
+        <T id="Dalam rupiah. Kolom terakhir: perubahan dibanding tahun sebelumnya." en="In rupiah. Last column: change versus the year before." />
+      </p>
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13px]">
+          <thead>
+            <tr className="text-right text-[11.5px] text-muted">
+              <th className="py-2 pr-4 text-left font-normal" />
+              {fin.years.map((y) => (
+                <th key={y} className="num py-2 pr-4 font-normal">
+                  {y}
+                </th>
+              ))}
+              <th className="py-2 font-normal">{tx({ id: "Perubahan", en: "Change" })}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const ch = change(r);
+              return (
+                <tr key={r.l.en} className="num text-right">
+                  <td className={`border-t border-line py-2 pr-4 text-left ${r.strong ? "font-medium text-ink" : "text-ink-2"}`}>{tx(r.l)}</td>
+                  {r.v.map((x, i) => (
+                    <td key={i} className={`border-t border-line py-2 pr-4 ${x != null && x < 0 ? "text-down" : r.strong ? "text-ink" : "text-ink-2"}`}>
+                      {show(x, r.kind)}
+                    </td>
+                  ))}
+                  <td className={`border-t border-line py-2 ${ch == null ? "text-muted" : ch.v >= 0 ? "text-up" : "text-down"}`}>
+                    {ch == null ? "–" : ch.pts ? `${signed(ch.v, 1)} ${tx({ id: "poin", en: "pts" })}` : signed(ch.v, 1, "%")}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null; peers: { symbol: string; name: string | null; fin_grade?: FinGrade | null; fin_score?: number | null; fin_n?: number | null; pct_value?: number | null; rev_cagr?: number | null }[] }) {
   const { tx, lang } = useLang();
   const stats: [Bi, string][] = [
@@ -104,6 +189,13 @@ export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null;
                   <div>
                     <div className={`text-[14px] ${c.ok ? "text-ink" : "text-ink-2"}`}>{tx(CHECK[c.k].label)}</div>
                     <div className="text-[12px] text-muted">{tx(CHECK[c.k].why)}</div>
+                    {c.a != null && c.b != null && (
+                      <div className="num mt-0.5 text-[12px] text-ink-2">
+                        {c.k === "cash_backed"
+                          ? tx({ id: `Laba ${fmt(c.a, c.u, lang)} · arus kas ${fmt(c.b, c.u, lang)}`, en: `Profit ${fmt(c.a, c.u, lang)} · cash ${fmt(c.b, c.u, lang)}` })
+                          : `${fin.prev}: ${fmt(c.a, c.u, lang)} → ${fin.year}: ${fmt(c.b, c.u, lang)}`}
+                      </div>
+                    )}
                   </div>
                 </motion.li>
               ))}
@@ -150,6 +242,8 @@ export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null;
         </p>
       )}
 
+      {fin && <Statement fin={fin} />}
+
       <div className="grid gap-8 lg:grid-cols-2">
         <section>
           <h3 className="mb-3 text-[15px] font-semibold">
@@ -163,6 +257,30 @@ export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null;
               </div>
             ))}
           </dl>
+          <h3 className="mb-3 mt-8 text-[15px] font-semibold">
+            <T id="Dibanding sesama sektor" en="Versus sector peers" />
+          </h3>
+          <div className="space-y-5">
+            {(
+              [
+                [{ id: "Seberapa murah", en: "How cheap" }, s.pct_value],
+                [{ id: "Kualitas bisnis", en: "Business quality" }, s.pct_quality],
+                [{ id: "Pertumbuhan", en: "Growth" }, s.pct_growth],
+              ] as [Bi, number | null][]
+            ).map(([l, val]) => (
+              <div key={l.en}>
+                <div className="mb-1.5 flex justify-between gap-3 text-[13px]">
+                  <span className="text-ink-2">{tx(l)}</span>
+                  <span className="text-right text-ink">
+                    {val == null ? "–" : tx({ id: `lebih baik dari ${Math.round(val * 100)}% sesama sektor`, en: `better than ${Math.round(val * 100)}% of sector peers` })}
+                  </span>
+                </div>
+                <div className="relative h-2 rounded-full bg-raised">
+                  {val != null && <motion.div className="h-2 rounded-full bg-arus" initial={{ width: 0 }} animate={{ width: `${Math.max(3, val * 100)}%` }} transition={{ duration: 0.7, ease: EASE }} />}
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
         {peers.length > 0 && (
           <section>

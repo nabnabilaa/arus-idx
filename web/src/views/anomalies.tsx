@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowDownRight, ArrowUpRight, Globe, TrendingDown, TrendingUp, Waves } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Globe, TrendingDown, TrendingUp, Waves } from "lucide-react";
 import { useState } from "react";
 import { Segmented } from "@/components/ui";
 import { idr, price, signed } from "@/lib/format";
@@ -29,6 +29,8 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
   const { tx, lang } = useLang();
   const [focus, setFocus] = useState<Event | "all">("all");
   const [min, setMin] = useState<Level>(3);
+  const [open, setOpen] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
 
   const strength = (s: Stock) => Math.max(...ORDER.filter((e) => focus === "all" || e === focus).map((e) => (EVENT[e].z(s) ?? 0) * EVENT[e].sign));
   const rows = ranking.filter((s) => strength(s) >= min).sort((a, b) => strength(b) - strength(a));
@@ -138,52 +140,67 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
             : tx({ id: "Untuk saham itu sendiri, kejadian seperti ini kira-kira sekali sebulan.", en: "For that stock, an event like this happens about once a month." })}
         </p>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <AnimatePresence initial={false} mode="popLayout">
-            {rows.map((s) => {
-              const events = ORDER.filter((e) => hits(s, e, 2));
-              const up = (s.ret_1 ?? 0) >= 0;
-              return (
-                <motion.div key={s.symbol} layout initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.25, ease: EASE }}>
-                  <Link href={`/saham/${s.symbol}/`} className="group flex h-full flex-col rounded-2xl bg-surface p-5 ring-1 ring-line transition-colors duration-150 hover:ring-line-strong">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-[17px] font-semibold text-ink group-hover:text-arus">{s.symbol}</div>
-                        <div className="truncate text-[12px] text-muted">{s.name}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="num text-[15px] text-ink">{price(s.price, lang)}</div>
-                        <div className={`num inline-flex items-center gap-0.5 text-[12.5px] ${up ? "text-up" : "text-down"}`}>
-                          {up ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
-                          {signed((s.ret_1 ?? 0) * 100, 1, "%")}
+        <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+          {rows.slice(0, all ? rows.length : 10).map((s) => {
+            const events = ORDER.filter((e) => hits(s, e, 2));
+            const up = (s.ret_1 ?? 0) >= 0;
+            const isOpen = open === s.symbol;
+            return (
+              <li key={s.symbol}>
+                <button onClick={() => setOpen(isOpen ? null : s.symbol)} aria-expanded={isOpen} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-raised/40 sm:px-5">
+                  <span className="w-14 shrink-0 text-[15px] font-semibold text-ink">{s.symbol}</span>
+                  <span className={`num w-14 shrink-0 text-[12.5px] ${up ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</span>
+                  <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                    {events.map((e) => (
+                      <span key={e} className={`rounded-full px-2 py-0.5 text-[11.5px] ring-1 ${EVENT[e].sign > 0 && e !== "return_up" ? "bg-up/10 text-[#9cc5f5] ring-up/30" : "bg-down/10 text-[#f0a3a3] ring-down/30"}`}>
+                        {tx(EVENT[e].label)}
+                      </span>
+                    ))}
+                  </span>
+                  <ChevronDown size={16} className={`shrink-0 text-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: EASE }} className="overflow-hidden">
+                      <div className="px-4 pb-4 sm:px-5">
+                        <div className="mb-2 text-[12.5px] text-muted">
+                          {s.name} · {price(s.price, lang)}
                         </div>
+                        <ul className="grid gap-2 md:grid-cols-2">
+                          {events.map((e) => {
+                            const h = history?.[e];
+                            return (
+                              <li key={e} className="rounded-lg bg-ground/60 px-3 py-2 ring-1 ring-line">
+                                <div className="flex items-center gap-1.5 text-[13px] font-medium text-ink">
+                                  <span className="text-arus">{EVENT[e].icon}</span>
+                                  {tx(EVENT[e].label)}
+                                </div>
+                                <div className="mt-0.5 text-[12.5px] text-ink-2">{detail(s, e)}</div>
+                                {h?.beat5 != null && (
+                                  <div className="mt-0.5 text-[11.5px] text-muted">
+                                    {tx({ id: `Sesudah kejadian seperti ini: unggul ${Math.round(h.beat5 * 100)} dari 100 kali dalam 5 hari`, en: `After events like this: won ${Math.round(h.beat5 * 100)} times in 100 over 5 days` })}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                        <Link href={`/saham/${s.symbol}/`} className="mt-3 inline-flex items-center gap-1 text-[13px] text-arus hover:underline">
+                          {tx({ id: `Buka halaman ${s.symbol}`, en: `Open ${s.symbol}` })} <ArrowUpRight size={14} />
+                        </Link>
                       </div>
-                    </div>
-                    <ul className="mt-4 space-y-2.5">
-                      {events.map((e) => {
-                        const h = history?.[e];
-                        return (
-                          <li key={e} className="rounded-lg bg-ground/60 px-3 py-2 ring-1 ring-line">
-                            <div className="flex items-center gap-1.5 text-[13px] font-medium text-ink">
-                              <span className="text-arus">{EVENT[e].icon}</span>
-                              {tx(EVENT[e].label)}
-                            </div>
-                            <div className="mt-0.5 text-[12.5px] text-ink-2">{detail(s, e)}</div>
-                            {h?.beat5 != null && (
-                              <div className="mt-0.5 text-[11.5px] text-muted">
-                                {tx({ id: `Sesudah kejadian seperti ini: unggul ${Math.round(h.beat5 * 100)} dari 100 kali dalam 5 hari`, en: `After events like this: won ${Math.round(h.beat5 * 100)} times in 100 over 5 days` })}
-                              </div>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </Link>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </li>
+            );
+          })}
+        </ul>
+        {rows.length > 10 && (
+          <button onClick={() => setAll((v) => !v)} className="mt-3 cursor-pointer text-[13px] text-arus hover:underline">
+            {all ? tx({ id: "Tampilkan lebih sedikit", en: "Show fewer" }) : tx({ id: `Tampilkan semua (${rows.length})`, en: `Show all (${rows.length})` })}
+          </button>
+        )}
         {rows.length === 0 && (
           <p className="py-14 text-center text-[14px] text-muted">
             <T id="Hari ini tidak ada saham yang setidak biasa ini. Coba pilih “Agak tidak biasa”." en="No stock is this unusual today. Try “Somewhat unusual”." />

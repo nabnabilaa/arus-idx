@@ -60,8 +60,9 @@ export function CandleChart({
   const { tx, lang } = useLang();
   const [ref, w] = useWidth<HTMLDivElement>();
   const [range, setRange] = useState("3m");
-  const [on, setOn] = useState<Record<Toggle, boolean>>({ arus: false, cone: true, ma20: false, ma50: false, vp: false, ihsg: false });
+  const [on, setOn] = useState<Record<Toggle, boolean>>({ arus: true, cone: true, ma20: false, ma50: false, vp: false, ihsg: false });
   const [hover, setHover] = useState<number | null>(null);
+  const [pinned, setPinned] = useState<string | null>(null);
   const flip = (k: Toggle) => setOn((s) => ({ ...s, [k]: !s[k] }));
 
   const all = useMemo(
@@ -93,7 +94,7 @@ export function CandleChart({
 
   const coneSteps = on.cone && cone?.length ? cone[cone.length - 1].steps : 0;
   const axisW = 58;
-  const strip = on.arus ? 14 : 0;
+  const strip = on.arus ? 18 : 0;
   const pH = Math.round(height * 0.58);
   const vH = Math.round(height * 0.12);
   const gap = 8;
@@ -176,6 +177,7 @@ export function CandleChart({
       .y((v) => yP(v as number))(vals) ?? "";
 
   const last = rows.length - 1;
+  const pinIdx = pinned ? rows.findIndex((r) => r.d === pinned) : -1;
   const hv = hover != null ? rows[hover]?.verdict : null;
 
   return (
@@ -211,7 +213,15 @@ export function CandleChart({
 
       <div ref={ref} className="relative w-full select-none" style={{ height }}>
         {w > 0 && rows.length > 1 && (
-          <svg width={w} height={height} onPointerMove={onMove} onPointerLeave={() => setHover(null)} className="touch-none">
+          <svg
+            width={w}
+            height={height}
+            onPointerMove={onMove}
+            onPointerLeave={() => setHover(null)}
+            onClick={() => hover != null && setPinned((p) => (p === rows[hover].d ? null : rows[hover].d))}
+            className="cursor-pointer touch-none"
+          >
+            {pinIdx >= 0 && <rect x={x(pinIdx)! - x.step() * 0.15} y={0} width={x.step()} height={fTop + fH} fill="#5cc8ff" fillOpacity={0.08} stroke="#5cc8ff" strokeOpacity={0.35} />}
             {yP.ticks(5).map((t) => {
               const yy = yP(t);
               const clash = visLevels.some((lv) => Math.abs(yP(lv.value) - yy) < 14) || Math.abs(yP(rows[last].c) - yy) < 14 || (hover != null && Math.abs(yP(rows[hover].c) - yy) < 14);
@@ -319,7 +329,7 @@ export function CandleChart({
 
             {on.arus && (
               <text x={4} y={stripTop - 3} fontSize={10.5} fill={C.muted}>
-                {tx({ id: "Skor besok yang diberikan Arus pada hari itu", en: "The next-day score Arus gave on that day" })}
+                {tx({ id: "Penilaian Arus untuk esok harinya, dibuat setiap hari", en: "Arus' call for the next day, made every day" })}
               </text>
             )}
             <text x={4} y={vTop + 12} fontSize={10.5} fill={C.muted}>
@@ -349,7 +359,7 @@ export function CandleChart({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.12 }}
             className="pointer-events-none absolute z-20 min-w-48 rounded-lg border border-line-strong bg-raised/95 px-3 py-2 text-[12px] text-ink-2 shadow-[0_10px_30px_-8px_rgb(0_0_0/0.7)] backdrop-blur-md"
-            style={{ left: Math.min(Math.max(8, cx(hover) - 100), Math.max(8, w - 220)), top: stripTop + strip + 6 }}
+            style={{ left: cx(hover) > plotW / 2 ? 8 : Math.max(8, plotW - 230), top: 8 }}
           >
             {hv != null && on.arus && (
               <div className="mb-1">
@@ -376,7 +386,7 @@ export function CandleChart({
       </div>
       {on.arus && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
-          <span>{tx({ id: "Pita warna di bawah harga = penilaian Arus setiap hari. Arahkan kursor ke satu hari untuk melihat hasilnya keesokan hari.", en: "The colour strip under the price = Arus’ verdict each day. Hover a day to see what happened next." })}</span>
+          <span>{tx({ id: "Pita warna = penilaian Arus tiap hari. Klik satu hari untuk melihat detailnya dan apa yang terjadi sesudahnya.", en: "Colour strip = Arus' call each day. Click a day to see its details and what happened next." })}</span>
           {VERDICT_ORDER.slice().reverse().map((k) => (
             <span key={k} className="inline-flex items-center gap-1">
               <span className="h-2 w-3 rounded-sm" style={{ background: VERDICT[k].color }} />
@@ -386,6 +396,85 @@ export function CandleChart({
           <span>· {tx({ id: "arahkan kursor untuk melihat apa yang terjadi sesudahnya", en: "hover to see what happened next" })}</span>
         </div>
       )}
+      {pinned && <DayPanel all={all} date={pinned} ihsgMap={ihsgMap} onClose={() => setPinned(null)} />}
     </div>
+  );
+}
+
+
+type Row = { d: string; o: number; h: number; l: number; c: number; v: number; f: number; verdict: number | null };
+
+/** Everything about one clicked day: the candle, its volume against normal, foreign money, Arus' call and what followed. */
+function DayPanel({ all, date, ihsgMap, onClose }: { all: Row[]; date: string; ihsgMap: Map<string, number | null>; onClose: () => void }) {
+  const { tx, lang } = useLang();
+  const i = all.findIndex((r) => r.d === date);
+  if (i < 0) return null;
+  const r = all[i];
+  const prev = i > 0 ? all[i - 1].c : null;
+  const chg = prev ? r.c / prev - 1 : null;
+  const avgV = all.slice(Math.max(0, i - 20), i).reduce((a, b) => a + b.v, 0) / Math.max(1, Math.min(20, i));
+  const after = (k: number) => {
+    const later = all[i + k];
+    if (!later) return null;
+    const ret = later.c / r.c - 1;
+    const a = ihsgMap.get(r.d);
+    const b = ihsgMap.get(later.d);
+    return { ret, rel: a && b ? ret - (b / a - 1) : null };
+  };
+  const a1 = after(1);
+  const a5 = after(5);
+  const v = r.verdict != null ? VERDICT[VCODE[r.verdict]] : null;
+  const cell = "rounded-lg bg-ground/60 p-3 ring-1 ring-line";
+  return (
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mt-4 rounded-xl bg-raised/60 p-4 ring-1 ring-line-strong">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[14px] font-semibold text-ink">{dateLabel(r.d, lang, { weekday: "long" })}</div>
+        <button onClick={onClose} className="cursor-pointer rounded-md px-2 py-1 text-[12px] text-muted ring-1 ring-line hover:text-ink">
+          {tx({ id: "Tutup", en: "Close" })}
+        </button>
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-[12.5px] sm:grid-cols-3 lg:grid-cols-6">
+        <div className={cell}>
+          <dt className="text-muted">{tx({ id: "Buka → tutup", en: "Open → close" })}</dt>
+          <dd className="num mt-0.5 text-ink">
+            {price(r.o, lang)} → {price(r.c, lang)}
+          </dd>
+          <dd className={`num ${chg == null ? "text-muted" : chg >= 0 ? "text-up" : "text-down"}`}>{chg == null ? "–" : signed(chg * 100, 2, "%")}</dd>
+        </div>
+        <div className={cell}>
+          <dt className="text-muted">{tx({ id: "Tertinggi / terendah", en: "High / low" })}</dt>
+          <dd className="num mt-0.5 text-ink">
+            {price(r.h, lang)} / {price(r.l, lang)}
+          </dd>
+          <dd className="num text-muted">{signed(((r.h - r.l) / r.l) * 100, 1, "%")} {tx({ id: "rentang", en: "range" })}</dd>
+        </div>
+        <div className={cell}>
+          <dt className="text-muted">Volume</dt>
+          <dd className="num mt-0.5 text-ink">{(r.v / 1e6).toFixed(1)} {tx({ id: "jt lembar", en: "M shares" })}</dd>
+          <dd className="num text-muted">{avgV ? `${(r.v / avgV).toFixed(1)}× ${tx({ id: "rata-rata 20 hari", en: "20-day avg" })}` : "–"}</dd>
+        </div>
+        <div className={cell}>
+          <dt className="text-muted">{tx({ id: "Dana asing", en: "Foreign money" })}</dt>
+          <dd className={`num mt-0.5 ${r.f >= 0 ? "text-up" : "text-down"}`}>
+            {r.f >= 0 ? tx({ id: "beli", en: "bought" }) : tx({ id: "jual", en: "sold" })} {idr(Math.abs(r.f), lang)}
+          </dd>
+        </div>
+        <div className={cell}>
+          <dt className="text-muted">{tx({ id: "Penilaian Arus hari itu", en: "Arus' call that day" })}</dt>
+          <dd className="mt-0.5 font-medium" style={{ color: v?.color }}>
+            {v ? tx(v.label) : "–"}
+          </dd>
+        </div>
+        <div className={cell}>
+          <dt className="text-muted">{tx({ id: "Sesudahnya", en: "Afterwards" })}</dt>
+          <dd className="num mt-0.5 text-ink-2">
+            {tx({ id: "Besok", en: "Next day" })} <span className={a1 ? (a1.ret >= 0 ? "text-up" : "text-down") : "text-muted"}>{a1 ? signed(a1.ret * 100, 1, "%") : "–"}</span>
+          </dd>
+          <dd className="num text-ink-2">
+            {tx({ id: "5 hari", en: "5 days" })} <span className={a5 ? (a5.ret >= 0 ? "text-up" : "text-down") : "text-muted"}>{a5 ? signed(a5.ret * 100, 1, "%") : "–"}</span>
+          </dd>
+        </div>
+      </dl>
+    </motion.div>
   );
 }

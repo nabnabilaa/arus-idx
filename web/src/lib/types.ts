@@ -155,9 +155,12 @@ export type FinHealth = {
   score: number;
   n: number;
   grade: FinGrade;
-  checks: { k: FinCheck; ok: boolean }[];
+  checks: { k: FinCheck; ok: boolean; a: number | null; b: number | null; u: "idr" | "pct" | "x" | "shares" }[];
   years: string[];
-  series: Record<"revenue" | "earnings" | "operating_cash_flow" | "free_cash_flow" | "total_equity" | "total_debt", (number | null)[]>;
+  series: Record<
+    "revenue" | "gross_profit" | "earnings" | "operating_cash_flow" | "free_cash_flow" | "total_assets" | "total_liabilities" | "total_equity" | "total_debt" | "total_dividend",
+    (number | null)[]
+  >;
   rev_cagr: number | null;
   eps_cagr: number | null;
   profitable_years: number;

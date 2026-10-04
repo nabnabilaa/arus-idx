@@ -54,22 +54,24 @@ def assess(fin: dict) -> dict | None:
         return bool(a > b) if higher else bool(a < b)
 
     sh_y, sh_p = g("outstanding_shares", y), g("outstanding_shares", p)
+    # (key, passed, evidence before, evidence after, unit) — the evidence lets the page show the numbers
     checks = [
-        ("profit", None if g("earnings", y) is None else g("earnings", y) > 0),
-        ("cash", None if g("operating_cash_flow", y) is None else g("operating_cash_flow", y) > 0),
-        ("roa_up", cmp(roa(y), roa(p))),
+        ("profit", None if g("earnings", y) is None else g("earnings", y) > 0, g("earnings", p), g("earnings", y), "idr"),
+        ("cash", None if g("operating_cash_flow", y) is None else g("operating_cash_flow", y) > 0,
+         g("operating_cash_flow", p), g("operating_cash_flow", y), "idr"),
+        ("roa_up", cmp(roa(y), roa(p)), roa(p), roa(y), "pct"),
         ("cash_backed", None if g("operating_cash_flow", y) is None or g("earnings", y) is None
-         else g("operating_cash_flow", y) > g("earnings", y)),
-        ("leverage_down", cmp(lev(y), lev(p), higher=False)),
-        ("liquidity_up", cmp(cur(y), cur(p))),
-        ("no_dilution", None if sh_y is None or sh_p is None else sh_y <= sh_p * 1.01),
-        ("margin_up", cmp(gm(y), gm(p))),
-        ("turnover_up", cmp(turn(y), turn(p))),
+         else g("operating_cash_flow", y) > g("earnings", y), g("earnings", y), g("operating_cash_flow", y), "idr"),
+        ("leverage_down", cmp(lev(y), lev(p), higher=False), lev(p), lev(y), "pct"),
+        ("liquidity_up", cmp(cur(y), cur(p)), cur(p), cur(y), "x"),
+        ("no_dilution", None if sh_y is None or sh_p is None else sh_y <= sh_p * 1.01, sh_p, sh_y, "shares"),
+        ("margin_up", cmp(gm(y), gm(p)), gm(p), gm(y), "pct"),
+        ("turnover_up", cmp(turn(y), turn(p)), turn(p), turn(y), "x"),
     ]
-    done = [(k, bool(v)) for k, v in checks if v is not None]
+    done = [(k, bool(v), a, b, u) for k, v, a, b, u in checks if v is not None]
     if len(done) < 5:
         return None
-    score, n = sum(v for _, v in done), len(done)
+    score, n = sum(v for _, v, *_ in done), len(done)
     share = score / n
     grade = "strong" if share >= 7 / 9 else "fair" if share >= 4 / 9 else "weak"
 
@@ -78,9 +80,10 @@ def assess(fin: dict) -> dict | None:
     profitable = sum(1 for yr in years if (g("earnings", yr) or 0) > 0)
     return {
         "year": y, "prev": p, "score": score, "n": n, "grade": grade,
-        "checks": [{"k": k, "ok": v} for k, v in done],
+        "checks": [{"k": k, "ok": v, "a": a, "b": b, "u": u} for k, v, a, b, u in done],
         "series": {f: [g(f, yr) for yr in years] for f in
-                   ("revenue", "earnings", "operating_cash_flow", "free_cash_flow", "total_equity", "total_debt")},
+                   ("revenue", "gross_profit", "earnings", "operating_cash_flow", "free_cash_flow",
+                    "total_assets", "total_liabilities", "total_equity", "total_debt", "total_dividend")},
         "years": years,
         "rev_cagr": _cagr(g("revenue", first), g("revenue", y), span),
         "eps_cagr": _cagr(g("earnings", first), g("earnings", y), span),

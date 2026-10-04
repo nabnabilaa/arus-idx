@@ -292,6 +292,9 @@ def ask(question: str, bundle: dict, p: dict) -> str:
     try:
         r = subprocess.run([exe, *parts[1:]], input=prompt, capture_output=True, text=True, encoding="utf-8", timeout=180)
         out = (r.stdout or "").strip()
+        out = out.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        out = re.sub(r"\*\*(.+?)\*\*", r"<b></b>", out)
+        out = re.sub(r"^#+\s*", "", out, flags=re.M)
         return out[:3500] if out else ("Maaf, belum bisa menjawab sekarang." if lang == "id" else "Sorry, I can't answer right now.")
     except (subprocess.SubprocessError, OSError):
         return "Maaf, mesin jawaban sedang sibuk." if lang == "id" else "Sorry, the answer engine is busy."

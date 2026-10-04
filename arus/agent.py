@@ -223,7 +223,77 @@ def bot_db():
     c = sqlite3.connect(BOT_DB)
     c.executescript("""CREATE TABLE IF NOT EXISTS chats (chat_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'id');
                        CREATE TABLE IF NOT EXISTS watch (chat_id INTEGER, symbol TEXT, PRIMARY KEY (chat_id, symbol));""")
+    for col in ("sharia INTEGER DEFAULT 0", "max_price REAL", "horizon INTEGER DEFAULT 20"):
+        try:
+            c.execute(f"ALTER TABLE chats ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass
     return c
+
+
+def prefs(db, chat_id: int) -> dict:
+    row = db.execute("SELECT lang, sharia, max_price, horizon FROM chats WHERE chat_id=?", (chat_id,)).fetchone()
+    if not row:
+        return {"lang": "id", "sharia": False, "max_price": None, "horizon": 20}
+    return {"lang": row[0] or "id", "sharia": bool(row[1]), "max_price": row[2], "horizon": row[3] or 20}
+
+
+def apply_prefs(stocks: list[dict], p: dict) -> list[dict]:
+    out = stocks
+    if p.get("sharia"):
+        out = [s for s in out if s.get("sharia")]
+    if p.get("max_price"):
+        out = [s for s in out if (s.get("price") or 0) <= p["max_price"]]
+    return out
+
+
+def set_pref(db, chat_id: int, col: str, val):
+    db.execute("INSERT OR IGNORE INTO chats (chat_id) VALUES (?)", (chat_id,))
+    db.execute(f"UPDATE chats SET {col}=? WHERE chat_id=?", (val, chat_id))
+    db.commit()
+
+
+ASK_RULES = (
+    "Kamu adalah Arus, asisten informasi saham IDX. Jawab HANYA berdasarkan DATA ARUS di bawah. "
+    "Skor = dari 100 kondisi serupa di masa lalu, berapa yang unggul dari separuh saham lain (50 = lempar koin). "
+    "Jangan pernah menyuruh membeli atau menjual; beri informasi, pertimbangan, dan risiko. Sebut data yang bertentangan. "
+    "Kalau data tidak ada, katakan tidak tahu. Jawab singkat (maks 900 karakter), bahasa sesuai pertanyaan, tanpa markdown tabel."
+)
+
+
+def ask(question: str, bundle: dict, p: dict) -> str:
+    """Free-form question → answer grounded in the snapshot. Engine set by ARUS_ASK in .env."""
+    import re
+    import shutil
+    import subprocess
+    engine = env().get("ARUS_ASK", "").lower()
+    lang = p.get("lang", "id")
+    if engine != "llm":
+        return ("Untuk bertanya bebas, aktifkan mesin jawaban (ARUS_ASK=llm di .env). Sementara itu coba /saham KODE atau /hari_ini."
+                if lang == "id" else "Free-form questions need an answer engine (ARUS_ASK=llm in .env). Meanwhile try /saham CODE or /hari_ini.")
+    exe = shutil.which("llm") or shutil.which("llm.cmd")
+    if not exe:
+        return "Mesin jawaban tidak ditemukan di server bot." if lang == "id" else "Answer engine not found on the bot host."
+    by = {s["symbol"]: s for s in bundle["ranking"]}
+    mentioned = [w for w in re.findall(r"\b[A-Za-z]{4}\b", question) if w.upper() in by][:5]
+    keep = ["symbol", "name", "sector", "price", "ret_1", "ret_20", "conf_1", "q_1", "conf_20", "q_20", "atr_pct",
+            "support_20", "resistance_20", "invalidate", "ff_net_20", "ff_net_5", "z_foreign", "z_volume",
+            "drivers_pos_20", "drivers_neg_20", "broker_tone", "sharia", "pe_ttm", "pb_mrq", "roe_ttm"]
+    ctx = {
+        "as_of": bundle["meta"]["as_of"],
+        "stocks_asked": [{k: by[m.upper()].get(k) for k in keep} for m in mentioned],
+        "broker_footprint": {m.upper(): bundle["brokers"].get(m.upper(), {}).get("verdict") for m in mentioned},
+        "top_1_month": [s["symbol"] for s in sorted(apply_prefs(bundle["ranking"], p), key=lambda s: -(s.get("conf_20") or 0))[:8]],
+        "caution_1_month": [s["symbol"] for s in sorted(apply_prefs(bundle["ranking"], p), key=lambda s: (s.get("conf_20") or 0))[:8]],
+        "user_filters": {"sharia_only": p.get("sharia"), "max_price": p.get("max_price")},
+    }
+    prompt = f"{ASK_RULES}\n\nDATA ARUS:\n{json.dumps(ctx, ensure_ascii=False, default=str)}\n\nPERTANYAAN: {question}"
+    try:
+        r = subprocess.run([exe, "-p"], input=prompt, capture_output=True, text=True, encoding="utf-8", timeout=180)
+        out = (r.stdout or "").strip()
+        return out[:3500] if out else ("Maaf, belum bisa menjawab sekarang." if lang == "id" else "Sorry, I can't answer right now.")
+    except (subprocess.SubprocessError, OSError):
+        return "Maaf, mesin jawaban sedang sibuk." if lang == "id" else "Sorry, the answer engine is busy."
 
 
 def broadcast(text_for, token: str):
@@ -240,10 +310,14 @@ def broadcast(text_for, token: str):
 
 HELP_ID = ("Perintah Arus:\n/hari_ini – ringkasan hari ini\n/saham KODE – skor & level penting satu saham\n"
            "/unggul – 10 saham paling diunggulkan\n/waspada – 10 saham bertanda waspada\n/pantau KODE – tambah ke pantauan\n"
-           "/hapus KODE – hapus dari pantauan\n/pantauan – lihat pantauanmu\n/rapor – rekam jejak Arus\n/bahasa en – switch to English")
+           "/hapus KODE – hapus dari pantauan\n/pantauan – lihat pantauanmu\n/rapor – rekam jejak Arus\n"
+           "/syariah on|off – hanya saham syariah\n/harga 1000 – batas harga maks (/harga semua untuk hapus)\n"
+           "/pengaturan – lihat filter Anda\n/bahasa en – switch to English\n\n"
+           "Atau ketik pertanyaan bebas, misal: BBRI masih layak dipantau?")
 HELP_EN = ("Arus commands:\n/hari_ini – today's digest\n/saham CODE – score & key levels for a stock\n/unggul – top 10 strong edge\n"
            "/waspada – 10 caution flags\n/pantau CODE – add to watchlist\n/hapus CODE – remove\n/pantauan – your watchlist\n"
-           "/rapor – Arus' track record\n/bahasa id – ganti ke Bahasa Indonesia")
+           "/rapor – Arus' track record\n/syariah on|off – sharia stocks only\n/harga 1000 – max price (/harga semua to clear)\n"
+           "/pengaturan – your filters\n/bahasa id – ganti ke Bahasa Indonesia\n\nOr just ask, e.g.: is BBRI still worth watching?")
 
 
 def handle(text: str, chat_id: int, db) -> str:
@@ -269,12 +343,35 @@ def handle(text: str, chat_id: int, db) -> str:
         return digest_text(b, None, watch, lang)
     if cmd == "/saham" and arg:
         return stock_text(b, arg, lang)
+    p = prefs(db, chat_id)
     if cmd in ("/unggul", "/waspada"):
         h = 20
-        rk = sorted(b["ranking"], key=lambda s: (s.get(f"conf_{h}") or 0), reverse=cmd == "/unggul")[:10]
+        pool = apply_prefs(b["ranking"], p)
+        rk = sorted(pool, key=lambda s: (s.get(f"conf_{h}") or 0), reverse=cmd == "/unggul")[:10]
         title = V["strong"] if cmd == "/unggul" else V["caution"]
-        return f"<b>{title} · 1 {'bulan' if lang == 'id' else 'month'}</b>\n" + "\n".join(
-            f"{i + 1}. {s['symbol']} {round((s.get(f'conf_{h}') or .5) * 100)}/100" for i, s in enumerate(rk))
+        note = []
+        if p["sharia"]:
+            note.append("syariah" if lang == "id" else "sharia")
+        if p["max_price"]:
+            note.append(f"≤ {p['max_price']:,.0f}")
+        head = f"<b>{title} · 1 {'bulan' if lang == 'id' else 'month'}</b>" + (f" ({', '.join(note)})" if note else "")
+        return head + "\n" + "\n".join(f"{i + 1}. {s['symbol']} {round((s.get(f'conf_{h}') or .5) * 100)}/100 · {s.get('price'):,.0f}" for i, s in enumerate(rk))
+    if cmd == "/syariah" and arg.lower() in ("on", "off"):
+        set_pref(db, chat_id, "sharia", 1 if arg.lower() == "on" else 0)
+        return ("Filter syariah aktif (anggota JII70)." if arg.lower() == "on" else "Filter syariah dimatikan.") if lang == "id" else ("Sharia filter on (JII70 members)." if arg.lower() == "on" else "Sharia filter off.")
+    if cmd == "/harga" and arg:
+        if arg.lower() in ("SEMUA".lower(), "all"):
+            set_pref(db, chat_id, "max_price", None)
+            return "Batas harga dihapus." if lang == "id" else "Price limit cleared."
+        try:
+            v = float(arg.replace(".", "").replace(",", ""))
+            set_pref(db, chat_id, "max_price", v)
+            return f"Hanya menampilkan saham berharga ≤ {v:,.0f}." if lang == "id" else f"Showing stocks priced ≤ {v:,.0f} only."
+        except ValueError:
+            return "Contoh: /harga 1000" if lang == "id" else "Example: /harga 1000"
+    if cmd == "/pengaturan":
+        return (f"Bahasa: {p['lang']}\nSyariah saja: {'ya' if p['sharia'] else 'tidak'}\nHarga maks: {p['max_price'] or 'semua'}"
+                if lang == "id" else f"Language: {p['lang']}\nSharia only: {'yes' if p['sharia'] else 'no'}\nMax price: {p['max_price'] or 'any'}")
     if cmd == "/pantau" and arg:
         db.execute("INSERT OR IGNORE INTO chats (chat_id) VALUES (?)", (chat_id,))
         db.execute("INSERT OR IGNORE INTO watch VALUES (?, ?)", (chat_id, arg))
@@ -295,7 +392,42 @@ def handle(text: str, chat_id: int, db) -> str:
         t = json.loads(TRACK.read_text(encoding="utf-8"))["totals"]
         lines = [f"{V[v]}: {t[v]['won'] if v != 'caution' else t[v]['n'] - t[v]['won']}/{t[v]['n']} {'tepat' if lang == 'id' else 'correct'}" for v in ("strong", "caution") if v in t]
         return ("<b>Rekam jejak live (besok)</b>\n" if lang == "id" else "<b>Live track record (next day)</b>\n") + "\n".join(lines)
+    if not cmd.startswith("/"):
+        return ask(text, b, p)
     return HELP_ID if lang == "id" else HELP_EN
+
+
+BOT_COMMANDS = [
+    ("hari_ini", "Ringkasan hari ini", "Today's digest"),
+    ("saham", "Skor & level penting satu saham, misal /saham BBRI", "Score & key levels, e.g. /saham BBRI"),
+    ("unggul", "10 saham paling diunggulkan", "Top 10 strong edge"),
+    ("waspada", "10 saham bertanda waspada", "10 caution flags"),
+    ("pantau", "Tambah ke pantauan, misal /pantau TLKM", "Add to watchlist, e.g. /pantau TLKM"),
+    ("pantauan", "Lihat pantauan Anda", "Your watchlist"),
+    ("syariah", "Hanya saham syariah: /syariah on", "Sharia only: /syariah on"),
+    ("harga", "Batas harga maks: /harga 1000", "Max price: /harga 1000"),
+    ("rapor", "Rekam jejak live Arus", "Arus' live track record"),
+    ("bahasa", "Ganti bahasa: /bahasa en", "Switch language: /bahasa id"),
+]
+
+
+def setup_bot(token: str):
+    """Give the bot its Arus identity: name, descriptions and command menu (ID + EN)."""
+    calls = [
+        ("setMyName", {"name": "Arus · Peluang Saham IDX"}),
+        ("setMyName", {"name": "Arus · IDX Stock Odds", "language_code": "en"}),
+        ("setMyShortDescription", {"short_description": "Skor peluang saham IDX yang teruji, setiap hari bursa."}),
+        ("setMyShortDescription", {"short_description": "Tested odds for IDX stocks, every trading day.", "language_code": "en"}),
+        ("setMyDescription", {"description": "Arus menilai 120 saham paling aktif di BEI setiap hari dari data Sectors dan memberi skor peluang yang sudah diuji ke data setahun. Ketik /start untuk mulai. Informasi, bukan nasihat keuangan."}),
+        ("setMyDescription", {"description": "Arus scores the 120 most active IDX stocks daily from Sectors data, with odds tested on a year of history. Send /start to begin. Information, not financial advice.", "language_code": "en"}),
+        ("setMyCommands", {"commands": [{"command": c, "description": d} for c, d, _ in BOT_COMMANDS]}),
+        ("setMyCommands", {"commands": [{"command": c, "description": e} for c, _, e in BOT_COMMANDS], "language_code": "en"}),
+    ]
+    for method, params in calls:
+        r = tg(method, token, **params)
+        print(f"[setup] {method}{' (en)' if params.get('language_code') else ''}: {'ok' if r.get('ok') else r.get('description')}")
+    me = tg("getMe", token).get("result", {})
+    print(f"[setup] bot is now @{me.get('username')} · name: {me.get('first_name')}")
 
 
 def run_bot(token: str):
@@ -319,17 +451,20 @@ def run_bot(token: str):
 # ---------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["daily", "digest", "bot", "grade"])
+    ap.add_argument("cmd", choices=["daily", "digest", "bot", "grade", "setup-bot"])
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--cap", type=float, default=200, help="max credits for the refresh")
     ap.add_argument("--end", default=None, help="last trading day to pull (default: today)")
     args = ap.parse_args()
     token = env().get("TELEGRAM_BOT_TOKEN")
 
-    if args.cmd == "bot":
+    if args.cmd in ("bot", "setup-bot"):
         if not token:
             sys.exit("TELEGRAM_BOT_TOKEN missing in .env")
-        run_bot(token)
+        if args.cmd == "setup-bot":
+            setup_bot(token)
+        else:
+            run_bot(token)
         return
 
     if args.cmd == "daily":

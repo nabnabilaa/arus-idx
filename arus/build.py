@@ -171,7 +171,9 @@ def main():
 
     if args.brokers:
         c = SectorsClient(credit_cap=args.brokers * 2 + 4)
-        pull_broker_top(c, conn, rank["symbol"].head(args.brokers).tolist())
+        n_top = max(1, args.brokers * 2 // 3)
+        picks = rank["symbol"].head(n_top).tolist() + rank["symbol"].tail(args.brokers - n_top).tolist()
+        pull_broker_top(c, conn, picks)
         print(f"[build] brokers · {c.summary()}", flush=True)
 
     fund = context.fundamental_context(conn)

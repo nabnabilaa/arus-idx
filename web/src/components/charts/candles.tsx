@@ -85,12 +85,27 @@ export function CandleChart({ data, levels = [], height = 460 }: { data: Candles
       <div ref={ref} className="relative w-full select-none" style={{ height }}>
         {w > 0 && rows.length > 1 && (
           <svg width={w} height={height} onPointerMove={onMove} onPointerLeave={() => setHover(null)} className="touch-none">
-            {yP.ticks(5).map((t) => (
-              <g key={t}>
-                <line x1={0} x2={plotW} y1={yP(t)} y2={yP(t)} stroke={C.grid} />
-                <text x={plotW + 8} y={yP(t)} dy="0.32em" fontSize={11} fill={C.muted} className="num">{price(t, lang)}</text>
+            {yP.ticks(5).map((t) => {
+              const yy = yP(t);
+              const clash =
+                visLevels.some((lv) => Math.abs(yP(lv.value) - yy) < 14) ||
+                Math.abs(yP(rows[rows.length - 1].c) - yy) < 14 ||
+                (hover != null && Math.abs(yP(rows[hover].c) - yy) < 14);
+              return (
+                <g key={t}>
+                  <line x1={0} x2={plotW} y1={yy} y2={yy} stroke={C.grid} />
+                  {!clash && (
+                    <text x={plotW + 8} y={yy} dy="0.32em" fontSize={11} fill={C.muted} className="num">{price(t, lang)}</text>
+                  )}
+                </g>
+              );
+            })}
+            {hover == null && (
+              <g pointerEvents="none">
+                <rect x={plotW + 2} y={yP(rows[rows.length - 1].c) - 9} width={axisW - 4} height={18} rx={4} fill={rows[rows.length - 1].c >= rows[rows.length - 1].o ? C.up : C.down} />
+                <text x={plotW + 6} y={yP(rows[rows.length - 1].c)} dy="0.32em" fontSize={10.5} fill="#fff" className="num">{price(rows[rows.length - 1].c, lang)}</text>
               </g>
-            ))}
+            )}
             {monthTicks.map((t) => (
               <text key={t.d} x={x(t.i)} y={height - 4} fontSize={10.5} fill={C.muted}>
                 {dateLabel(t.d, lang, { day: undefined, year: rows.length > 130 ? "2-digit" : undefined, month: "short" })}
@@ -100,11 +115,16 @@ export function CandleChart({ data, levels = [], height = 460 }: { data: Candles
             {visLevels.map((lv) => {
               const yy = yP(lv.value);
               if (yy < 4 || yy > pH) return null;
+              const nearLast = Math.abs(yP(rows[rows.length - 1].c) - yy) < 14;
               return (
                 <g key={lv.label.en}>
                   <line x1={0} x2={plotW} y1={yy} y2={yy} stroke={lv.color} strokeDasharray="5 5" strokeOpacity={0.75} />
-                  <rect x={plotW + 2} y={yy - 9} width={axisW - 4} height={18} rx={4} fill={lv.color} fillOpacity={0.18} />
-                  <text x={plotW + 6} y={yy} dy="0.32em" fontSize={10.5} fill={lv.color} className="num">{price(lv.value, lang)}</text>
+                  {!nearLast && (
+                    <>
+                      <rect x={plotW + 2} y={yy - 9} width={axisW - 4} height={18} rx={4} fill={lv.color} fillOpacity={0.18} />
+                      <text x={plotW + 6} y={yy} dy="0.32em" fontSize={10.5} fill={lv.color} className="num">{price(lv.value, lang)}</text>
+                    </>
+                  )}
                   <text x={6} y={yy - 5} fontSize={10.5} fill={lv.color}>{tx(lv.label)}</text>
                 </g>
               );

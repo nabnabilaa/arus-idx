@@ -64,6 +64,9 @@ const COMMANDS: [string, Bi][] = [
   ["/waspada", { id: "10 saham bertanda waspada", en: "10 caution-flagged stocks" }],
   ["/pantau KODE", { id: "Tambah saham ke pantauan (ikut dilaporkan setiap hari)", en: "Add to watchlist (reported daily)" }],
   ["/rapor", { id: "Rekam jejak live Arus sejak agen berjalan", en: "Arus' live track record since the agent started" }],
+  ["/syariah on", { id: "Hanya tampilkan saham syariah di semua daftar dan ringkasan", en: "Show only sharia stocks in every list and digest" }],
+  ["/harga 1000", { id: "Hanya saham berharga di bawah batas ini (/harga semua untuk hapus)", en: "Only stocks priced below this (/harga semua to clear)" }],
+  [`"BBRI layak dipantau?"`, { id: "Tanya bebas dalam kalimat biasa; dijawab berdasarkan data Arus, lengkap dengan risiko", en: "Ask anything in plain words; answered from Arus data, risks included" }],
   ["/bahasa en", { id: "Ganti bahasa", en: "Switch language" }],
 ];
 
@@ -158,7 +161,7 @@ export function AgentView({ digest, track }: { digest: { as_of: string; id: stri
           </h2>
           <ul className="mt-5 divide-y divide-line border-y border-line">
             {COMMANDS.map(([c, d]) => (
-              <li key={c} className="grid gap-1 py-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-6">
+              <li key={c} className="grid gap-1 py-3 sm:grid-cols-[190px_minmax(0,1fr)] sm:gap-6">
                 <code className="num text-[13px] text-arus">{c}</code>
                 <span className="text-[13.5px] text-ink-2">{tx(d)}</span>
               </li>

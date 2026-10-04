@@ -257,7 +257,7 @@ export function SectorMap({
                   animate={{ r: rad(r.n) }}
                   transition={{ duration: 0.6, delay: i * 0.03, ease: EASE }}
                 />
-                {(r.n >= 4 || hover === r.key) && (
+                {(good || r.n >= 5 || hover === r.key) && (
                   <text x={x(r.x)} y={y(r.y) - rad(r.n) - 6} fontSize={11} fill={C.ink2} textAnchor="middle">
                     {label(r.key)}
                   </text>

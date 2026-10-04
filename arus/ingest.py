@@ -61,6 +61,9 @@ CREATE TABLE IF NOT EXISTS suspensions (
 CREATE TABLE IF NOT EXISTS brokers (
     code TEXT PRIMARY KEY, name TEXT, is_foreign INTEGER, cohort TEXT
 );
+CREATE TABLE IF NOT EXISTS broker_daily (
+    symbol TEXT, date TEXT, payload TEXT, PRIMARY KEY (symbol, date)
+);
 CREATE TABLE IF NOT EXISTS broker_top (
     symbol TEXT, start TEXT, end_ TEXT, payload TEXT, PRIMARY KEY (symbol, start, end_)
 );
@@ -273,6 +276,17 @@ def pull_increment(c: SectorsClient, conn, end: date) -> dict:
     _store_flow(conn, "IHSG", c.get("/v2/foreign-flow/IHSG/", {"start": start, "end": end.isoformat()}, refresh=True))
     conn.commit()
     return {"new_days": len(new_days), "days": new_days}
+
+
+def pull_broker_daily(c, conn, symbols, end: date | None = None, days: int = 14):
+    """Every broker's buy/sell per day for the last `days` calendar days (1 credit per stock)."""
+    end = end or AS_OF
+    start = (end - timedelta(days=days - 1)).isoformat()
+    for s in symbols:
+        body = c.get(f"/v2/broker-summary/{s}/", {"start": start, "end": end.isoformat()})
+        for day in (body or {}).get("data", []):
+            conn.execute("INSERT OR REPLACE INTO broker_daily VALUES (?,?,?)", (s, day["date"], json.dumps(day["summary"])))
+    conn.commit()
 
 
 def pull_broker_top(c, conn, symbols, days: int = 20):

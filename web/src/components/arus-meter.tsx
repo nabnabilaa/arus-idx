@@ -15,14 +15,16 @@ export function verdictCuts(cal: { a: number; b: number }) {
 }
 
 const angle = (p: number) => Math.PI * (1 - (Math.min(HI, Math.max(LO, p)) - LO) / (HI - LO));
+// Server and browser disagree in the 13th decimal of trig results; round so hydration matches.
+const r2 = (v: number) => Math.round(v * 100) / 100;
 
 function arc(cx: number, cy: number, r: number, p0: number, p1: number) {
   const a0 = angle(p0);
   const a1 = angle(p1);
-  const x0 = cx + r * Math.cos(a0);
-  const y0 = cy - r * Math.sin(a0);
-  const x1 = cx + r * Math.cos(a1);
-  const y1 = cy - r * Math.sin(a1);
+  const x0 = r2(cx + r * Math.cos(a0));
+  const y0 = r2(cy - r * Math.sin(a0));
+  const x1 = r2(cx + r * Math.cos(a1));
+  const y1 = r2(cy - r * Math.sin(a1));
   return `M ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1}`;
 }
 
@@ -45,8 +47,8 @@ export function ArusMeter({
   const reduce = useReducedMotion();
   const cuts = verdictCuts(cal);
   const v = verdictOf(q);
-  const mv = useMotionValue(reduce ? value : 0.5);
-  const [shown, setShown] = useState(reduce ? value : 0.5);
+  const mv = useMotionValue(0.5);
+  const [shown, setShown] = useState(0.5);
 
   useEffect(() => {
     if (reduce) {
@@ -60,12 +62,12 @@ export function ArusMeter({
   }, [value, reduce, mv]);
 
   const w = size;
-  const h = size * 0.62;
+  const h = Math.round(size * 0.62);
   const cx = w / 2;
   const cy = h - 14;
   const r = w / 2 - 22;
-  const tipX = useTransform(mv, (p) => cx + (r - 20) * Math.cos(angle(p)));
-  const tipY = useTransform(mv, (p) => cy - (r - 20) * Math.sin(angle(p)));
+  const tipX = useTransform(mv, (p) => r2(cx + (r - 20) * Math.cos(angle(p))));
+  const tipY = useTransform(mv, (p) => r2(cy - (r - 20) * Math.sin(angle(p))));
 
   const zones: { key: VerdictKey; from: number; to: number }[] = [
     { key: "caution", from: LO, to: cuts.caution },
@@ -93,12 +95,12 @@ export function ArusMeter({
         {[0.4, 0.45, 0.5, 0.55, 0.6].map((t) => {
           const a = angle(t);
           return (
-            <text key={t} x={cx + (r + 18) * Math.cos(a)} y={cy - (r + 18) * Math.sin(a)} textAnchor="middle" dominantBaseline="middle" fontSize={10.5} fill="#75839a" className="num">
+            <text key={t} x={r2(cx + (r + 18) * Math.cos(a))} y={r2(cy - (r + 18) * Math.sin(a))} textAnchor="middle" dominantBaseline="middle" fontSize={10.5} fill="#75839a" className="num">
               {Math.round(t * 100)}
             </text>
           );
         })}
-        <motion.line x1={cx} y1={cy} x2={tipX} y2={tipY} stroke="#e9eef6" strokeWidth={3} strokeLinecap="round" />
+        <motion.line x1={cx} y1={cy} x2={tipX} y2={tipY} stroke="#e9eef6" strokeWidth={3} strokeLinecap="round" suppressHydrationWarning />
         <circle cx={cx} cy={cy} r={7} fill="#e9eef6" stroke="#070b14" strokeWidth={3} />
       </svg>
       <div className="-mt-2 text-center">

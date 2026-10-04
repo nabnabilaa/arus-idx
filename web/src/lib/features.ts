@@ -1,7 +1,7 @@
 import type { Bi } from "./i18n";
 import type { FeatureKey } from "./types";
 
-export type FamilyKey = "Arus asing" | "Momentum" | "Akumulasi" | "Sektor" | "Risiko";
+export type FamilyKey = "Arus asing" | "Momentum" | "Akumulasi" | "Sektor" | "Risiko" | "Makro";
 
 export const FAMILY: Record<FamilyKey, { label: Bi; what: Bi }> = {
   "Arus asing": {
@@ -30,6 +30,13 @@ export const FAMILY: Record<FamilyKey, { label: Bi; what: Bi }> = {
     what: {
       id: "Apakah kelompok industrinya sedang mengungguli pasar. Saham jarang melawan arus sektornya.",
       en: "Whether its industry group is beating the market. Stocks rarely swim against their sector.",
+    },
+  },
+  Makro: {
+    label: { id: "Pengaruh global", en: "Global influence" },
+    what: {
+      id: "Seberapa sensitif saham ini terhadap rupiah, minyak, saham AS, rasa takut pasar global, dolar, dan bunga AS, dikalikan pergerakan faktor-faktor itu belakangan ini.",
+      en: "How sensitive this stock is to the rupiah, oil, US stocks, global fear, the dollar and US rates, times how those factors moved lately.",
     },
   },
   Risiko: {
@@ -126,6 +133,18 @@ export const FEATURE: Record<FeatureKey, { family: FamilyKey; label: Bi; hi: Bi;
     label: { id: "Keramaian transaksi", en: "Trading activity" },
     hi: { id: "Sangat ramai", en: "Heavily traded" },
     lo: { id: "Tidak terlalu ramai", en: "Less crowded" },
+  },
+  macro_tail_5: {
+    family: "Makro",
+    label: { id: "Dorongan global (1 minggu)", en: "Global push (1 week)" },
+    hi: { id: "Didorong faktor global", en: "Pushed by global factors" },
+    lo: { id: "Ditahan faktor global", en: "Held back by global factors" },
+  },
+  macro_tail_20: {
+    family: "Makro",
+    label: { id: "Dorongan global (1 bulan)", en: "Global push (1 month)" },
+    hi: { id: "Angin global mendukung", en: "Global tailwind" },
+    lo: { id: "Angin global menahan", en: "Global headwind" },
   },
 };
 

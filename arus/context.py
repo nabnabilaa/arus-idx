@@ -155,3 +155,71 @@ def anomaly_radar(aux: dict, symbols: list[str]) -> pd.DataFrame:
         rows.append({"symbol": s, "z_foreign": rz(n), "z_volume": rz(np.log(v + 1)),
                      "z_return": rz(r)})
     return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# daily bandar flow (per-broker rows per day)
+# ---------------------------------------------------------------------------
+def bandar_daily(conn: sqlite3.Connection) -> dict:
+    """
+    Per stock, per day: net value bought by institutional brokers, retail brokers and
+    foreign investors; plus the brokers that accumulated most over the window and the
+    average price they paid — the "bandar cost" retail traders watch.
+    """
+    registry = {r[0]: {"is_foreign": bool(r[2]), "cohort": r[3]}
+                for r in conn.execute("SELECT code, name, is_foreign, cohort FROM brokers")}
+    out = {}
+    rows = conn.execute("SELECT symbol, date, payload FROM broker_daily ORDER BY symbol, date").fetchall()
+    by_sym = {}
+    for sym, d, payload in rows:
+        by_sym.setdefault(sym, []).append((d, json.loads(payload)))
+    for sym, days in by_sym.items():
+        dates, inst, retail, foreign, n_buyers, n_sellers = [], [], [], [], [], []
+        acc = {}
+        for d, summ in days:
+            i_net = r_net = f_net = 0.0
+            nb = ns = 0
+            for b in summ:
+                net = (b.get("bval") or 0) - (b.get("sval") or 0)
+                cohort = registry.get(b["broker_code"], {}).get("cohort") or "unknown"
+                if cohort == "institutional":
+                    i_net += net
+                elif cohort == "retail":
+                    r_net += net
+                f_net += (b.get("f_bval") or 0) - (b.get("f_sval") or 0)
+                nb += net > 0
+                ns += net < 0
+                a = acc.setdefault(b["broker_code"], {"net": 0.0, "bval": 0.0, "blot": 0.0, "days_buy": 0})
+                a["net"] += net
+                a["bval"] += b.get("bval") or 0
+                a["blot"] += b.get("blot") or 0
+                a["days_buy"] += net > 0
+            dates.append(d)
+            inst.append(i_net)
+            retail.append(r_net)
+            foreign.append(f_net)
+            n_buyers.append(nb)
+            n_sellers.append(ns)
+        ranked = sorted(acc.items(), key=lambda kv: -kv[1]["net"])
+        def card(code, a):
+            reg = registry.get(code, {})
+            avg = a["bval"] / (a["blot"] * 100) if a["blot"] else None
+            return {"code": code, "net": a["net"], "avg": avg, "days_buy": a["days_buy"],
+                    "cohort": reg.get("cohort"), "foreign": bool(reg.get("is_foreign"))}
+        top_buy = [card(c, a) for c, a in ranked[:5] if a["net"] > 0]
+        top_sell = [card(c, a) for c, a in ranked[::-1][:5] if a["net"] < 0]
+        tot_val = sum(x["net"] for x in top_buy)
+        bandar_avg = (sum(x["avg"] * x["net"] for x in top_buy[:3] if x["avg"]) /
+                      sum(x["net"] for x in top_buy[:3] if x["avg"])) if top_buy and any(x["avg"] for x in top_buy[:3]) else None
+        streak = 0
+        for v in reversed(inst):
+            if v > 0 and streak >= 0:
+                streak += 1
+            elif v < 0 and streak <= 0:
+                streak -= 1
+            else:
+                break
+        out[sym] = {"dates": dates, "inst": inst, "retail": retail, "foreign": foreign,
+                    "n_buyers": n_buyers, "n_sellers": n_sellers, "top_buy": top_buy, "top_sell": top_sell,
+                    "bandar_avg": bandar_avg, "inst_streak": streak, "top_buy_total": tot_val}
+    return out

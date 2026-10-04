@@ -5,13 +5,16 @@ Pipeline (run separately for each horizon, e.g. 1 and 20 trading days):
   1. Label: did the stock finish above the median liquid stock over the next H days?
      Beating IHSG was tried first and dropped: its base rate swings 44–58% between periods
      with the fate of a few index heavyweights, which no cross-sectional signal can know.
-  2. L2-regularised logistic regression on cross-sectional feature ranks; the penalty is
-     chosen by nested validation inside each training window.
+  2. Model: L2-regularised logistic regression on cross-sectional feature ranks, in one of
+     two shapes — "global" (one set of weights for every stock) or "sector" (global weights
+     plus a per-sector adjustment that is penalised harder, so a sector only departs from
+     the market-wide pattern when its own data insists). Stocks rise for different reasons;
+     the sector shape lets banks and coal miners weigh the same signal differently.
+     Shape and penalty are chosen by nested validation inside each training window.
   3. Purged walk-forward: each 20-day test block is predicted by a model trained only on
      dates whose H-day labels had resolved before the block began.
-  4. A Platt curve fitted on the within-day rank of out-of-sample scores maps rank →
-     empirical win probability. Isotonic regression was tried and dropped: it overfit the
-     tails (0% and 74% at the extremes).
+  4. A Platt curve on the within-day rank of out-of-sample scores maps rank → empirical win
+     probability. Isotonic regression was tried and dropped: it overfit the tails.
 
 Pure numpy on purpose: transparent, dependency-light, deployable anywhere.
 """
@@ -25,25 +28,43 @@ from arus.features import FEATURES, FEATURE_NAMES
 
 TEST_BLOCK = 20
 MIN_TRAIN_DATES = 40
-L2_GRID = (3.0, 30.0, 100.0, 300.0, 1000.0)
+L2_GRID = (30.0, 300.0, 1000.0)
+SECTOR_PENALTY = 4.0        # sector adjustments cost 4× more than market-wide weights
+SHAPES = ("global", "sector")
+MACRO = tuple(f for f in FEATURE_NAMES if FEATURES[f][0] == "Makro")
+FEATURE_SETS = {"all": tuple(FEATURE_NAMES), "no_macro": tuple(f for f in FEATURE_NAMES if f not in MACRO)}
 HORIZONS = (1, 20)
+K = len(FEATURE_NAMES)
 
 
 # ---------------------------------------------------------------------------
 # primitives
 # ---------------------------------------------------------------------------
-def _design(X: pd.DataFrame) -> np.ndarray:
+def _design(X: pd.DataFrame, feats=None) -> np.ndarray:
     """Centered ranks; missing → neutral 0 (the cross-sectional median)."""
-    return np.nan_to_num(X[FEATURE_NAMES].to_numpy(dtype=float) - 0.5, nan=0.0)
+    return np.nan_to_num(X[list(feats or FEATURE_NAMES)].to_numpy(dtype=float) - 0.5, nan=0.0)
 
 
-def fit_logistic(A: np.ndarray, y: np.ndarray, l2: float = 1.0, iters: int = 50) -> np.ndarray:
-    """Newton–Raphson (IRLS) with an L2 penalty on the slopes. Returns [bias, w...]."""
+def design(X: pd.DataFrame, shape: str, gidx: np.ndarray | None, G: int, feats=None) -> np.ndarray:
+    A = _design(X, feats)
+    if shape == "global" or gidx is None:
+        return A
+    return np.hstack([A] + [A * (gidx == g)[:, None] for g in range(G)])
+
+
+def penalties(shape: str, G: int, l2: float, k: int = None) -> np.ndarray:
+    k = k or K
+    if shape == "global":
+        return np.full(k, l2)
+    return np.r_[np.full(k, l2), np.full(k * G, l2 * SECTOR_PENALTY)]
+
+
+def fit_logistic(A: np.ndarray, y: np.ndarray, l2, iters: int = 50) -> np.ndarray:
+    """Newton–Raphson (IRLS) with an L2 penalty on the slopes (scalar or per-column). Returns [bias, w...]."""
     n, k = A.shape
     Z = np.hstack([np.ones((n, 1)), A])
     w = np.zeros(k + 1)
-    reg = np.full(k + 1, l2)
-    reg[0] = 0.0
+    reg = np.r_[0.0, np.broadcast_to(np.asarray(l2, dtype=float), (k,))]
     for _ in range(iters):
         p = 1 / (1 + np.exp(-np.clip(Z @ w, -30, 30)))
         g = Z.T @ (p - y) + reg * w
@@ -100,6 +121,20 @@ def naive_score(X: pd.DataFrame) -> np.ndarray:
     return (_design(X) * signs).mean(axis=1)
 
 
+def effective_weights(w: np.ndarray, shape: str, g: int | None, feats=None) -> np.ndarray:
+    """
+    Per-feature weights a stock in group g actually uses (global + its sector adjustment),
+    expanded to the full feature list with zeros for features the chosen set left out.
+    """
+    feats = list(feats or FEATURE_NAMES)
+    k = len(feats)
+    eff = w[1:1 + k].copy()
+    if shape != "global" and g is not None:
+        eff = eff + w[1 + k + g * k:1 + k + (g + 1) * k]
+    full = dict(zip(feats, eff))
+    return np.array([full.get(f, 0.0) for f in FEATURE_NAMES])
+
+
 # ---------------------------------------------------------------------------
 # labels & model selection
 # ---------------------------------------------------------------------------
@@ -116,23 +151,36 @@ def attach_labels(X: pd.DataFrame, aux: dict, horizon: int) -> pd.DataFrame:
     return out
 
 
-def select_l2(labeled: pd.DataFrame, train_dates: np.ndarray, horizon: int) -> float:
+def group_index(df: pd.DataFrame, groups: list[str], group_of: pd.Series) -> np.ndarray:
+    g = df.index.get_level_values("symbol").map(group_of).fillna("Lainnya")
+    lookup = {name: i for i, name in enumerate(groups)}
+    return np.array([lookup.get(x, lookup.get("Lainnya", 0)) for x in g])
+
+
+def select_config(labeled: pd.DataFrame, train_dates: np.ndarray, horizon: int, gidx_all: np.ndarray, G: int) -> tuple[str, float, str]:
     """
-    Nested choice of the penalty, using only the training window: fit on the early part,
-    validate on the last 20 training dates with a purge of `horizon` dates in between,
-    keep the penalty with the lowest validation Brier score.
+    Nested choice of model shape and penalty using only the training window: fit on the
+    early part, validate on the last 20 training dates (purged by `horizon`), keep the
+    configuration with the lowest validation Brier score.
     """
     d = labeled.index.get_level_values("date")
-    inner = labeled[d.isin(train_dates[:-(20 + horizon)])]
-    val = labeled[d.isin(train_dates[-20:])]
-    if len(inner) < 1500 or val.empty:
-        return 30.0
+    m_in = d.isin(train_dates[:-(20 + horizon)])
+    m_va = d.isin(train_dates[-20:])
+    if m_in.sum() < 1500 or m_va.sum() == 0:
+        return ("global", 300.0, "no_macro")
+    inner, val = labeled[m_in], labeled[m_va]
+    g_in, g_va = gidx_all[m_in], gidx_all[m_va]
     yv = val["y"].to_numpy()
-
-    def brier(l2):
-        w = fit_logistic(_design(inner), inner["y"].to_numpy(), l2)
-        return float(np.mean((predict_logistic(w, _design(val)) - yv) ** 2))
-    return min(L2_GRID, key=brier)
+    best, best_b = ("global", 300.0, "no_macro"), np.inf
+    for fs, feats in FEATURE_SETS.items():
+        for shape in SHAPES:
+            A_in, A_va = design(inner, shape, g_in, G, feats), design(val, shape, g_va, G, feats)
+            for l2 in L2_GRID:
+                w = fit_logistic(A_in, inner["y"].to_numpy(), penalties(shape, G, l2, len(feats)))
+                b = float(np.mean((predict_logistic(w, A_va) - yv) ** 2))
+                if b < best_b:
+                    best, best_b = (shape, l2, fs), b
+    return best
 
 
 # ---------------------------------------------------------------------------
@@ -142,17 +190,26 @@ def select_l2(labeled: pd.DataFrame, train_dates: np.ndarray, horizon: int) -> f
 class CalibrationResult:
     horizon: int
     oos: pd.DataFrame
-    platt: np.ndarray                       # [a, b] of p = σ(a + b·(rank − 0.5))
-    final_w: np.ndarray                     # model trained on all resolved labels
+    platt: np.ndarray
+    final_w: np.ndarray
+    shape: str
+    feats: tuple
+    groups: list
+    group_of: pd.Series
     metrics: dict = field(default_factory=dict)
     reliability: pd.DataFrame = None
     deciles: pd.DataFrame = None
     folds: list = field(default_factory=list)
     coef: pd.DataFrame = None
+    group_weights: dict = field(default_factory=dict)
 
 
 def walk_forward(X: pd.DataFrame, aux: dict, horizon: int) -> CalibrationResult:
     labeled = attach_labels(X, aux, horizon)
+    group_of = aux["group"]
+    groups = sorted(group_of.unique())
+    G = len(groups)
+    gidx_all = group_index(labeled, groups, group_of)
     dates = np.array(sorted(labeled.index.get_level_values("date").unique()))
     D = labeled.index.get_level_values("date")
 
@@ -160,13 +217,14 @@ def walk_forward(X: pd.DataFrame, aux: dict, horizon: int) -> CalibrationResult:
     for t0 in range(MIN_TRAIN_DATES + horizon, len(dates), TEST_BLOCK):
         test_dates = dates[t0:t0 + TEST_BLOCK]
         train_dates = dates[:t0 - horizon]           # purge: labels resolve before test
-        tr = labeled[D.isin(train_dates)]
-        te = labeled[D.isin(test_dates)]
-        if len(tr) < 500 or te.empty:
+        m_tr, m_te = D.isin(train_dates), D.isin(test_dates)
+        if m_tr.sum() < 500 or m_te.sum() == 0:
             continue
-        l2 = select_l2(labeled, train_dates, horizon)
-        w = fit_logistic(_design(tr), tr["y"].to_numpy(), l2)
-        p = predict_logistic(w, _design(te))
+        tr, te = labeled[m_tr], labeled[m_te]
+        shape, l2, fs = select_config(labeled, train_dates, horizon, gidx_all, G)
+        feats = FEATURE_SETS[fs]
+        w = fit_logistic(design(tr, shape, gidx_all[m_tr], G, feats), tr["y"].to_numpy(), penalties(shape, G, l2, len(feats)))
+        p = predict_logistic(w, design(te, shape, gidx_all[m_te], G, feats))
         out = pd.DataFrame({"p_model": p, "p_naive": naive_score(te),
                             "y": te["y"].to_numpy(), "beat_ihsg": te["beat_ihsg"].to_numpy(),
                             "excess": te["excess_fwd"].to_numpy(), "fold": len(folds)},
@@ -175,16 +233,12 @@ def walk_forward(X: pd.DataFrame, aux: dict, horizon: int) -> CalibrationResult:
         folds.append({"test_start": str(test_dates[0]), "test_end": str(test_dates[-1]),
                       "train_end": str(train_dates[-1]), "n_train": int(len(tr)),
                       "n_test": int(len(te)), "auc": auc(p, out["y"].to_numpy()), "l2": l2,
-                      "ihsg_base_rate": float(out["beat_ihsg"].mean())})
+                      "shape": shape, "features": fs, "ihsg_base_rate": float(out["beat_ihsg"].mean())})
 
     oos = pd.concat(preds).reset_index()
     y = oos["y"].to_numpy()
-    # Calibrate on the within-day rank of the score, not its raw scale: robust to the final
-    # model's scale differing from the fold models', and it defines "similar past cases"
-    # as stocks that ranked at the same percentile on their own day.
     oos["q"] = oos.groupby("date")["p_model"].rank(pct=True)
 
-    # Strict check: fold k calibrated with a curve fitted on folds < k only.
     oos["p_seq"] = np.nan
     for k in range(1, len(folds)):
         prev = oos[oos["fold"] < k]
@@ -194,8 +248,10 @@ def walk_forward(X: pd.DataFrame, aux: dict, horizon: int) -> CalibrationResult:
     platt = platt_fit(oos["q"], oos["y"])
     oos["p_cal"] = platt_apply(platt, oos["q"])
 
-    final_l2 = select_l2(labeled, dates, horizon)
-    final_w = fit_logistic(_design(labeled), labeled["y"].to_numpy(), final_l2)
+    shape, final_l2, final_fs = select_config(labeled, dates, horizon, gidx_all, G)
+    final_feats = FEATURE_SETS[final_fs]
+    final_w = fit_logistic(design(labeled, shape, gidx_all, G, final_feats), labeled["y"].to_numpy(),
+                           penalties(shape, G, final_l2, len(final_feats)))
 
     base = y.mean()
     brier_base = float(np.mean((base - y) ** 2))
@@ -222,7 +278,9 @@ def walk_forward(X: pd.DataFrame, aux: dict, horizon: int) -> CalibrationResult:
         "auc_naive": auc(oos["p_naive"].to_numpy(), y),
         "brier_skill": 1 - brier_cal / brier_base,
         "brier_skill_sequential": 1 - brier_seq / brier_seq_base,
-        "final_l2": final_l2,
+        "final_l2": final_l2, "final_shape": shape, "final_features": final_fs,
+        "folds_sector_shape": int(sum(f["shape"] == "sector" for f in folds)),
+        "folds_with_macro": int(sum(f["features"] == "all" for f in folds)),
         "ihsg_base_rate": float(oos["beat_ihsg"].mean()),
         "top_decile_hit": float(top["y"].mean()), "bottom_decile_hit": float(bottom["y"].mean()),
         "top_decile_excess": float(top["excess"].mean()),
@@ -237,37 +295,41 @@ def walk_forward(X: pd.DataFrame, aux: dict, horizon: int) -> CalibrationResult:
     }
 
     oos["bin"] = pd.qcut(oos["q"].rank(method="first"), 10, labels=False)
-    rel = oos.groupby("bin").agg(pred=("p_cal", "mean"), obs=("y", "mean"),
-                                 n=("y", "size")).reset_index()
-    rel["lo"], rel["hi"] = zip(*[wilson(o * n / horizon, n / horizon)
-                                 for o, n in zip(rel["obs"], rel["n"])])
+    rel = oos.groupby("bin").agg(pred=("p_cal", "mean"), obs=("y", "mean"), n=("y", "size")).reset_index()
+    rel["lo"], rel["hi"] = zip(*[wilson(o * n / horizon, n / horizon) for o, n in zip(rel["obs"], rel["n"])])
 
     dec = oos.groupby("decile").agg(hit=("y", "mean"), excess=("excess", "mean"),
                                     beat_ihsg=("beat_ihsg", "mean"),
                                     n=("y", "size"), p=("p_cal", "mean")).reset_index()
-    dec["lo"], dec["hi"] = zip(*[wilson(h * n / horizon, n / horizon)
-                                 for h, n in zip(dec["hit"], dec["n"])])
+    dec["lo"], dec["hi"] = zip(*[wilson(h * n / horizon, n / horizon) for h, n in zip(dec["hit"], dec["n"])])
 
-    coef = pd.DataFrame({"feature": FEATURE_NAMES, "weight": final_w[1:],
+    coef = pd.DataFrame({"feature": FEATURE_NAMES, "weight": effective_weights(final_w, "global", None, final_feats),
                          "family": [FEATURES[f][0] for f in FEATURE_NAMES]})
+    group_weights = {g: dict(zip(FEATURE_NAMES, effective_weights(final_w, shape, i, final_feats).round(5).tolist()))
+                     for i, g in enumerate(groups)}
 
-    return CalibrationResult(horizon=horizon, oos=oos, platt=platt, final_w=final_w,
-                             metrics=metrics, reliability=rel, deciles=dec, folds=folds,
-                             coef=coef)
+    return CalibrationResult(horizon=horizon, oos=oos, platt=platt, final_w=final_w, shape=shape, feats=final_feats,
+                             groups=groups, group_of=group_of, metrics=metrics, reliability=rel,
+                             deciles=dec, folds=folds, coef=coef, group_weights=group_weights)
 
 
 def score_today(X: pd.DataFrame, cal: CalibrationResult) -> pd.DataFrame:
     """Score the latest date with the final model, map its daily rank through the Platt curve."""
     last = X.index.get_level_values("date").max()
     today = X.xs(last, level="date").copy()
+    G = len(cal.groups)
+    lookup = {name: i for i, name in enumerate(cal.groups)}
+    gidx = np.array([lookup.get(cal.group_of.get(s, "Lainnya"), lookup.get("Lainnya", 0)) for s in today.index])
     A = _design(today)
-    p_model = predict_logistic(cal.final_w, A)
+    p_model = predict_logistic(cal.final_w, design(today, cal.shape, gidx, G, cal.feats))
     q_today = pd.Series(p_model, index=today.index).rank(pct=True).to_numpy()
     today["q"] = q_today
     today["confidence"] = platt_apply(cal.platt, q_today)
-    contrib = A * cal.final_w[1:]
+    W = np.vstack([effective_weights(cal.final_w, cal.shape, g, cal.feats) for g in gidx])
+    contrib = A * W
     for i, f in enumerate(FEATURE_NAMES):
         today[f"c_{f}"] = contrib[:, i]
+    today["group"] = [cal.groups[g] for g in gidx]
 
     oos, H = cal.oos, cal.horizon
     rows = []
@@ -287,3 +349,19 @@ def score_today(X: pd.DataFrame, cal: CalibrationResult) -> pd.DataFrame:
         today[col] = [r[j] for r in rows]
     today["lift"] = today["confidence"] - cal.metrics["base_rate"]
     return today
+
+
+def score_dates(X: pd.DataFrame, cal: CalibrationResult, after: str) -> pd.DataFrame:
+    """Daily ranks from the final model for dates after the last resolved label (no outcome yet)."""
+    D = X.index.get_level_values("date")
+    sub = X[D > after]
+    if sub.empty:
+        return pd.DataFrame(columns=["date", "symbol", "q"])
+    G = len(cal.groups)
+    lookup = {name: i for i, name in enumerate(cal.groups)}
+    gidx = np.array([lookup.get(cal.group_of.get(sym, "Lainnya"), lookup.get("Lainnya", 0))
+                     for sym in sub.index.get_level_values("symbol")])
+    p = predict_logistic(cal.final_w, design(sub, cal.shape, gidx, G, cal.feats))
+    out = pd.DataFrame({"p": p}, index=sub.index).reset_index()
+    out["q"] = out.groupby("date")["p"].rank(pct=True)
+    return out[["date", "symbol", "q"]]

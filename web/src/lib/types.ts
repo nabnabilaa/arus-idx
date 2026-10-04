@@ -12,7 +12,9 @@ export type FeatureKey =
   | "range_compress"
   | "sector_rs_20"
   | "volatility_20"
-  | "turnover_20";
+  | "turnover_20"
+  | "macro_tail_5"
+  | "macro_tail_20";
 
 export type Horizon = 1 | 20;
 
@@ -56,6 +58,13 @@ export type Stock = {
   resistance_20: number | null;
   invalidate: number | null;
   sharia: boolean | null;
+  group: string | null;
+  beta_idr?: number | null;
+  beta_oil?: number | null;
+  beta_spx?: number | null;
+  beta_vix?: number | null;
+  beta_usd?: number | null;
+  beta_us10y?: number | null;
 } & { [K in FeatureKey]: number | null } & PerHorizon<1> & PerHorizon<20>;
 
 export type Sector = {
@@ -123,7 +132,12 @@ export type Model = {
   intercept: number;
   familyAuc: { family: string; auc: number }[];
   calibration: { a: number; b: number };
+  equity: { dates: string[]; top: number[]; bottom: number[]; all: number[]; top_net: number[]; cost: number };
+  shape: string;
+  groupWeights: Record<string, Record<FeatureKey, number>>;
 };
+
+export type MacroKey = "idr" | "oil" | "spx" | "vix" | "usd" | "us10y";
 
 export type Bundle = {
   meta: {
@@ -137,13 +151,41 @@ export type Bundle = {
     horizons: number[];
   };
   models: Record<"1" | "20", Model>;
+  macro: {
+    recent: Record<MacroKey, { last: number; date: string; d5?: number; d20?: number }>;
+    series: Record<MacroKey, { date: string[]; v: number[] }>;
+  };
   ranking: Stock[];
   sectors: Sector[];
   sectorTs: { sub_sector: string; date: string; rs_20: number }[];
   market: { date: string; ihsg: number | null; foreign_net: number | null }[];
   brokers: Record<string, Broker>;
+  bandar?: Record<string, {
+    dates: string[];
+    inst: number[];
+    retail: number[];
+    foreign: number[];
+    n_buyers: number[];
+    n_sellers: number[];
+    top_buy: { code: string; net: number; avg: number | null; days_buy: number; cohort: string | null; foreign: boolean }[];
+    top_sell: { code: string; net: number; avg: number | null; days_buy: number; cohort: string | null; foreign: boolean }[];
+    bandar_avg: number | null;
+    inst_streak: number;
+  }>;
   families: Record<string, FeatureKey[]>;
+  cones?: Record<string, Partial<Record<"1" | "20", { steps: number; lo: number; mid: number; hi: number }[]>>>;
+  coneCoverage?: Record<"1" | "20", { raw: number; calibrated: number; factor: number; target: number; steps: number; n: number }>;
 };
 
-export type Candles = { date: string[]; o: (number | null)[]; h: (number | null)[]; l: (number | null)[]; c: number[]; v: (number | null)[]; f: (number | null)[] };
+export type Candles = {
+  date: string[];
+  o: (number | null)[];
+  h: (number | null)[];
+  l: (number | null)[];
+  c: number[];
+  v: (number | null)[];
+  f: (number | null)[];
+  v1?: (number | null)[];
+  v20?: (number | null)[];
+};
 export type Series = Record<string, Candles>;

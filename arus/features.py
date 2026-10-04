@@ -39,7 +39,12 @@ FEATURES = {
     "sector_rs_20":    ("Sektor", "Kekuatan relatif subsektor (20h)", +1),
     "volatility_20":   ("Risiko", "Volatilitas 20h", -1),
     "turnover_20":     ("Risiko", "Likuiditas (nilai transaksi 20h)", +1),
+    "macro_tail_5":    ("Makro", "Dorongan faktor global 5h", +1),
+    "macro_tail_20":   ("Makro", "Dorongan faktor global 20h", +1),
 }
+
+MACRO_FACTORS = ("idr", "oil", "spx", "vix", "usd", "us10y")
+MIN_GROUP = 7          # sectors with fewer stocks pool into "Lainnya" for the group-specific model
 FEATURE_NAMES = list(FEATURES)
 
 
@@ -51,7 +56,8 @@ def load_panel(conn: sqlite3.Connection | None = None) -> dict:
     ff = pd.read_sql(f"SELECT * FROM foreign_flow WHERE symbol IN ({q})", conn, params=hist)
     ihsg = pd.read_sql("SELECT date, price FROM index_daily WHERE index_code='IHSG'", conn)
     comp = pd.read_sql("SELECT symbol, name, sector, sub_sector FROM companies", conn)
-    return {"prices": px, "flow": ff, "ihsg": ihsg, "companies": comp}
+    from arus import macro
+    return {"prices": px, "flow": ff, "ihsg": ihsg, "companies": comp, "macro": macro.load(conn)}
 
 
 def _wide(df: pd.DataFrame, col: str) -> pd.DataFrame:
@@ -130,6 +136,25 @@ def build_features(panel: dict) -> tuple[pd.DataFrame, dict]:
         sector_rs[cols] = np.repeat(rs20[cols].median(axis=1).values[:, None], len(cols), axis=1)
     raw["sector_rs_20"] = sector_rs
 
+    # Global influences, stock by stock: rolling 60-day sensitivity (beta) of each stock to
+    # each external factor, times that factor's recent move = the push the outside world is
+    # giving this particular stock. Factors are lagged one session inside factor_changes.
+    from arus import macro as macro_mod
+    fc = macro_mod.factor_changes(panel.get("macro", pd.DataFrame()), dates)
+    betas, tail5, tail20 = {}, None, None
+    for k in MACRO_FACTORS:
+        if k not in fc.columns or fc[k].notna().sum() < 60:
+            continue
+        f = fc[k].fillna(0.0)
+        b = ret.rolling(60, min_periods=40).cov(f).div(f.rolling(60, min_periods=40).var(), axis=0)
+        betas[k] = b
+        p5 = b.mul(f.rolling(5, min_periods=4).sum(), axis=0)
+        p20 = b.mul(f.rolling(20, min_periods=15).sum(), axis=0)
+        tail5 = p5 if tail5 is None else tail5.add(p5, fill_value=0)
+        tail20 = p20 if tail20 is None else tail20.add(p20, fill_value=0)
+    raw["macro_tail_5"] = tail5 if tail5 is not None else pd.DataFrame(np.nan, index=dates, columns=c.columns)
+    raw["macro_tail_20"] = tail20 if tail20 is not None else pd.DataFrame(np.nan, index=dates, columns=c.columns)
+
     raw["volatility_20"] = ret.rolling(20, min_periods=15).std()
     turnover_med = tv.rolling(20, min_periods=15).median()
     raw["turnover_20"] = np.log(turnover_med)
@@ -155,6 +180,13 @@ def build_features(panel: dict) -> tuple[pd.DataFrame, dict]:
     X["valid"] = valid.stack(future_stack=True).reindex(X.index).fillna(False)
     X = X[X["valid"]].drop(columns="valid")
 
+    sector = panel["companies"].set_index("symbol")["sector"].reindex(c.columns).fillna("Lainnya")
+    counts = sector.value_counts()
+    group = sector.where(sector.map(counts) >= MIN_GROUP, "Lainnya")
+
     aux = {"close": c, "open": o, "high": h, "low": l, "volume": v, "raw": raw, "ihsg": idx,
-           "net": net, "share": share, "tv": tv, "dates": dates, "excess": excess}
+           "net": net, "share": share, "tv": tv, "dates": dates, "excess": excess,
+           "betas": {k: b.iloc[-1] for k, b in betas.items()},
+           "factor_moves": {k: {"d5": float(fc[k].tail(5).sum()), "d20": float(fc[k].tail(20).sum())} for k in betas},
+           "group": group}
     return X, aux

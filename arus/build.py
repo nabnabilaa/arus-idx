@@ -20,8 +20,8 @@ import pandas as pd
 from arus import config, context
 from arus.client import SectorsClient
 from arus.features import FEATURES, FEATURE_NAMES, build_features, load_panel
-from arus.ingest import pull_broker_top
-from arus.model import HORIZONS, auc, score_today, walk_forward
+from arus.ingest import pull_broker_daily, pull_broker_top
+from arus.model import HORIZONS, auc, score_dates, score_today, walk_forward
 
 PRIMARY = 20          # horizon used for sector summaries and the default ranking order
 
@@ -101,6 +101,82 @@ def trading_levels(aux: dict, symbols: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+ROUND_TRIP_COST = 0.004   # ~0.15% buy + 0.25% sell incl. tax, IDX retail brokers
+
+
+def equity_curve(oos: pd.DataFrame, horizon: int) -> dict:
+    """
+    Cumulative excess return vs IHSG for the top decile, the bottom decile and all stocks.
+    Next-day: rebalanced daily (compounded). One-month: the classic overlapping-portfolio
+    approximation — 20 tranches, 1/20 rebalanced each day — so the curve doesn't hinge on
+    five non-overlapping points.
+    """
+    g = oos.groupby(["date", "decile"])["excess"].mean().unstack()
+    allm = oos.groupby("date")["excess"].mean()
+    dates = sorted(g.index)
+    top, bot, alls = g.loc[dates, 9].fillna(0), g.loc[dates, 0].fillna(0), allm.loc[dates].fillna(0)
+    if horizon == 1:
+        cum = lambda x: (np.cumprod(1 + x.to_numpy()) - 1)
+        net = np.cumprod(1 + top.to_numpy() - ROUND_TRIP_COST) - 1
+        out = {"top": cum(top), "bottom": cum(bot), "all": cum(alls), "top_net": net}
+    else:
+        cum = lambda x: np.cumsum(x.to_numpy() / horizon)
+        net = np.cumsum(top.to_numpy() / horizon - ROUND_TRIP_COST / horizon)
+        out = {"top": cum(top), "bottom": cum(bot), "all": cum(alls), "top_net": net}
+    return {"dates": [str(d) for d in dates], **{k: [round(float(v), 5) for v in arr] for k, arr in out.items()},
+            "cost": ROUND_TRIP_COST}
+
+
+CONE_STEPS = {1: [1, 2, 3, 4, 5], 20: [5, 10, 15, 20]}
+
+
+def forecast_cones(close: pd.DataFrame) -> tuple[dict, dict]:
+    """
+    80% price range k sessions ahead, per stock: the stock's own historical k-day log-return
+    10th/90th percentiles, rescaled by today's 20-day volatility versus its 120-day volatility.
+    Raw bands proved too narrow in testing (they held only 64–73% of outcomes), so a single
+    widening factor per horizon is calibrated on history to make them hold 80%, and both the
+    raw and calibrated coverage are reported.
+    """
+    logp = np.log(close)
+    r1 = logp.diff()
+    scale = (r1.rolling(20, min_periods=15).std() / r1.rolling(120, min_periods=60).std()).clip(0.5, 2.0)
+    cones, coverage = {}, {}
+    for H, steps in CONE_STEPS.items():
+        bands = {}
+        for k in steps:
+            hist = logp - logp.shift(k)
+            lo = hist.rolling(120, min_periods=60).quantile(0.10) * scale
+            hi = hist.rolling(120, min_periods=60).quantile(0.90) * scale
+            bands[k] = (lo, hi)
+        k_end = steps[-1]
+        rk = logp.shift(-k_end) - logp
+        lo_e, hi_e = bands[k_end]
+        ok = rk.notna() & lo_e.notna() & hi_e.notna()
+
+        def cover(m):
+            return float((((rk >= lo_e * m) & (rk <= hi_e * m)) & ok).sum().sum() / ok.sum().sum())
+
+        raw = cover(1.0)
+        m = next((m for m in np.arange(1.0, 3.01, 0.05) if cover(m) >= 0.8), 3.0)
+        coverage[str(H)] = {"raw": raw, "calibrated": cover(m), "factor": round(float(m), 2),
+                            "target": 0.8, "steps": k_end, "n": int(ok.sum().sum())}
+        for sym in close.columns:
+            px = close[sym].iloc[-1]
+            if not np.isfinite(px):
+                continue
+            pts = []
+            for k in steps:
+                lo, hi = bands[k]
+                if not (np.isfinite(lo[sym].iloc[-1]) and np.isfinite(hi[sym].iloc[-1])):
+                    break
+                pts.append({"steps": k, "lo": round(float(px * np.exp(lo[sym].iloc[-1] * m)), 2), "mid": round(float(px), 2),
+                            "hi": round(float(px * np.exp(hi[sym].iloc[-1] * m)), 2)})
+            if pts:
+                cones.setdefault(sym, {})[str(H)] = pts
+    return cones, coverage
+
+
 def family_auc(cal, X) -> list:
     fams = {}
     for f in FEATURE_NAMES:
@@ -116,12 +192,14 @@ def family_auc(cal, X) -> list:
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--bandar", type=int, default=0, help="pull 14-day per-broker daily rows for N stocks (1 credit each)")
     ap.add_argument("--brokers", type=int, default=0,
                     help="pull broker fingerprints for the top-N ranked names (2 credits each)")
     args = ap.parse_args()
     t0 = time.time()
 
-    conn = sqlite3.connect(config.WAREHOUSE_DB)
+    from arus.ingest import connect as warehouse
+    conn = warehouse()
     panel = load_panel(conn)
     X, aux = build_features(panel)
     print(f"[build] features: {len(X):,} stock-days, {X.index.get_level_values('symbol').nunique()} "
@@ -129,6 +207,7 @@ def main():
 
     rank = None
     models = {}
+    verdict_hist = {}
     for H in HORIZONS:
         cal = walk_forward(X, aux, H)
         m = cal.metrics
@@ -150,7 +229,7 @@ def main():
         part[f"drivers_pos_{H}"] = part.apply(lambda r: drivers(r, True), axis=1)
         part[f"drivers_neg_{H}"] = part.apply(lambda r: drivers(r, False), axis=1)
         if rank is None:
-            rank = today[FEATURE_NAMES].join(part)
+            rank = today[FEATURE_NAMES + ["group"]].join(part)
         else:
             rank = rank.join(part)
         models[H] = {
@@ -162,7 +241,13 @@ def main():
             "intercept": float(cal.final_w[0]),
             "familyAuc": family_auc(cal, X),
             "calibration": {"a": float(cal.platt[0]), "b": float(cal.platt[1])},
+            "equity": equity_curve(cal.oos, H),
+            "shape": cal.shape,
+            "groupWeights": cal.group_weights,
         }
+        q = pd.concat([cal.oos[["date", "symbol", "q"]], score_dates(X, cal, str(cal.oos["date"].max()))])
+        q["v"] = np.select([q["q"] >= 0.9, q["q"] >= 0.7, q["q"] > 0.3, q["q"] > 0.1], [4, 3, 2, 1], 0)
+        verdict_hist[H] = {(d, s_): int(v) for d, s_, v in zip(q["date"], q["symbol"], q["v"])}
 
     rank = rank.reset_index().rename(columns={"index": "symbol"})
     rank = rank.sort_values(f"conf_{PRIMARY}", ascending=False)
@@ -175,11 +260,18 @@ def main():
         picks = rank["symbol"].head(n_top).tolist() + rank["symbol"].tail(args.brokers - n_top).tolist()
         pull_broker_top(c, conn, picks)
         print(f"[build] brokers · {c.summary()}", flush=True)
+    if args.bandar:
+        c = SectorsClient(credit_cap=args.bandar + 4)
+        n_top = max(1, args.bandar * 2 // 3)
+        picks = rank["symbol"].head(n_top).tolist() + rank["symbol"].tail(args.bandar - n_top).tolist()
+        pull_broker_daily(c, conn, picks)
+        print(f"[build] bandar daily · {c.summary()}", flush=True)
 
     fund = context.fundamental_context(conn)
     insider = context.insider_context(conn)
     susp = context.suspension_set(conn)
     brokers = context.load_broker_evidence(conn)
+    bandar = context.bandar_daily(conn)
     anomalies = context.anomaly_radar(aux, rank["symbol"].tolist())
     levels = trading_levels(aux, rank["symbol"].tolist())
 
@@ -191,6 +283,8 @@ def main():
     rank["turnover_med_20"] = rank["symbol"].map(aux["tv"].tail(20).median())
     rank["ff_net_20"] = rank["symbol"].map(aux["net"].tail(20).sum(min_count=1))
     rank["ff_net_5"] = rank["symbol"].map(aux["net"].tail(5).sum(min_count=1))
+    for k, b in aux.get("betas", {}).items():
+        rank[f"beta_{k}"] = rank["symbol"].map(b)
     sharia = dict(conn.execute("SELECT symbol, COALESCE(jii70, 0) FROM companies").fetchall()) \
         if "jii70" in [r[1] for r in conn.execute("PRAGMA table_info(companies)")] else {}
     rank["sharia"] = rank["symbol"].map(lambda s: bool(sharia.get(s))) if sharia else None
@@ -207,6 +301,11 @@ def main():
                            "v": aux["volume"][s].values, "f": aux["net"][s].values})
         df = df.dropna(subset=["c"])
         series[s] = {k: (df[k].round(2).tolist() if k != "date" else df[k].tolist()) for k in df.columns}
+        for H, vh in verdict_hist.items():
+            series[s][f"v{H}"] = [vh.get((d, s)) for d in series[s]["date"]]
+
+    cones, cone_cov = forecast_cones(aux["close"])
+    print(f"[build] forecast cones: {[(h, round(v['raw'], 3), '->', round(v['calibrated'], 3), 'x' + str(v['factor'])) for h, v in cone_cov.items()]}", flush=True)
 
     mkt = pd.DataFrame({"date": aux["dates"], "ihsg": aux["ihsg"].values})
     ff_ihsg = pd.read_sql("SELECT date, net FROM foreign_flow WHERE symbol='IHSG'", conn)
@@ -224,9 +323,16 @@ def main():
         fam.setdefault(FEATURES[f][0], []).append(f)
     drop = {"excess_fwd", "contaminated", "name_y", "sector_y", "sub_sector_y"}
     rank = rank[[c for c in rank.columns if c not in drop]]
+    macro_df = __import__("arus.macro", fromlist=["load"]).load(conn)
+    macro_recent = {k: {"last": float(macro_df[k].dropna().iloc[-1]), "date": str(macro_df[k].dropna().index[-1]),
+                        **aux.get("factor_moves", {}).get(k, {})} for k in macro_df.columns}
+    macro_series = {k: {"date": [str(d) for d in macro_df[k].dropna().index[-260:]],
+                        "v": [round(float(v), 4) for v in macro_df[k].dropna().values[-260:]]} for k in macro_df.columns}
     bundle = {"meta": meta, "models": {str(k): v for k, v in models.items()},
+              "macro": {"recent": macro_recent, "series": macro_series},
               "ranking": _records(rank), "sectors": _records(sectors),
-              "sectorTs": _records(sector_ts), "market": _records(mkt), "brokers": brokers,
+              "sectorTs": _records(sector_ts), "market": _records(mkt), "brokers": brokers, "bandar": bandar,
+              "cones": cones, "coneCoverage": cone_cov,
               "families": fam}
 
     snap = config.SNAPSHOT_DIR

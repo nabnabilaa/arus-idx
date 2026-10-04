@@ -1,6 +1,7 @@
 "use client";
 
 import { scaleBand, scaleLinear } from "d3-scale";
+import { line as d3line } from "d3-shape";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { C, useWidth } from "./kit";
@@ -8,8 +9,10 @@ import { Segmented } from "@/components/ui";
 import { dateLabel, idr, price, signed } from "@/lib/format";
 import { useLang, type Bi } from "@/lib/i18n";
 import type { Candles } from "@/lib/types";
+import { VERDICT, VERDICT_ORDER } from "@/lib/verdict";
 
 type Level = { value: number; label: Bi; color: string };
+export type Cone = { steps: number; lo: number; mid: number; hi: number }[];
 
 const RANGES: { key: string; n: number; label: Bi }[] = [
   { key: "1m", n: 21, label: { id: "1B", en: "1M" } },
@@ -18,47 +21,146 @@ const RANGES: { key: string; n: number; label: Bi }[] = [
   { key: "1y", n: 9999, label: { id: "1T", en: "1Y" } },
 ];
 
-/** TradingView-style chart: candles, volume and foreign-flow panes on one synced crosshair. */
-export function CandleChart({ data, levels = [], height = 460 }: { data: Candles; levels?: Level[]; height?: number }) {
+type Toggle = "ma20" | "ma50" | "vp" | "ihsg" | "arus" | "cone";
+const TOGGLES: { key: Toggle; label: Bi; color: string }[] = [
+  { key: "arus", label: { id: "Jejak Arus", en: "Arus trail" }, color: "#5cc8ff" },
+  { key: "cone", label: { id: "Perkiraan", en: "Forecast" }, color: "#5cc8ff" },
+  { key: "ma20", label: { id: "MA20", en: "MA20" }, color: "#fab219" },
+  { key: "ma50", label: { id: "MA50", en: "MA50" }, color: "#e87ba4" },
+  { key: "vp", label: { id: "Profil volume", en: "Volume profile" }, color: "#9085e9" },
+  { key: "ihsg", label: { id: "vs IHSG", en: "vs IHSG" }, color: "#aab5c7" },
+];
+
+const VCODE = ["caution", "weak", "neutral", "edge", "strong"] as const;
+
+function sma(arr: number[], n: number) {
+  return arr.map((_, i) => (i + 1 < n ? null : arr.slice(i + 1 - n, i + 1).reduce((a, b) => a + b, 0) / n));
+}
+
+/**
+ * Price, volume and foreign-flow panes on one crosshair, plus what no charting tool has:
+ * the trail of what Arus said on each past day and what happened next, and a forecast
+ * cone whose width was checked against history.
+ */
+export function CandleChart({
+  data,
+  levels = [],
+  ihsg,
+  horizon,
+  cone,
+  height = 500,
+}: {
+  data: Candles;
+  levels?: Level[];
+  ihsg?: { date: string; v: number | null }[];
+  horizon: 1 | 20;
+  cone?: Cone;
+  height?: number;
+}) {
   const { tx, lang } = useLang();
   const [ref, w] = useWidth<HTMLDivElement>();
   const [range, setRange] = useState("3m");
+  const [on, setOn] = useState<Record<Toggle, boolean>>({ arus: true, cone: true, ma20: false, ma50: false, vp: false, ihsg: false });
   const [hover, setHover] = useState<number | null>(null);
+  const flip = (k: Toggle) => setOn((s) => ({ ...s, [k]: !s[k] }));
 
+  const all = useMemo(
+    () =>
+      data.date.map((d, i) => ({
+        d,
+        o: data.o[i] ?? data.c[i],
+        h: data.h[i] ?? data.c[i],
+        l: data.l[i] ?? data.c[i],
+        c: data.c[i],
+        v: data.v[i] ?? 0,
+        f: data.f[i] ?? 0,
+        verdict: (horizon === 1 ? data.v1 : data.v20)?.[i] ?? null,
+      })),
+    [data, horizon],
+  );
+  const ma20All = useMemo(() => sma(all.map((r) => r.c), 20), [all]);
+  const ma50All = useMemo(() => sma(all.map((r) => r.c), 50), [all]);
   const n = RANGES.find((r) => r.key === range)!.n;
-  const rows = useMemo(() => {
-    const all = data.date.map((d, i) => ({ d, o: data.o[i] ?? data.c[i], h: data.h[i] ?? data.c[i], l: data.l[i] ?? data.c[i], c: data.c[i], v: data.v[i] ?? 0, f: data.f[i] ?? 0 }));
-    return all.slice(-n);
-  }, [data, n]);
+  const start = Math.max(0, all.length - n);
+  const rows = all.slice(start);
+  const ma20 = ma20All.slice(start);
+  const ma50 = ma50All.slice(start);
 
+  const ihsgMap = useMemo(() => new Map((ihsg ?? []).map((p) => [p.date, p.v])), [ihsg]);
+  const ihsgRows = rows.map((r) => ihsgMap.get(r.d) ?? null);
+  const ihsgBase = ihsgRows.find((v) => v != null) ?? null;
+  const ihsgRebased = ihsgRows.map((v) => (v != null && ihsgBase ? (v / ihsgBase) * rows[0].c : null));
+
+  const coneSteps = on.cone && cone?.length ? cone[cone.length - 1].steps : 0;
   const axisW = 58;
-  const pH = Math.round(height * 0.62);
-  const vH = Math.round(height * 0.14);
-  const fH = height - pH - vH - 28;
+  const strip = on.arus ? 14 : 0;
+  const pH = Math.round(height * 0.58);
+  const vH = Math.round(height * 0.12);
   const gap = 8;
+  const fH = height - pH - vH - strip - 34 - (strip ? gap : 0);
   const plotW = Math.max(10, w - axisW);
+  const slots = rows.length + coneSteps;
+  const x = scaleBand<number>().domain(Array.from({ length: slots }, (_, i) => i)).range([0, plotW]).paddingInner(slots > 90 ? 0.18 : 0.3);
 
-  const x = scaleBand<number>().domain(rows.map((_, i) => i)).range([0, plotW]).paddingInner(rows.length > 90 ? 0.18 : 0.3);
+  const visLevels = levels.filter((lv) => Number.isFinite(lv.value));
+  const extra = [
+    ...(on.ma20 ? (ma20.filter((v) => v != null) as number[]) : []),
+    ...(on.ma50 ? (ma50.filter((v) => v != null) as number[]) : []),
+    ...(on.ihsg ? (ihsgRebased.filter((v) => v != null) as number[]) : []),
+    ...(coneSteps ? cone!.flatMap((c) => [c.lo, c.hi]) : []),
+  ];
   const lows = rows.map((r) => r.l);
   const highs = rows.map((r) => r.h);
-  const visLevels = levels.filter((lv) => Number.isFinite(lv.value));
-  const lo = Math.min(...lows, ...visLevels.map((l) => l.value).filter((v) => v > Math.min(...lows) * 0.85));
-  const hi = Math.max(...highs, ...visLevels.map((l) => l.value).filter((v) => v < Math.max(...highs) * 1.15));
-  const pad = (hi - lo) * 0.06 || hi * 0.02;
-  const yP = scaleLinear().domain([lo - pad, hi + pad]).range([pH, 8]).nice(5);
-  const yV = scaleLinear().domain([0, Math.max(...rows.map((r) => r.v), 1)]).range([pH + gap + vH, pH + gap + 4]);
+  const lo = Math.min(...lows, ...extra, ...visLevels.map((l) => l.value).filter((v) => v > Math.min(...lows) * 0.85));
+  const hi = Math.max(...highs, ...extra, ...visLevels.map((l) => l.value).filter((v) => v < Math.max(...highs) * 1.15));
+  const padY = (hi - lo) * 0.06 || hi * 0.02;
+  const yP = scaleLinear().domain([lo - padY, hi + padY]).range([pH, 8]).nice(5);
+  const stripTop = pH + gap;
+  const vTop = stripTop + strip + (strip ? gap : 0);
+  const yV = scaleLinear().domain([0, Math.max(...rows.map((r) => r.v), 1)]).range([vTop + vH, vTop + 4]);
   const fExt = Math.max(...rows.map((r) => Math.abs(r.f)), 1);
-  const fTop = pH + gap + vH + gap + 14;
+  const fTop = vTop + vH + gap + 14;
   const yF = scaleLinear().domain([-fExt, fExt]).range([fTop + fH, fTop]);
+  const cx = (i: number) => x(i)! + x.bandwidth() / 2;
 
-  const cur = hover != null ? rows[hover] : rows[rows.length - 1];
-  const prevC = hover != null && hover > 0 ? rows[hover - 1].c : rows.length > 1 ? rows[rows.length - 2].c : cur?.c;
+  // volume profile: traded volume per price bucket over the visible window
+  const vp = useMemo(() => {
+    if (!on.vp) return null;
+    const bins = 24;
+    const [a, b] = yP.domain();
+    const step = (b - a) / bins;
+    const acc = new Array(bins).fill(0);
+    rows.forEach((r) => {
+      const typ = (r.h + r.l + r.c) / 3;
+      const k = Math.min(bins - 1, Math.max(0, Math.floor((typ - a) / step)));
+      acc[k] += r.v;
+    });
+    const max = Math.max(...acc, 1);
+    const poc = acc.indexOf(max);
+    return { acc, step, a, max, poc };
+  }, [on.vp, rows, yP]);
+
+  const cur = hover != null && hover < rows.length ? rows[hover] : rows[rows.length - 1];
+  const curIdx = hover != null && hover < rows.length ? hover : rows.length - 1;
+  const prevC = curIdx > 0 ? rows[curIdx - 1].c : cur?.c;
   const chg = cur && prevC ? cur.c / prevC - 1 : 0;
+
+  // what happened `horizon` sessions after the hovered day
+  const outcome = (() => {
+    if (hover == null || hover >= rows.length) return null;
+    const gi = start + hover;
+    const later = all[gi + horizon];
+    if (!later) return null;
+    const ret = later.c / all[gi].c - 1;
+    const i0 = ihsgMap.get(all[gi].d);
+    const i1 = ihsgMap.get(later.d);
+    const rel = i0 && i1 ? ret - (i1 / i0 - 1) : null;
+    return { ret, rel };
+  })();
 
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const i = Math.floor(px / (plotW / rows.length));
+    const i = Math.floor((e.clientX - rect.left) / (plotW / slots));
     setHover(i >= 0 && i < rows.length ? i : null);
   };
 
@@ -66,6 +168,15 @@ export function CandleChart({ data, levels = [], height = 460 }: { data: Candles
     .map((r, i) => ({ i, d: r.d }))
     .filter((t, k, arr) => k === 0 || t.d.slice(0, 7) !== arr[k - 1].d.slice(0, 7))
     .filter((_, k, arr) => arr.length <= 8 || k % 2 === 0);
+
+  const linePath = (vals: (number | null)[]) =>
+    d3line<number | null>()
+      .defined((v) => v != null)
+      .x((_, i) => cx(i))
+      .y((v) => yP(v as number))(vals) ?? "";
+
+  const last = rows.length - 1;
+  const hv = hover != null ? rows[hover]?.verdict : null;
 
   return (
     <div>
@@ -82,30 +193,51 @@ export function CandleChart({ data, levels = [], height = 460 }: { data: Candles
         )}
         <Segmented label={tx({ id: "Rentang waktu", en: "Time range" })} value={range} onChange={setRange} options={RANGES.map((r) => ({ value: r.key, label: tx(r.label) }))} />
       </div>
+      <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label={tx({ id: "Lapisan grafik", en: "Chart layers" })}>
+        {TOGGLES.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => flip(t.key)}
+            aria-pressed={on[t.key]}
+            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] ring-1 transition-colors duration-150 ${
+              on[t.key] ? "bg-raised text-ink ring-line-strong" : "text-muted ring-line hover:text-ink-2"
+            }`}
+          >
+            <span className="h-2 w-2 rounded-full" style={{ background: on[t.key] ? t.color : "transparent", boxShadow: `inset 0 0 0 1.5px ${t.color}` }} />
+            {tx(t.label)}
+          </button>
+        ))}
+      </div>
+
       <div ref={ref} className="relative w-full select-none" style={{ height }}>
         {w > 0 && rows.length > 1 && (
           <svg width={w} height={height} onPointerMove={onMove} onPointerLeave={() => setHover(null)} className="touch-none">
             {yP.ticks(5).map((t) => {
               const yy = yP(t);
-              const clash =
-                visLevels.some((lv) => Math.abs(yP(lv.value) - yy) < 14) ||
-                Math.abs(yP(rows[rows.length - 1].c) - yy) < 14 ||
-                (hover != null && Math.abs(yP(rows[hover].c) - yy) < 14);
+              const clash = visLevels.some((lv) => Math.abs(yP(lv.value) - yy) < 14) || Math.abs(yP(rows[last].c) - yy) < 14 || (hover != null && Math.abs(yP(rows[hover].c) - yy) < 14);
               return (
                 <g key={t}>
                   <line x1={0} x2={plotW} y1={yy} y2={yy} stroke={C.grid} />
                   {!clash && (
-                    <text x={plotW + 8} y={yy} dy="0.32em" fontSize={11} fill={C.muted} className="num">{price(t, lang)}</text>
+                    <text x={plotW + 8} y={yy} dy="0.32em" fontSize={11} fill={C.muted} className="num">
+                      {price(t, lang)}
+                    </text>
                   )}
                 </g>
               );
             })}
-            {hover == null && (
+
+            {vp && (
               <g pointerEvents="none">
-                <rect x={plotW + 2} y={yP(rows[rows.length - 1].c) - 9} width={axisW - 4} height={18} rx={4} fill={rows[rows.length - 1].c >= rows[rows.length - 1].o ? C.up : C.down} />
-                <text x={plotW + 6} y={yP(rows[rows.length - 1].c)} dy="0.32em" fontSize={10.5} fill="#fff" className="num">{price(rows[rows.length - 1].c, lang)}</text>
+                {vp.acc.map((v, k) => {
+                  const y0 = yP(vp.a + (k + 1) * vp.step);
+                  const y1 = yP(vp.a + k * vp.step);
+                  const bw = (v / vp.max) * plotW * 0.28;
+                  return <rect key={k} x={plotW - bw} y={y0 + 1} width={bw} height={Math.max(1, y1 - y0 - 2)} fill="#9085e9" fillOpacity={k === vp.poc ? 0.45 : 0.18} rx={2} />;
+                })}
               </g>
             )}
+
             {monthTicks.map((t) => (
               <text key={t.d} x={x(t.i)} y={height - 4} fontSize={10.5} fill={C.muted}>
                 {dateLabel(t.d, lang, { day: undefined, year: rows.length > 130 ? "2-digit" : undefined, month: "short" })}
@@ -115,20 +247,44 @@ export function CandleChart({ data, levels = [], height = 460 }: { data: Candles
             {visLevels.map((lv) => {
               const yy = yP(lv.value);
               if (yy < 4 || yy > pH) return null;
-              const nearLast = Math.abs(yP(rows[rows.length - 1].c) - yy) < 14;
+              const nearLast = Math.abs(yP(rows[last].c) - yy) < 14;
               return (
                 <g key={lv.label.en}>
-                  <line x1={0} x2={plotW} y1={yy} y2={yy} stroke={lv.color} strokeDasharray="5 5" strokeOpacity={0.75} />
+                  <line x1={0} x2={plotW} y1={yy} y2={yy} stroke={lv.color} strokeDasharray="5 5" strokeOpacity={0.7} />
                   {!nearLast && (
                     <>
                       <rect x={plotW + 2} y={yy - 9} width={axisW - 4} height={18} rx={4} fill={lv.color} fillOpacity={0.18} />
-                      <text x={plotW + 6} y={yy} dy="0.32em" fontSize={10.5} fill={lv.color} className="num">{price(lv.value, lang)}</text>
+                      <text x={plotW + 6} y={yy} dy="0.32em" fontSize={10.5} fill={lv.color} className="num">
+                        {price(lv.value, lang)}
+                      </text>
                     </>
                   )}
-                  <text x={6} y={yy - 5} fontSize={10.5} fill={lv.color}>{tx(lv.label)}</text>
+                  <text x={6} y={yy - 5} fontSize={10.5} fill={lv.color}>
+                    {tx(lv.label)}
+                  </text>
                 </g>
               );
             })}
+
+            {coneSteps > 0 && (
+              <g pointerEvents="none">
+                <motion.path
+                  d={`M ${cx(last)} ${yP(rows[last].c)} ${cone!.map((c) => `L ${cx(last + c.steps)} ${yP(c.hi)}`).join(" ")} ${[...cone!].reverse().map((c) => `L ${cx(last + c.steps)} ${yP(c.lo)}`).join(" ")} Z`}
+                  fill="#5cc8ff"
+                  fillOpacity={0.1}
+                  stroke="#5cc8ff"
+                  strokeOpacity={0.35}
+                  strokeDasharray="3 3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.6 }}
+                />
+                <path d={`M ${cx(last)} ${yP(rows[last].c)} ${cone!.map((c) => `L ${cx(last + c.steps)} ${yP(c.mid)}`).join(" ")}`} fill="none" stroke="#5cc8ff" strokeWidth={1.5} strokeDasharray="2 3" />
+                <text x={cx(last + coneSteps)} y={yP(cone![cone!.length - 1].hi) - 6} fontSize={10.5} fill="#5cc8ff" textAnchor="end">
+                  {tx({ id: "rentang 80%", en: "80% range" })}
+                </text>
+              </g>
+            )}
 
             {rows.map((r, i) => {
               const up = r.c >= r.o;
@@ -140,21 +296,35 @@ export function CandleChart({ data, levels = [], height = 460 }: { data: Candles
               return (
                 <g key={r.d} opacity={hover == null || hover === i ? 1 : 0.55}>
                   <line x1={xx + bw / 2} x2={xx + bw / 2} y1={yP(r.h)} y2={yP(r.l)} stroke={col} strokeWidth={1} />
-                  <rect x={xx} y={top} width={Math.max(1, bw)} height={bh} fill={up ? col : col} fillOpacity={up ? 0.9 : 0.9} rx={Math.min(1.5, bw / 3)} />
+                  <rect x={xx} y={top} width={Math.max(1, bw)} height={bh} fill={col} fillOpacity={0.9} rx={Math.min(1.5, bw / 3)} />
+                  {on.arus && r.verdict != null && <rect x={xx} y={stripTop} width={Math.max(1, x.step())} height={strip} fill={VERDICT[VCODE[r.verdict]].color} fillOpacity={hover == null || hover === i ? 0.85 : 0.45} />}
                   <rect x={xx} y={yV(r.v)} width={Math.max(1, bw)} height={Math.max(0.5, yV(0) - yV(r.v))} fill={col} fillOpacity={0.35} />
-                  <rect
-                    x={xx}
-                    y={Math.min(yF(0), yF(r.f))}
-                    width={Math.max(1, bw)}
-                    height={Math.max(0.5, Math.abs(yF(r.f) - yF(0)))}
-                    fill={r.f >= 0 ? C.up : C.down}
-                    fillOpacity={0.85}
-                  />
+                  <rect x={xx} y={Math.min(yF(0), yF(r.f))} width={Math.max(1, bw)} height={Math.max(0.5, Math.abs(yF(r.f) - yF(0)))} fill={r.f >= 0 ? C.up : C.down} fillOpacity={0.85} />
                 </g>
               );
             })}
 
-            <text x={4} y={pH + gap + 14} fontSize={10.5} fill={C.muted}>Volume</text>
+            {on.ma20 && <path d={linePath(ma20)} fill="none" stroke="#fab219" strokeWidth={1.5} />}
+            {on.ma50 && <path d={linePath(ma50)} fill="none" stroke="#e87ba4" strokeWidth={1.5} />}
+            {on.ihsg && <path d={linePath(ihsgRebased)} fill="none" stroke="#aab5c7" strokeWidth={1.5} strokeDasharray="4 3" />}
+
+            {hover == null && (
+              <g pointerEvents="none">
+                <rect x={plotW + 2} y={yP(rows[last].c) - 9} width={axisW - 4} height={18} rx={4} fill={rows[last].c >= rows[last].o ? C.up : C.down} />
+                <text x={plotW + 6} y={yP(rows[last].c)} dy="0.32em" fontSize={10.5} fill="#fff" className="num">
+                  {price(rows[last].c, lang)}
+                </text>
+              </g>
+            )}
+
+            {on.arus && (
+              <text x={4} y={stripTop - 3} fontSize={10.5} fill={C.muted}>
+                {tx({ id: horizon === 1 ? "Jejak penilaian Arus (besok)" : "Jejak penilaian Arus (1 bulan)", en: horizon === 1 ? "Arus verdict trail (next day)" : "Arus verdict trail (1 month)" })}
+              </text>
+            )}
+            <text x={4} y={vTop + 12} fontSize={10.5} fill={C.muted}>
+              Volume
+            </text>
             <line x1={0} x2={plotW} y1={yF(0)} y2={yF(0)} stroke={C.axis} />
             <text x={4} y={fTop - 2} fontSize={10.5} fill={C.muted}>
               {tx({ id: "Dana asing (biru beli · merah jual)", en: "Foreign flow (blue buy · red sell)" })}
@@ -162,25 +332,60 @@ export function CandleChart({ data, levels = [], height = 460 }: { data: Candles
 
             {hover != null && (
               <g pointerEvents="none">
-                <line x1={x(hover)! + x.bandwidth() / 2} x2={x(hover)! + x.bandwidth() / 2} y1={4} y2={fTop + fH} stroke={C.axis} strokeDasharray="3 3" />
+                <line x1={cx(hover)} x2={cx(hover)} y1={4} y2={fTop + fH} stroke={C.axis} strokeDasharray="3 3" />
                 <line x1={0} x2={plotW} y1={yP(rows[hover].c)} y2={yP(rows[hover].c)} stroke={C.axis} strokeDasharray="3 3" />
                 <rect x={plotW + 2} y={yP(rows[hover].c) - 9} width={axisW - 4} height={18} rx={4} fill="#e9eef6" />
-                <text x={plotW + 6} y={yP(rows[hover].c)} dy="0.32em" fontSize={10.5} fill="#070b14" className="num">{price(rows[hover].c, lang)}</text>
+                <text x={plotW + 6} y={yP(rows[hover].c)} dy="0.32em" fontSize={10.5} fill="#070b14" className="num">
+                  {price(rows[hover].c, lang)}
+                </text>
               </g>
             )}
           </svg>
         )}
+
         {hover != null && rows[hover] && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="pointer-events-none absolute left-2 rounded-md bg-raised/90 px-2 py-1 text-[11px] text-ink-2 ring-1 ring-line backdrop-blur"
-            style={{ top: fTop + fH - 34 }}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.12 }}
+            className="pointer-events-none absolute z-20 min-w-48 rounded-lg border border-line-strong bg-raised/95 px-3 py-2 text-[12px] text-ink-2 shadow-[0_10px_30px_-8px_rgb(0_0_0/0.7)] backdrop-blur-md"
+            style={{ left: Math.min(Math.max(8, cx(hover) - 100), Math.max(8, w - 220)), top: stripTop + strip + 6 }}
           >
-            <span className="num">{tx({ id: "Asing", en: "Foreign" })} <span className={rows[hover].f >= 0 ? "text-up" : "text-down"}>{idr(rows[hover].f, lang)}</span></span>
+            {hv != null && on.arus && (
+              <div className="mb-1">
+                {tx({ id: "Arus saat itu:", en: "Arus then:" })} <span className="font-semibold" style={{ color: VERDICT[VCODE[hv]].color }}>{tx(VERDICT[VCODE[hv]].label)}</span>
+              </div>
+            )}
+            {outcome && (
+              <div className="num">
+                {tx({ id: `${horizon} hari bursa kemudian:`, en: `${horizon} sessions later:` })}{" "}
+                <span className={outcome.ret >= 0 ? "text-up" : "text-down"}>{signed(outcome.ret * 100, 1, "%")}</span>
+                {outcome.rel != null && (
+                  <span className="text-muted">
+                    {" "}
+                    ({signed(outcome.rel * 100, 1, "%")} vs IHSG)
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="num text-muted">
+              {tx({ id: "Asing", en: "Foreign" })} <span className={rows[hover].f >= 0 ? "text-up" : "text-down"}>{idr(rows[hover].f, lang)}</span>
+            </div>
           </motion.div>
         )}
       </div>
+      {on.arus && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
+          <span>{tx({ id: "Warna jejak:", en: "Trail colours:" })}</span>
+          {VERDICT_ORDER.slice().reverse().map((k) => (
+            <span key={k} className="inline-flex items-center gap-1">
+              <span className="h-2 w-3 rounded-sm" style={{ background: VERDICT[k].color }} />
+              {tx(VERDICT[k].short)}
+            </span>
+          ))}
+          <span>· {tx({ id: "arahkan kursor untuk melihat apa yang terjadi sesudahnya", en: "hover to see what happened next" })}</span>
+        </div>
+      )}
     </div>
   );
 }

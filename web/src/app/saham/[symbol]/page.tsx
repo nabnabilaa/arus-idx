@@ -26,10 +26,15 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
       stock={stock}
       candles={series[symbol] ?? null}
       broker={bundle.brokers[symbol] ?? null}
+      bandar={bundle.bandar?.[symbol] ?? null}
+      macro={bundle.macro}
       cal={cal}
       weights={weights}
       families={bundle.families}
       total={bundle.ranking.length}
+      ihsg={bundle.market.map((m) => ({ date: m.date, v: m.ihsg }))}
+      cone={bundle.cones?.[symbol] ? { 1: bundle.cones[symbol]["1"] ?? [], 20: bundle.cones[symbol]["20"] ?? [] } : null}
+      coneCoverage={bundle.coneCoverage ?? null}
       peers={bundle.ranking
         .filter((r) => r.sub_sector === stock.sub_sector && r.symbol !== symbol)
         .slice(0, 8)

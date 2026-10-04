@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { DecileBars, DivergingBars, Reliability } from "@/components/charts/analytics";
+import { EquityChart } from "@/components/charts/equity";
 import { ChartTitle } from "@/components/charts/kit";
 import { Term } from "@/components/term";
 import { HorizonToggle } from "@/components/ui";
@@ -80,6 +81,28 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
           </span>
         </div>
       </motion.header>
+
+      <section className="mt-12 rounded-2xl bg-surface p-5 ring-1 ring-line sm:p-7">
+        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          <T id="Kalau sejak April mengikuti Arus" en="If you had followed Arus since April" />
+        </h2>
+        <p className="mt-2 max-w-[75ch] text-[14px] leading-relaxed text-muted">
+          {horizon === 20 ? (
+            <T
+              id="Simulasi backtest out-of-sample: setiap hari 1/20 dana dipindah ke saham “Sangat diunggulkan” dan ditahan sebulan (cara standar membagi dana menjadi 20 tahap). Garis nol = IHSG. Garis putus-putus sudah dikurangi biaya transaksi ±0,4% per putaran."
+              en="Out-of-sample backtest: each day 1/20 of the money moves into “Strong edge” stocks and is held a month (the standard 20-tranche method). Zero line = IHSG. The dashed line deducts ~0.4% trading cost per round trip."
+            />
+          ) : (
+            <T
+              id="Simulasi backtest out-of-sample: setiap hari membeli saham “Sangat diunggulkan” dan menjualnya besok. Garis nol = IHSG. Garis putus-putus sudah dikurangi biaya ±0,4% per hari, dan hasilnya negatif: skor besok berguna sebagai saringan dan penentu waktu, bukan untuk beli-jual setiap hari."
+              en="Out-of-sample backtest: buy “Strong edge” stocks each day and sell next day. Zero line = IHSG. The dashed line deducts ~0.4% daily cost and turns negative: the next-day score is a filter and timing aid, not a daily trading strategy."
+            />
+          )}
+        </p>
+        <div className="mt-6">
+          <EquityChart data={M.equity} />
+        </div>
+      </section>
 
       <div className="mt-12 grid gap-x-12 gap-y-10 md:grid-cols-2">
         {answers.map((x, i) => (

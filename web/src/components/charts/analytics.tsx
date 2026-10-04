@@ -196,10 +196,12 @@ export function SectorMap({
   rows,
   height = 480,
   label,
+  onSelect,
 }: {
   rows: { key: string; x: number; y: number; n: number; note: string }[];
   height?: number;
   label: (k: string) => string;
+  onSelect?: (key: string) => void;
 }) {
   const [ref, w] = useWidth<HTMLDivElement>();
   const { tx } = useLang();
@@ -245,7 +247,7 @@ export function SectorMap({
           {sorted.map((r, i) => {
             const good = r.x > 0 && r.y > 0;
             return (
-              <g key={r.key} onPointerEnter={() => setHover(r.key)} onPointerLeave={() => setHover(null)} style={{ cursor: "default" }}>
+              <g key={r.key} onPointerEnter={() => setHover(r.key)} onPointerLeave={() => setHover(null)} onClick={() => onSelect?.(r.key)} style={{ cursor: onSelect ? "pointer" : "default" }}>
                 <motion.circle
                   cx={x(r.x)}
                   cy={y(r.y)}

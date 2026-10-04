@@ -262,7 +262,7 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
         {tab === "berita" && (
       <section>
         {news && news.length > 0 ? (
-          <NewsList items={news} columns />
+          <NewsList items={news} searchable />
         ) : (
           <p className="py-10 text-[14px] text-muted">
             <T id="Belum ada berita." en="No news yet." />

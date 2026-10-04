@@ -5,11 +5,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import { CandleChart, type Cone } from "@/components/charts/candles";
-import { DivergingBars } from "@/components/charts/analytics";
 import { BandarBars } from "@/components/charts/bandar";
 import { BrokerBehaviour, NewsList } from "@/components/brokers";
 import { BrokerSummaryView } from "@/components/broker-summary";
 import { FinanceTab } from "@/components/finance";
+import { GlobalView } from "@/components/global";
 import { Perspectives } from "@/components/perspectives";
 import { Tabs } from "@/components/tabs";
 import { TradeSim } from "@/components/trade-sim";
@@ -19,7 +19,7 @@ import { SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, pct, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { BROKER_VERDICT, reasonMeaning, risks } from "@/lib/narrative";
-import type { Broker, BrokerProfile, BrokerSummary, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, MacroKey, NewsItem, Stock } from "@/lib/types";
+import type { Broker, BrokerProfile, BrokerSummary, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, NewsItem, Stock } from "@/lib/types";
 import { get, verdictOf } from "@/lib/verdict";
 
 type BandarDaily = NonNullable<Bundle["bandar"]>[string];
@@ -48,14 +48,6 @@ type Props = {
 type Tab = "ringkasan" | "simulasi" | "bandar" | "keuangan" | "berita" | "global" | "harian";
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-const MACRO_INFO: Record<MacroKey, { name: Bi; unit: Bi; scale: number; up: Bi; down: Bi }> = {
-  idr: { name: { id: "Rupiah", en: "Rupiah" }, unit: { id: "rupiah melemah 1%", en: "rupiah weakens 1%" }, scale: 0.01, up: { id: "melemah", en: "weakened" }, down: { id: "menguat", en: "strengthened" } },
-  oil: { name: { id: "Minyak Brent", en: "Brent oil" }, unit: { id: "minyak naik 1%", en: "oil rises 1%" }, scale: 0.01, up: { id: "naik", en: "rose" }, down: { id: "turun", en: "fell" } },
-  spx: { name: { id: "Saham AS (S&P 500)", en: "US stocks (S&P 500)" }, unit: { id: "S&P 500 naik 1%", en: "S&P 500 rises 1%" }, scale: 0.01, up: { id: "naik", en: "rose" }, down: { id: "turun", en: "fell" } },
-  vix: { name: { id: "Rasa takut global (VIX)", en: "Global fear (VIX)" }, unit: { id: "VIX naik 1 poin", en: "VIX rises 1 point" }, scale: 1, up: { id: "naik", en: "rose" }, down: { id: "turun", en: "fell" } },
-  usd: { name: { id: "Dolar AS", en: "US dollar" }, unit: { id: "dolar menguat 1%", en: "dollar strengthens 1%" }, scale: 0.01, up: { id: "menguat", en: "strengthened" }, down: { id: "melemah", en: "weakened" } },
-  us10y: { name: { id: "Bunga AS 10 tahun", en: "US 10-year yield" }, unit: { id: "yield naik 0,1 poin", en: "yield rises 0.1 pt" }, scale: 0.1, up: { id: "naik", en: "rose" }, down: { id: "turun", en: "fell" } },
-};
 
 export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total, profile, news, summary }: Props) {
   const { tx, lang } = useLang();
@@ -191,7 +183,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
               </div>
             )}
             {tab === "keuangan" && <FinanceTab s={s} fin={fin} peers={peers} />}
-            {tab === "global" && <GlobalTab s={s} macro={macro} />}
+            {tab === "global" && <GlobalView s={s} candles={candles} macro={macro} ihsg={ihsg} />}
             {tab === "harian" && candles && <DailyTab candles={candles} />}
           </motion.div>
         </AnimatePresence>
@@ -288,8 +280,6 @@ function BandarTab({ s, bandar, broker }: { s: Stock; bandar: BandarDaily | null
   const forTot = bandar.foreign.reduce((a, b) => a + b, 0);
   const gap = bandar.bandar_avg && s.price ? s.price / bandar.bandar_avg - 1 : null;
   const streak = bandar.inst_streak;
-  const maxBuy = Math.max(...bandar.top_buy.map((b) => Math.abs(b.net)), 1);
-  const maxSell = Math.max(...bandar.top_sell.map((b) => Math.abs(b.net)), 1);
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -324,111 +314,6 @@ function BandarTab({ s, bandar, broker }: { s: Stock; bandar: BandarDaily | null
         <BandarBars dates={bandar.dates} inst={bandar.inst} retail={bandar.retail} foreign={bandar.foreign} />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {[
-          { title: { id: "Broker pengumpul terbesar", en: "Top accumulating brokers" }, list: bandar.top_buy, max: maxBuy, color: "#3987e5", buy: true },
-          { title: { id: "Broker pelepas terbesar", en: "Top distributing brokers" }, list: bandar.top_sell, max: maxSell, color: "#e66767", buy: false },
-        ].map((col) => (
-          <div key={col.title.en} className="rounded-2xl bg-surface p-5 ring-1 ring-line">
-            <h3 className="text-[15px] font-semibold">{tx(col.title)}</h3>
-            <ul className="mt-4 space-y-3">
-              {col.list.map((b) => (
-                <li key={b.code}>
-                  <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                    <span>
-                      <span className="font-semibold text-ink">{b.code}</span>
-                      <span className="ml-2 text-[11.5px] text-muted">
-                        {b.cohort === "institutional" ? tx({ id: "institusi", en: "institutional" }) : b.cohort === "retail" ? tx({ id: "ritel", en: "retail" }) : b.cohort ?? ""}
-                        {b.foreign ? ` · ${tx({ id: "asing", en: "foreign" })}` : ""}
-                      </span>
-                    </span>
-                    <span className="num text-ink-2">
-                      {idr(b.net, lang)}
-                      {b.avg ? <span className="text-muted"> · @{price(b.avg, lang)}</span> : null}
-                    </span>
-                  </div>
-                  <div className="mt-1 h-1.5 rounded-full bg-raised">
-                    <motion.div className="h-1.5 rounded-full" style={{ background: col.color }} initial={{ width: 0 }} animate={{ width: `${(Math.abs(b.net) / col.max) * 100}%` }} transition={{ duration: 0.6, ease: EASE }} />
-                  </div>
-                  {col.buy && (
-                    <div className="mt-0.5 text-[11px] text-muted">
-                      {tx({ id: `beli bersih di ${b.days_buy} dari ${bandar.dates.length} hari`, en: `net buyer on ${b.days_buy} of ${bandar.dates.length} days` })}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-      <p className="text-[12px] text-muted">
-        <T
-          id="Kelompok broker (institusi/ritel/asing) dari registri broker Sectors. Ditampilkan sebagai konteks; tidak memengaruhi skor karena riwayatnya terlalu pendek untuk diuji."
-          en="Broker cohorts (institutional/retail/foreign) from the Sectors broker registry. Shown as context; not scored because the history is too short to test."
-        />
-      </p>
-    </div>
-  );
-}
-
-function GlobalTab({ s, macro }: { s: Stock; macro: Bundle["macro"] }) {
-  const { tx, lang } = useLang();
-  const keys: MacroKey[] = ["idr", "oil", "spx", "vix", "usd", "us10y"];
-  const rows = keys
-    .map((k) => {
-      const beta = (s as unknown as Record<string, number | null>)[`beta_${k}`];
-      return { k, impact: beta != null ? beta * MACRO_INFO[k].scale : null, d20: macro?.recent?.[k]?.d20 ?? null };
-    })
-    .filter((r) => r.impact != null) as { k: MacroKey; impact: number; d20: number | null }[];
-  const push = rows.reduce((a, r) => a + r.impact * ((r.d20 ?? 0) / MACRO_INFO[r.k].scale), 0);
-  return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-      <div>
-        <h3 className="text-[15px] font-semibold">
-          <T id={`Seberapa sensitif ${s.symbol} terhadap dunia luar`} en={`How sensitive ${s.symbol} is to the outside world`} />
-        </h3>
-        <p className="mt-1 text-[13px] text-muted">
-          <T id="Rata-rata gerak saham ini saat tiap faktor bergerak, dihitung dari 60 hari terakhir perilakunya sendiri." en="How this stock typically moves when each factor moves, from its own last 60 days." />
-        </p>
-        <div className="mt-4">
-          <DivergingBars
-            rowHeight={34}
-            rows={rows.map((r) => ({ key: r.k, label: tx(MACRO_INFO[r.k].name), sub: tx({ id: `jika ${MACRO_INFO[r.k].unit.id}`, en: `if ${MACRO_INFO[r.k].unit.en}` }), value: r.impact }))}
-            format={(v) => signed(v * 100, 2, "%")}
-          />
-        </div>
-      </div>
-      <div>
-        <h3 className="text-[15px] font-semibold">
-          <T id="Apa yang terjadi di luar sebulan terakhir" en="What happened outside in the last month" />
-        </h3>
-        <ul className="mt-4 space-y-2.5">
-          {rows.map((r) => {
-            const d = r.d20 ?? 0;
-            const shown = r.k === "vix" ? `${Math.abs(d).toFixed(1)} ${tx({ id: "poin", en: "pts" })}` : r.k === "us10y" ? `${Math.abs(d).toFixed(2)} ${tx({ id: "poin", en: "pts" })}` : `${Math.abs(d * 100).toFixed(1).replace(".", lang === "id" ? "," : ".")}%`;
-            return (
-              <li key={r.k} className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2.5 text-[13.5px] ring-1 ring-line">
-                <span className="text-ink-2">{tx(MACRO_INFO[r.k].name)}</span>
-                <span className="num text-ink">
-                  {tx(d >= 0 ? MACRO_INFO[r.k].up : MACRO_INFO[r.k].down)} {shown}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <div className={`mt-5 rounded-xl p-4 ring-1 ${push >= 0 ? "bg-up/10 ring-up/30" : "bg-down/10 ring-down/30"}`}>
-          <div className="text-[12px] text-muted">
-            <T id="Perkiraan dorongan global untuk saham ini" en="Estimated global push on this stock" />
-          </div>
-          <div className={`num mt-1 text-2xl font-semibold ${push >= 0 ? "text-up" : "text-down"}`}>{signed(push * 100, 1, "%")}</div>
-          <div className="mt-1 text-[12px] text-muted">
-            <T id="Sensitivitas × pergerakan faktor sebulan. Perkiraan kasar, bukan target harga." en="Sensitivity × one-month factor moves. A rough estimate, not a price target." />
-          </div>
-        </div>
-        <p className="mt-4 text-[11.5px] text-muted">
-          <T id="Sumber: FRED (Federal Reserve Bank of St. Louis) dan kurs referensi Bank Sentral Eropa." en="Sources: FRED (Federal Reserve Bank of St. Louis) and European Central Bank reference rates." />
-        </p>
-      </div>
     </div>
   );
 }

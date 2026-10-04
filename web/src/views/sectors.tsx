@@ -120,8 +120,16 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
             );
           })}
         </div>
-        <div className="mt-8 hidden lg:block">
+        <p className="mt-8 hidden text-[12.5px] text-muted lg:block">
+          {tx({ id: "Klik gelembung untuk melihat sektor itu beserta sahamnya.", en: "Click a bubble to see that sector and its stocks." })}
+        </p>
+        <div className="mt-2 hidden lg:block">
           <SectorMap
+            onSelect={(k) => {
+              setQ("");
+              setOpen(k);
+              setTimeout(() => document.getElementById(`sec-${k}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+            }}
             label={label}
             rows={rows.map((r) => ({
               key: r.sub_sector,
@@ -154,7 +162,7 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
               const isOpen = open === sec.sub_sector || (q.trim().length >= 3 && stocks.some((x) => x.sub_sector === sec.sub_sector && x.symbol.toLowerCase() === q.trim().toLowerCase()));
               const members = stocks.filter((x) => x.sub_sector === sec.sub_sector).sort((a, z) => (z.ret_20 ?? 0) - (a.ret_20 ?? 0));
               return (
-                <li key={sec.sub_sector}>
+                <li key={sec.sub_sector} id={`sec-${sec.sub_sector}`} className="scroll-mt-28">
                   <button onClick={() => setOpen(isOpen ? null : sec.sub_sector)} aria-expanded={isOpen} className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-4 py-3 text-left hover:bg-raised/40 sm:grid-cols-[minmax(0,1fr)_90px_110px_130px_auto] sm:px-5">
                     <span className="min-w-0">
                       <span className="block truncate text-[14.5px] font-medium text-ink">{label(sec.sub_sector)}</span>

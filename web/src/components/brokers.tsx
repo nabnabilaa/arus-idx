@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "motion/react";
-import { AlertTriangle, ExternalLink } from "lucide-react";
+import { AlertTriangle, Search } from "lucide-react";
+import { useState } from "react";
 import { dateLabel, idr, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
-import type { BrokerMap, BrokerProfile, NewsItem } from "@/lib/types";
-
-const EASE = [0.23, 1, 0.32, 1] as const;
+import type { BrokerProfile, NewsItem } from "@/lib/types";
 
 export const STYLE: Record<BrokerProfile["brokers"][number]["style"], { label: Bi; tone: string; explain: Bi }> = {
   chase: {
@@ -68,150 +66,140 @@ export function BrokerBehaviour({ p, last }: { p: BrokerProfile; last: number | 
         </p>
       )}
 
-      <ul className="mt-4 space-y-3">
-        {p.brokers.map((b, i) => {
-          const gap = b.avg_buy && last ? last / b.avg_buy - 1 : null;
-          return (
-            <motion.li key={b.code} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: i * 0.04, ease: EASE }} className="rounded-xl bg-ground/60 p-3.5 ring-1 ring-line">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <Link href={`/broker/${b.code}/`} className="text-[15px] font-semibold text-ink hover:text-arus">
-                  {b.code}
-                </Link>
-                <span className="min-w-0 truncate text-[12.5px] text-muted">
-                  {b.name}
-                  {b.cohort && COHORT[b.cohort] ? ` · ${tx(COHORT[b.cohort])}` : ""}
-                  {b.foreign ? ` · ${tx({ id: "asing", en: "foreign" })}` : ""}
-                </span>
-                <span className={`ml-auto rounded-full px-2.5 py-0.5 text-[11.5px] ring-1 ${STYLE[b.style].tone}`}>{tx(STYLE[b.style].label)}</span>
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px] sm:grid-cols-4">
-                <div>
-                  <div className="text-muted">{tx({ id: "Bersih", en: "Net" })}</div>
-                  <div className={`num ${b.net >= 0 ? "text-up" : "text-down"}`}>
-                    {b.net >= 0 ? tx({ id: "beli", en: "bought" }) : tx({ id: "jual", en: "sold" })} {idr(Math.abs(b.net), lang)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted">{tx({ id: "Hari beli / jual", en: "Buy / sell days" })}</div>
-                  <div className="num text-ink">
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[720px] border-separate border-spacing-0 text-[13px]">
+          <thead>
+            <tr className="text-right text-[11.5px] text-muted">
+              <th className="py-2 pr-3 text-left font-normal">Broker</th>
+              <th className="py-2 pr-3 text-left font-normal">{tx({ id: "Gaya", en: "Style" })}</th>
+              <th className="py-2 pr-3 font-normal">{tx({ id: "Bersih", en: "Net" })}</th>
+              <th className="py-2 pr-3 font-normal">{tx({ id: "Hari beli / jual", en: "Buy / sell days" })}</th>
+              <th className="py-2 pr-3 font-normal">{tx({ id: "Rata-rata beli", en: "Avg buy" })}</th>
+              <th className="py-2 pr-3 font-normal">{tx({ id: "Harga di hari belinya", en: "Price on its buy days" })}</th>
+              <th className="py-2 font-normal">{tx({ id: "3 hari sesudahnya", en: "3 days later" })}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {p.brokers.map((b) => {
+              const gap = b.avg_buy && last ? last / b.avg_buy - 1 : null;
+              return (
+                <tr key={b.code} className="num text-right hover:bg-raised/30">
+                  <td className="border-t border-line py-2 pr-3 text-left">
+                    <Link href={`/broker/${b.code}/`} className="font-semibold text-ink hover:text-arus">
+                      {b.code}
+                    </Link>
+                    <span className="ml-2 text-[11.5px] text-muted">
+                      {b.cohort && COHORT[b.cohort] ? tx(COHORT[b.cohort]) : ""}
+                      {b.foreign ? ` · ${tx({ id: "asing", en: "foreign" })}` : ""}
+                    </span>
+                  </td>
+                  <td className="border-t border-line py-2 pr-3 text-left">
+                    <span title={tx(STYLE[b.style].explain)} className={`cursor-help rounded-full px-2 py-0.5 text-[11px] ring-1 ${STYLE[b.style].tone}`}>
+                      {tx(STYLE[b.style].label)}
+                    </span>
+                  </td>
+                  <td className={`border-t border-line py-2 pr-3 ${b.net >= 0 ? "text-up" : "text-down"}`}>{idr(b.net, lang)}</td>
+                  <td className="border-t border-line py-2 pr-3 text-ink-2">
                     {b.days_buy} / {b.days_sell}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted">{tx({ id: "Harga rata-rata beli", en: "Avg buy price" })}</div>
-                  <div className="num text-ink">
+                  </td>
+                  <td className="border-t border-line py-2 pr-3 text-ink-2">
                     {price(b.avg_buy, lang)}
-                    {gap != null && <span className={`ml-1 text-[11.5px] ${gap >= 0 ? "text-up" : "text-down"}`}>({signed(gap * 100, 1, "%")})</span>}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-muted">{tx({ id: "3 hari setelah ia beli", en: "3 days after it bought" })}</div>
-                  <div className={`num ${b.follow3 == null ? "text-muted" : b.follow3 >= 0 ? "text-up" : "text-down"}`}>
-                    {b.follow3 == null ? "–" : `${signed(b.follow3 * 100, 1, "%")} vs ${tx({ id: "saham lain", en: "others" })}`}
+                    {gap != null && <span className={`ml-1 text-[11px] ${gap >= 0 ? "text-up" : "text-down"}`}>({signed(gap * 100, 1, "%")})</span>}
+                  </td>
+                  <td className="border-t border-line py-2 pr-3 text-ink-2">
+                    {b.buy_ret != null ? signed(b.buy_ret * 100, 1, "%") : "–"}
+                    {b.buy_vol != null && <span className="ml-1 text-[11px] text-muted">vol {b.buy_vol.toFixed(1)}×</span>}
+                  </td>
+                  <td className={`border-t border-line py-2 ${b.follow3 == null ? "text-muted" : b.follow3 >= 0 ? "text-up" : "text-down"}`}>
+                    {b.follow3 == null ? "–" : signed(b.follow3 * 100, 1, "%")}
                     {b.n_follow > 0 && <span className="ml-1 text-[11px] text-muted">({b.n_follow}×)</span>}
-                  </div>
-                </div>
-              </div>
-              <p className="mt-2 text-[12px] leading-relaxed text-muted">
-                {tx(STYLE[b.style].explain)}
-                {b.buy_ret != null &&
-                  tx({
-                    id: ` Rata-rata di hari belinya harga ${signed(b.buy_ret * 100, 1, "%")}${b.buy_vol ? `, volume ${b.buy_vol.toFixed(1).replace(".", ",")}× biasanya` : ""}.`,
-                    en: ` On its buying days the price averaged ${signed(b.buy_ret * 100, 1, "%")}${b.buy_vol ? `, volume ${b.buy_vol.toFixed(1)}× normal` : ""}.`,
-                  })}
-              </p>
-            </motion.li>
-          );
-        })}
-      </ul>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       <p className="mt-4 text-[11.5px] leading-relaxed text-muted">
         <T
-          id="Dihitung dari data broker harian Sectors. Periodenya beberapa minggu, jadi ini menggambarkan kebiasaan terbaru, bukan pola yang terbukti. Kolom “3 hari setelah ia beli” dibandingkan dengan saham rata-rata di hari yang sama."
-          en="Computed from Sectors' daily broker data. The window is a few weeks, so this describes recent habits, not proven patterns. “3 days after it bought” is relative to the median stock on the same day."
+          id="Arahkan kursor ke label gaya untuk penjelasannya. “Harga di hari belinya” = rata-rata gerak harga pada hari broker itu membeli bersih. “3 hari sesudahnya” dibandingkan dengan saham rata-rata. Periodenya beberapa minggu, jadi ini kebiasaan terbaru, bukan pola yang terbukti."
+          en="Hover a style label for its meaning. “Price on its buy days” = the average price move on days the broker net bought. “3 days later” is relative to the median stock. The window is a few weeks, so these are recent habits, not proven patterns."
         />
       </p>
     </section>
   );
 }
 
-/** Market-wide view: for the busiest brokers, which tracked stocks they're piling into and out of. */
-export function BrokerMapView({ map }: { map: BrokerMap }) {
+function NewsItemRow({ n }: { n: NewsItem }) {
   const { tx, lang } = useLang();
-  const busiest = Object.entries(map)
-    .filter(([, b]) => b.acc.length || b.dist.length)
-    .sort((a, b) => b[1].gross - a[1].gross)
-    .slice(0, 12);
+  const [open, setOpen] = useState(false);
+  let host = "";
+  try {
+    host = new URL(n.url).hostname.replace(/^www\./, "");
+  } catch {}
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {busiest.map(([code, b]) => (
-        <div key={code} className="rounded-2xl bg-surface p-4 ring-1 ring-line">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[16px] font-semibold text-ink">{code}</span>
-            <span className="min-w-0 truncate text-[12px] text-muted">
-              {b.name}
-              {b.cohort && COHORT[b.cohort] ? ` · ${tx(COHORT[b.cohort])}` : ""}
-              {b.foreign ? ` · ${tx({ id: "asing", en: "foreign" })}` : ""}
-            </span>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3 text-[12.5px]">
-            {[
-              { t: { id: "Mengumpulkan", en: "Accumulating" }, l: b.acc, c: "text-up" },
-              { t: { id: "Melepas", en: "Distributing" }, l: b.dist, c: "text-down" },
-            ].map((col) => (
-              <div key={col.t.en}>
-                <div className="mb-1 text-muted">{tx(col.t)}</div>
-                <ul className="space-y-0.5">
-                  {col.l.length === 0 && <li className="text-muted">–</li>}
-                  {col.l.map((x) => (
-                    <li key={x.s} className="flex justify-between gap-2">
-                      <Link href={`/saham/${x.s}/`} className="font-medium text-ink hover:text-arus">
-                        {x.s}
-                      </Link>
-                      <span className={`num ${col.c}`}>{idr(Math.abs(x.net), lang)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+    <li className="flex gap-4 py-4">
+      {n.thumb ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={n.thumb} alt="" loading="lazy" className="hidden h-20 w-28 shrink-0 rounded-lg object-cover ring-1 ring-line sm:block" />
+      ) : (
+        <div className="hidden h-20 w-28 shrink-0 rounded-lg bg-raised ring-1 ring-line sm:block" />
+      )}
+      <div className="min-w-0 flex-1">
+        <a href={n.url} target="_blank" rel="noreferrer" className="group block">
+          <span className="text-[15px] font-semibold leading-snug text-ink group-hover:text-arus">{n.title}</span>
+        </a>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
+          <span>{dateLabel(n.ts.slice(0, 10), lang)}</span>
+          {host && (
+            <>
+              <span>·</span>
+              <span>{host}</span>
+            </>
+          )}
+          {n.symbols.slice(0, 6).map((sym) => (
+            <Link key={sym} href={`/saham/${sym}/`} className="rounded bg-raised px-1.5 py-0.5 font-medium text-ink-2 ring-1 ring-line hover:text-arus">
+              {sym}
+            </Link>
+          ))}
         </div>
-      ))}
-    </div>
+        {n.body && (
+          <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="mt-1.5 cursor-pointer text-[12.5px] text-arus hover:underline">
+            {open ? tx({ id: "Tutup ringkasan", en: "Hide summary" }) : tx({ id: "Baca ringkasan", en: "Read summary" })}
+          </button>
+        )}
+        {open && <p className="mt-1.5 max-w-[75ch] text-[13.5px] leading-relaxed text-ink-2">{n.body}</p>}
+      </div>
+    </li>
   );
 }
 
-export function NewsList({ items, compact = false, columns = false }: { items: NewsItem[]; compact?: boolean; columns?: boolean }) {
-  const { tx, lang } = useLang();
+/** A calm news feed: headline, source and related stocks up front; the summary only on request. */
+export function NewsList({ items, searchable = false }: { items: NewsItem[]; searchable?: boolean }) {
+  const { tx } = useLang();
+  const [q, setQ] = useState("");
   if (!items.length) return <p className="text-[14px] text-muted">{tx({ id: "Belum ada berita terbaru untuk saham ini.", en: "No recent news for this stock yet." })}</p>;
+  const t = q.trim().toLowerCase();
+  const shown = t
+    ? items.filter((n) => n.title.toLowerCase().includes(t) || (n.body ?? "").toLowerCase().includes(t) || n.symbols.some((s) => s.toLowerCase() === t) || n.tags.some((g) => g.toLowerCase().includes(t)))
+    : items;
   return (
-    <ul className={columns ? "grid items-start gap-3 lg:grid-cols-2" : "space-y-3"}>
-      {items.map((n) => (
-        <li key={n.url} className="rounded-2xl bg-surface p-4 ring-1 ring-line">
-          <div className="flex items-center gap-2 text-[11.5px] text-muted">
-            <span>{dateLabel(n.ts.slice(0, 10), lang)}</span>
-            {n.symbols.slice(0, 5).map((s) => (
-              <Link key={s} href={`/saham/${s}/`} className="rounded bg-raised px-1.5 py-0.5 font-medium text-ink-2 hover:text-arus">
-                {s}
-              </Link>
-            ))}
-          </div>
-          <a href={n.url} target="_blank" rel="noreferrer" className="group mt-1.5 block">
-            <span className="text-[14.5px] font-semibold leading-snug text-ink group-hover:text-arus">
-              {n.title} <ExternalLink size={12} className="inline align-baseline text-muted" />
-            </span>
-          </a>
-          {!compact && <p className="mt-1.5 line-clamp-3 text-[13px] leading-relaxed text-ink-2">{n.body}</p>}
-          {n.tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {n.tags.slice(0, 3).map((t) => (
-                <span key={t} className="rounded-full px-2 py-0.5 text-[11px] text-muted ring-1 ring-line">
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
+    <div className="max-w-4xl">
+      {searchable && (
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60 sm:max-w-96">
+            <Search size={15} className="text-muted" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari berita, kode saham, atau topik (mis. BBCA, dividen)", en: "Search news, a stock code or topic (e.g. BBCA, dividend)" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
+          </label>
+          <span className="text-[12.5px] text-muted">{tx({ id: `${shown.length} berita`, en: `${shown.length} articles` })}</span>
+        </div>
+      )}
+      <ul className="divide-y divide-line border-y border-line">
+        {shown.map((n) => (
+          <NewsItemRow key={n.url} n={n} />
+        ))}
+      </ul>
+      {shown.length === 0 && <p className="py-8 text-[14px] text-muted">{tx({ id: "Tidak ada berita yang cocok.", en: "No articles match." })}</p>}
+    </div>
   );
 }

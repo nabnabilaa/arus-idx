@@ -151,65 +151,101 @@ function Statement({ fin }: { fin: FinHealth }) {
 
 export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null; peers: { symbol: string; name: string | null; fin_grade?: FinGrade | null; fin_score?: number | null; fin_n?: number | null; pct_value?: number | null; rev_cagr?: number | null }[] }) {
   const { tx, lang } = useLang();
+  const card = "rounded-2xl bg-surface p-5 ring-1 ring-line";
   const stats: [Bi, string][] = [
     [{ id: "PER (TTM)", en: "P/E (TTM)" }, s.pe_ttm != null ? `${s.pe_ttm.toFixed(1)}×` : "–"],
     [{ id: "PBV", en: "P/B" }, s.pb_mrq != null ? `${s.pb_mrq.toFixed(2)}×` : "–"],
     [{ id: "ROE", en: "ROE" }, pct(s.roe_ttm, 1)],
     [{ id: "Utang / ekuitas", en: "Debt / equity" }, s.der_mrq != null ? `${s.der_mrq.toFixed(2)}×` : "–"],
     [{ id: "Dividen yield", en: "Dividend yield" }, pct(s.yield_ttm, 1)],
-    [{ id: "Margin laba bersih", en: "Net margin" }, pct(fin?.net_margin, 1)],
-    [{ id: "Harga vs nilai intrinsik", en: "Price vs intrinsic value" }, s.upside_intrinsic != null ? signed(s.upside_intrinsic * 100, 0, "%") : "–"],
+    [{ id: "Harga vs nilai intrinsik", en: "Price vs intrinsic" }, s.upside_intrinsic != null ? signed(s.upside_intrinsic * 100, 0, "%") : "–"],
     [{ id: "Kapitalisasi", en: "Market cap" }, idr(s.market_cap, lang)],
+    [{ id: "Margin laba bersih", en: "Net margin" }, pct(fin?.net_margin, 1)],
   ];
+  const vs: [Bi, number | null][] = [
+    [{ id: "Seberapa murah", en: "How cheap" }, s.pct_value],
+    [{ id: "Kualitas bisnis", en: "Business quality" }, s.pct_quality],
+    [{ id: "Pertumbuhan", en: "Growth" }, s.pct_growth],
+  ];
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-5">
       {fin ? (
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-          <section className="rounded-2xl bg-surface p-5 ring-1 ring-line">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-[16px] font-semibold">
+        <>
+          {/* 1. verdict and key figures */}
+          <section className={`${card} grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.6fr)] lg:items-center`}>
+            <div>
+              <div className="text-[12.5px] text-muted">
                 <T id="Kesehatan keuangan" en="Financial health" />
-              </h3>
-              <span className={`rounded-full px-3 py-1 text-[13px] font-semibold ring-1 ${FIN_GRADE[fin.grade].ring} ${FIN_GRADE[fin.grade].tone}`}>
-                {tx(FIN_GRADE[fin.grade].label)} · {fin.score}/{fin.n}
-              </span>
+              </div>
+              <div className="mt-1 flex items-baseline gap-3">
+                <span className={`text-3xl font-semibold tracking-tight ${FIN_GRADE[fin.grade].tone}`}>{tx(FIN_GRADE[fin.grade].label)}</span>
+                <span className="num text-[14px] text-ink-2">
+                  {fin.score}/{fin.n} {tx({ id: "lolos", en: "passed" })}
+                </span>
+              </div>
+              <p className="mt-2 text-[12.5px] leading-relaxed text-muted">
+                {tx({
+                  id: `Laporan tahunan ${fin.prev} → ${fin.year}, kerangka F-Score Piotroski.`,
+                  en: `Annual reports ${fin.prev} → ${fin.year}, Piotroski F-Score framework.`,
+                })}
+              </p>
             </div>
-            <p className="mt-1 text-[13px] leading-relaxed text-muted">
-              {tx({
-                id: `${fin.n} pemeriksaan dari laporan tahunan ${fin.prev} → ${fin.year}, mengikuti kerangka F-Score Piotroski. Pemeriksaan yang tidak berlaku untuk jenis bisnisnya (mis. margin kotor untuk bank) dilewati.`,
-                en: `${fin.n} checks from the ${fin.prev} → ${fin.year} annual reports, following Piotroski's F-Score. Checks that don't fit the business model (e.g. gross margin for banks) are skipped.`,
-              })}
-            </p>
-            <ul className="mt-4 space-y-2.5">
+            <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {[
+                [{ id: "Pendapatan / tahun", en: "Revenue / yr" }, fin.rev_cagr != null ? signed(fin.rev_cagr * 100, 1, "%") : "–", (fin.rev_cagr ?? 0) >= 0],
+                [{ id: "Laba / tahun", en: "Profit / yr" }, fin.eps_cagr != null ? signed(fin.eps_cagr * 100, 1, "%") : "–", (fin.eps_cagr ?? 0) >= 0],
+                [{ id: "Margin bersih", en: "Net margin" }, pct(fin.net_margin, 1), true],
+                [{ id: "ROA", en: "ROA" }, pct(fin.roa, 1), true],
+                [{ id: "Tahun untung", en: "Profitable years" }, `${fin.profitable_years}/${fin.years.length}`, true],
+                [{ id: "Tahun bayar dividen", en: "Dividend years" }, `${fin.dividend_years}/${fin.years.length}`, true],
+              ].map(([l, v, ok]) => (
+                <div key={(l as Bi).en} className="rounded-lg bg-ground/60 px-3 py-2.5 ring-1 ring-line">
+                  <dt className="text-[11.5px] text-muted">{tx(l as Bi)}</dt>
+                  <dd className={`num text-[17px] font-semibold ${ok ? "text-ink" : "text-[#f0a3a3]"}`}>{v as string}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          {/* 2. the checks */}
+          <section className={card}>
+            <h3 className="text-[15px] font-semibold">
+              <T id="Pemeriksaan kesehatan" en="Health checks" />
+            </h3>
+            <ul className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {fin.checks.map((c, i) => (
-                <motion.li key={c.k} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3, delay: i * 0.04, ease: EASE }} className="flex gap-3">
+                <motion.li key={c.k} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: i * 0.03, ease: EASE }} className="flex gap-3 rounded-xl bg-ground/60 p-3 ring-1 ring-line">
                   <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${c.ok ? "bg-aqua/15 text-[#7fd4a8]" : "bg-down/15 text-[#f0a3a3]"}`}>
                     {c.ok ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
                   </span>
-                  <div>
-                    <div className={`text-[14px] ${c.ok ? "text-ink" : "text-ink-2"}`}>{tx(CHECK[c.k].label)}</div>
-                    <div className="text-[12px] text-muted">{tx(CHECK[c.k].why)}</div>
+                  <div className="min-w-0">
+                    <div className={`text-[13.5px] font-medium ${c.ok ? "text-ink" : "text-ink-2"}`}>{tx(CHECK[c.k].label)}</div>
                     {c.a != null && c.b != null && (
                       <div className="num mt-0.5 text-[12px] text-ink-2">
                         {c.k === "cash_backed"
-                          ? tx({ id: `Laba ${fmt(c.a, c.u, lang)} · arus kas ${fmt(c.b, c.u, lang)}`, en: `Profit ${fmt(c.a, c.u, lang)} · cash ${fmt(c.b, c.u, lang)}` })
-                          : `${fin.prev}: ${fmt(c.a, c.u, lang)} → ${fin.year}: ${fmt(c.b, c.u, lang)}`}
+                          ? tx({ id: `Laba ${fmt(c.a, c.u, lang)} · kas ${fmt(c.b, c.u, lang)}`, en: `Profit ${fmt(c.a, c.u, lang)} · cash ${fmt(c.b, c.u, lang)}` })
+                          : `${fmt(c.a, c.u, lang)} → ${fmt(c.b, c.u, lang)}`}
                       </div>
                     )}
+                    <div className="mt-0.5 text-[11.5px] leading-snug text-muted">{tx(CHECK[c.k].why)}</div>
                   </div>
                 </motion.li>
               ))}
             </ul>
           </section>
 
-          <section className="rounded-2xl bg-surface p-5 ring-1 ring-line">
-            <h3 className="text-[16px] font-semibold">
-              <T id="Pendapatan dan laba, 5 tahun" en="Revenue and profit, 5 years" />
-            </h3>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted">
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#3987e5]" />{tx({ id: "Pendapatan", en: "Revenue" })}</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#5cc8ff]" />{tx({ id: "Laba bersih", en: "Net profit" })}</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#7fd4a8]" />{tx({ id: "Arus kas operasi", en: "Operating cash" })}</span>
+          {/* 3. five-year picture */}
+          <section className={card}>
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h3 className="text-[15px] font-semibold">
+                <T id="Pendapatan, laba, dan arus kas, 5 tahun" en="Revenue, profit and cash, 5 years" />
+              </h3>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted">
+                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#3987e5]" />{tx({ id: "Pendapatan", en: "Revenue" })}</span>
+                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#5cc8ff]" />{tx({ id: "Laba bersih", en: "Net profit" })}</span>
+                <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#7fd4a8]" />{tx({ id: "Arus kas operasi", en: "Operating cash" })}</span>
+              </div>
             </div>
             <div className="mt-5">
               <Bars
@@ -221,93 +257,84 @@ export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null;
                 ]}
               />
             </div>
-            <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-4 text-[12.5px] sm:grid-cols-4">
-              {[
-                [{ id: "Pendapatan / tahun", en: "Revenue / yr" }, fin.rev_cagr != null ? signed(fin.rev_cagr * 100, 1, "%") : "–"],
-                [{ id: "Laba / tahun", en: "Profit / yr" }, fin.eps_cagr != null ? signed(fin.eps_cagr * 100, 1, "%") : "–"],
-                [{ id: "Tahun untung", en: "Profitable years" }, `${fin.profitable_years}/${fin.years.length}`],
-                [{ id: "Tahun bayar dividen", en: "Dividend years" }, `${fin.dividend_years}/${fin.years.length}`],
-              ].map(([l, v]) => (
-                <div key={(l as Bi).en}>
-                  <dt className="text-muted">{tx(l as Bi)}</dt>
-                  <dd className="num mt-0.5 text-[16px] text-ink">{v as string}</dd>
-                </div>
-              ))}
-            </dl>
           </section>
-        </div>
+
+          {/* 4. statements */}
+          <Statement fin={fin} />
+        </>
       ) : (
-        <p className="rounded-2xl bg-surface p-5 text-[14px] text-ink-2 ring-1 ring-line">
+        <p className={`${card} text-[14px] text-ink-2`}>
           <T id="Laporan keuangan tahunan belum tersedia untuk saham ini." en="Annual statements aren't available for this stock yet." />
         </p>
       )}
 
-      {fin && <Statement fin={fin} />}
+      {/* 5. valuation and sector standing */}
+      <section className={card}>
+        <h3 className="text-[15px] font-semibold">
+          <T id="Valuasi dan posisi di sektornya" en="Valuation and sector standing" />
+        </h3>
+        <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {stats.map(([l, val]) => (
+            <div key={l.en} className="rounded-lg bg-ground/60 px-3 py-2.5 ring-1 ring-line">
+              <dt className="text-[11.5px] text-muted">{tx(l)}</dt>
+              <dd className="num text-[16px] text-ink">{val}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-5 grid gap-5 sm:grid-cols-3">
+          {vs.map(([l, val]) => (
+            <div key={l.en}>
+              <div className="flex justify-between gap-3 text-[13px]">
+                <span className="text-ink-2">{tx(l)}</span>
+                <span className="num text-ink">{val == null ? "–" : `${Math.round(val * 100)}%`}</span>
+              </div>
+              <div className="mt-1.5 h-2 rounded-full bg-raised">
+                {val != null && <motion.div className="h-2 rounded-full bg-arus" initial={{ width: 0 }} animate={{ width: `${Math.max(3, val * 100)}%` }} transition={{ duration: 0.7, ease: EASE }} />}
+              </div>
+              <div className="mt-1 text-[11px] text-muted">{tx({ id: "lebih baik dari sekian persen sesama sektor", en: "better than this share of sector peers" })}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      <div className="grid items-start gap-8 lg:grid-cols-2">
-        <section>
-          <h3 className="mb-3 text-[15px] font-semibold">
-            <T id="Statistik kunci" en="Key stats" />
+      {/* 6. peers */}
+      {peers.length > 0 && (
+        <section className={card}>
+          <h3 className="text-[15px] font-semibold">
+            <T id="Dibanding sesama subsektor" en="Versus subsector peers" />
           </h3>
-          <dl className="grid grid-cols-2 gap-3">
-            {stats.map(([l, val]) => (
-              <div key={l.en} className="rounded-xl bg-surface p-3.5 ring-1 ring-line">
-                <dt className="text-[11.5px] text-muted">{tx(l)}</dt>
-                <dd className="num mt-0.5 text-[16px] text-ink">{val}</dd>
-              </div>
-            ))}
-          </dl>
-          <h3 className="mb-3 mt-8 text-[15px] font-semibold">
-            <T id="Dibanding sesama sektor" en="Versus sector peers" />
-          </h3>
-          <div className="space-y-5">
-            {(
-              [
-                [{ id: "Seberapa murah", en: "How cheap" }, s.pct_value],
-                [{ id: "Kualitas bisnis", en: "Business quality" }, s.pct_quality],
-                [{ id: "Pertumbuhan", en: "Growth" }, s.pct_growth],
-              ] as [Bi, number | null][]
-            ).map(([l, val]) => (
-              <div key={l.en}>
-                <div className="mb-1.5 flex justify-between gap-3 text-[13px]">
-                  <span className="text-ink-2">{tx(l)}</span>
-                  <span className="text-right text-ink">
-                    {val == null ? "–" : tx({ id: `lebih baik dari ${Math.round(val * 100)}% sesama sektor`, en: `better than ${Math.round(val * 100)}% of sector peers` })}
-                  </span>
-                </div>
-                <div className="relative h-2 rounded-full bg-raised">
-                  {val != null && <motion.div className="h-2 rounded-full bg-arus" initial={{ width: 0 }} animate={{ width: `${Math.max(3, val * 100)}%` }} transition={{ duration: 0.7, ease: EASE }} />}
-                </div>
-              </div>
-            ))}
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[520px] border-separate border-spacing-0 text-[13px]">
+              <thead>
+                <tr className="text-right text-[11.5px] text-muted">
+                  <th className="py-2 pr-4 text-left font-normal">{tx({ id: "Saham", en: "Stock" })}</th>
+                  <th className="py-2 pr-4 font-normal">{tx({ id: "Pendapatan / tahun", en: "Revenue / yr" })}</th>
+                  <th className="py-2 pr-4 font-normal">{tx({ id: "Seberapa murah", en: "How cheap" })}</th>
+                  <th className="py-2 font-normal">{tx({ id: "Kesehatan", en: "Health" })}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {peers.map((p) => (
+                  <tr key={p.symbol} className="num text-right hover:bg-raised/30">
+                    <td className="border-t border-line py-2 pr-4 text-left">
+                      <Link href={`/saham/${p.symbol}/`} className="font-semibold text-ink hover:text-arus">
+                        {p.symbol}
+                      </Link>
+                      <span className="ml-2 text-[12px] text-muted">{p.name}</span>
+                    </td>
+                    <td className={`border-t border-line py-2 pr-4 ${(p.rev_cagr ?? 0) >= 0 ? "text-ink-2" : "text-[#f0a3a3]"}`}>{p.rev_cagr != null ? signed(p.rev_cagr * 100, 1, "%") : "–"}</td>
+                    <td className="border-t border-line py-2 pr-4 text-ink-2">{p.pct_value != null ? `${Math.round(p.pct_value * 100)}%` : "–"}</td>
+                    <td className={`border-t border-line py-2 ${p.fin_grade ? FIN_GRADE[p.fin_grade].tone : "text-muted"}`}>
+                      {p.fin_grade ? `${tx(FIN_GRADE[p.fin_grade].label)} ${p.fin_score}/${p.fin_n}` : <Minus size={14} className="ml-auto" />}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
-        {peers.length > 0 && (
-          <section>
-            <h3 className="mb-3 text-[15px] font-semibold">
-              <T id="Dibanding sesama subsektor" en="Versus subsector peers" />
-            </h3>
-            <ul className="divide-y divide-line border-y border-line">
-              {peers.map((p) => (
-                <li key={p.symbol}>
-                  <Link href={`/saham/${p.symbol}/`} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 py-2.5 text-[13.5px] hover:text-arus">
-                    <span className="min-w-0 truncate">
-                      <span className="font-medium">{p.symbol}</span> <span className="text-[12px] text-muted">{p.name}</span>
-                    </span>
-                    <span className="num w-16 text-right text-ink-2">{p.rev_cagr != null ? signed(p.rev_cagr * 100, 0, "%") : "–"}</span>
-                    <span className={`w-24 text-right ${p.fin_grade ? FIN_GRADE[p.fin_grade].tone : "text-muted"}`}>
-                      {p.fin_grade ? `${tx(FIN_GRADE[p.fin_grade].label)} ${p.fin_score}/${p.fin_n}` : <Minus size={14} className="ml-auto" />}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-[11.5px] text-muted">
-              <T id="Kolom tengah: pertumbuhan pendapatan per tahun. Kolom kanan: kesehatan keuangan." en="Middle column: revenue growth per year. Right column: financial health." />
-            </p>
-          </section>
-        )}
-      </div>
+      )}
+
       <p className="text-[12px] text-muted">
         <T
           id="Sumber: laporan keuangan tahunan dan rasio terkini dari Sectors. Kesehatan keuangan menggambarkan kondisi perusahaan, bukan perkiraan harga sahamnya."

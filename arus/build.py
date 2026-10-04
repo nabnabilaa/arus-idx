@@ -23,7 +23,8 @@ from arus.features import FEATURES, FEATURE_NAMES, build_features, load_panel
 from arus.ingest import pull_broker_daily, pull_broker_top
 from arus.model import HORIZONS, auc, score_dates, score_today, walk_forward
 
-PRIMARY = 20          # horizon used for sector summaries and the default ranking order
+PRIMARY = 1           # horizon used for sector summaries and the default ranking order:
+                      # the next-day score held up out of sample (Dec 2025–Oct 2026), the 1-month one did not
 
 
 def _clean(o):

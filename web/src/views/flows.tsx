@@ -56,7 +56,7 @@ export function FlowsView({ market, brokers, ranking }: Pick<Bundle, "market" | 
         </p>
         <div className="mt-6 grid gap-10 lg:grid-cols-2">
           <div>
-            <ChartTitle note={tx({ id: "Indeks harga saham gabungan, setahun terakhir.", en: "The composite index over the past year." })}>IHSG</ChartTitle>
+            <ChartTitle note={tx({ id: "Indeks harga saham gabungan, sepanjang histori Arus.", en: "The composite index over Arus' full history." })}>IHSG</ChartTitle>
             <LineArea data={market.map((m) => ({ date: m.date, v: m.ihsg }))} height={220} format="index" />
           </div>
           <div>
@@ -134,8 +134,8 @@ export function FlowsView({ market, brokers, ranking }: Pick<Bundle, "market" | 
               )}
               <p className="mt-1.5 text-[13.5px] text-muted">
                 <T
-                  id="Skor Arus berasal dari pola yang sudah teruji setahun; jejak bandar adalah kondisi hari ini yang belum bisa diuji. Saat keduanya bertentangan, keyakinan sebaiknya diturunkan dan ukuran posisi diperkecil."
-                  en="The Arus score comes from patterns tested over a year; the broker footprint is today's state and can't be tested. When they disagree, lower your conviction and size positions smaller."
+                  id="Skor Arus berasal dari pola yang diuji ke data historis; jejak bandar adalah kondisi hari ini yang belum bisa diuji. Saat keduanya bertentangan, keyakinan sebaiknya diturunkan dan ukuran posisi diperkecil."
+                  en="The Arus score comes from patterns tested on historical data; the broker footprint is today's state and can't be tested. When they disagree, lower your conviction and size positions smaller."
                 />
               </p>
             </div>

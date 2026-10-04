@@ -26,22 +26,34 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
   const top = Math.round(m.top_decile_hit * 100);
   const bot = Math.round(m.bottom_decile_hit * 100);
   const when = tx(HORIZON_LABEL[horizon].long);
+  const proven = m.proven !== false;
+  const topWins = top > bot;
+  const netEnd = M.equity.top_net[M.equity.top_net.length - 1] ?? 0;
+  const allEnd = M.equity.all[M.equity.all.length - 1] ?? 0;
+  const failed = M.folds.filter((f) => f.auc < 0.5);
+  const months = Math.max(1, Math.round((Date.parse(meta.as_of) - Date.parse(meta.history_start)) / (30.44 * 864e5)));
+  const cautionStronger = 50 - bot > top - 50;
 
   const answers = [
     {
       q: { id: "Apakah saham yang dinilai tinggi benar-benar lebih sering unggul?", en: "Do highly rated stocks really win more often?" },
       big: `${top} vs ${bot}`,
-      a: {
-        id: `Ya, walau selisihnya sederhana. Pada periode uji, saham "Sangat diunggulkan" unggul ${top} dari 100 kali ${when}, sedangkan saham "Waspada" hanya ${bot} dari 100. Lempar koin = 50.`,
-        en: `Yes, though modestly. In testing, "Strong edge" stocks won ${top} of 100 times ${when}, while "Caution" stocks won only ${bot} of 100. A coin flip = 50.`,
-      },
+      a: topWins
+        ? {
+            id: `Ya, walau selisihnya tipis. Pada periode uji, saham "Sangat diunggulkan" unggul ${top} dari 100 kali ${when}, sedangkan saham "Waspada" ${bot} dari 100. Lempar koin = 50.`,
+            en: `Yes, though narrowly. In testing, "Strong edge" stocks won ${top} of 100 times ${when}, while "Caution" stocks won ${bot} of 100. A coin flip = 50.`,
+          }
+        : {
+            id: `Tidak. Pada periode uji, saham "Sangat diunggulkan" unggul ${top} dari 100 kali ${when}, sedangkan saham "Waspada" justru ${bot} dari 100. Untuk jangka ini, skornya tidak bisa dipercaya.`,
+            en: `No. In testing, "Strong edge" stocks won ${top} of 100 times ${when}, while "Caution" stocks won ${bot} of 100. For this horizon the score can't be trusted.`,
+          },
     },
     {
       q: { id: "Berapa selisih hasilnya dalam rupiah?", en: "What's the gap in returns?" },
       big: `${signed(m.top_decile_excess * 100, 1, "%")} vs ${signed(m.bottom_decile_excess * 100, 1, "%")}`,
       a: {
-        id: `Dibanding IHSG ${when}, kelompok teratas rata-rata bergerak ${signed(m.top_decile_excess * 100, 2, "%")}, kelompok terbawah ${signed(m.bottom_decile_excess * 100, 2, "%")}. Belum termasuk biaya transaksi.`,
-        en: `Against IHSG ${when}, the top group moved ${signed(m.top_decile_excess * 100, 2, "%")} on average and the bottom group ${signed(m.bottom_decile_excess * 100, 2, "%")}. Before trading costs.`,
+        id: `Dibanding IHSG ${when}, kelompok teratas rata-rata bergerak ${signed(m.top_decile_excess * 100, 2, "%")}, kelompok terbawah ${signed(m.bottom_decile_excess * 100, 2, "%")}, sebelum biaya. Setelah biaya ±0,4% per putaran, simulasi kelompok teratas berakhir ${signed(netEnd * 100, 1, "%")} terhadap IHSG. Pembanding yang adil: membeli semua saham secara merata, tanpa biaya, ${signed(allEnd * 100, 1, "%")}.`,
+        en: `Against IHSG ${when}, the top group moved ${signed(m.top_decile_excess * 100, 2, "%")} on average and the bottom group ${signed(m.bottom_decile_excess * 100, 2, "%")}, before costs. After ~0.4% per round trip, the top-group simulation ends ${signed(netEnd * 100, 1, "%")} against IHSG. The fair benchmark, buying every stock equally with no costs: ${signed(allEnd * 100, 1, "%")}.`,
       },
     },
     {
@@ -54,11 +66,21 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
     },
     {
       q: { id: "Di mana Arus paling bisa diandalkan?", en: "Where is Arus most reliable?" },
-      big: tx({ id: "Tanda Waspada", en: "Caution flags" }),
-      a: {
-        id: `Arus lebih jago mengenali saham yang akan tertinggal daripada menebak juara. ${100 - bot} dari 100 saham bertanda Waspada memang berakhir di separuh bawah. Gunakan ini sebagai saringan pertama.`,
-        en: `Arus is better at spotting laggards than picking champions. ${100 - bot} of 100 Caution-flagged stocks did end in the bottom half. Use it as a first filter.`,
-      },
+      big: !proven ? tx({ id: "Bukan di sini", en: "Not here" }) : cautionStronger ? tx({ id: "Tanda Waspada", en: "Caution flags" }) : tx({ id: "Tanda Unggul", en: "Strong flags" }),
+      a: !proven
+        ? {
+            id: `Skor ${tx(HORIZON_LABEL[horizon].name).toLowerCase()} tidak lolos uji, jadi kami menandainya "belum terbukti". Peringkatnya tetap tampil agar transparan, tapi jangan dijadikan dasar keputusan.`,
+            en: `The ${tx(HORIZON_LABEL[horizon].name).toLowerCase()} score failed testing, so we label it "not proven". Its ranking stays visible for transparency, but don't base decisions on it.`,
+          }
+        : cautionStronger
+          ? {
+              id: `Arus lebih jago mengenali saham yang akan tertinggal daripada menebak juara. ${100 - bot} dari 100 saham bertanda Waspada memang berakhir di separuh bawah. Gunakan ini sebagai saringan pertama.`,
+              en: `Arus is better at spotting laggards than picking champions. ${100 - bot} of 100 Caution-flagged stocks did end in the bottom half. Use it as a first filter.`,
+            }
+          : {
+              id: `Keunggulan Arus lebih terlihat di kelompok teratas: ${top} dari 100 saham "Sangat diunggulkan" berakhir di separuh atas.`,
+              en: `Arus' edge shows more in the top group: ${top} of 100 "Strong edge" stocks ended in the top half.`,
+            },
     },
   ];
 
@@ -80,11 +102,20 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
             <T id="Periode uji" en="Test period" /> {dateLabel(m.oos_start, lang)} → {dateLabel(m.oos_end, lang)}
           </span>
         </div>
+        {!proven && (
+          <div role="note" className="mt-6 rounded-xl bg-warn/10 p-4 text-[14.5px] leading-relaxed text-ink-2 ring-1 ring-warn/30">
+            <span className="font-semibold text-ink">{tx({ id: "Skor ini belum terbukti.", en: "This score is not proven." })}</span>{" "}
+            {tx({
+              id: `AUC keseluruhan ${m.auc_model.toFixed(3)} (0,5 = lempar koin). Periode yang lebih buruk dari acak: ${failed.map((f) => dateLabel(f.test_start, lang, { year: "2-digit" })).join(", ")}. Seluruh hasilnya tetap kami tampilkan di bawah.`,
+              en: `Overall AUC ${m.auc_model.toFixed(3)} (0.5 = coin flip). Periods worse than random: ${failed.map((f) => dateLabel(f.test_start, lang, { year: "2-digit" })).join(", ")}. We still show every result below.`,
+            })}
+          </div>
+        )}
       </motion.header>
 
       <section className="mt-12 rounded-2xl bg-surface p-5 ring-1 ring-line sm:p-7">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-          <T id="Kalau sejak April mengikuti Arus" en="If you had followed Arus since April" />
+          {tx({ id: `Kalau sejak ${dateLabel(m.oos_start, lang)} mengikuti Arus`, en: `If you had followed Arus since ${dateLabel(m.oos_start, lang)}` })}
         </h2>
         <p className="mt-2 max-w-[75ch] text-[14px] leading-relaxed text-muted">
           {horizon === 20 ? (
@@ -137,8 +168,8 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
               en: "Arus cannot see the future. A score of 56 means 44 of 100 similar cases lost.",
             },
             {
-              id: "Data kami setahun terakhir, sebagian besar di pasar yang sedang turun. Di pasar yang berbeda, pola bisa berubah. Karena itu model dilatih ulang setiap hari.",
-              en: "Our data covers the past year, mostly a falling market. In a different market patterns can change, which is why the model retrains every day.",
+              id: `Histori kami hanya ±${months} bulan (sejak ${dateLabel(meta.history_start, lang)}), dibatasi kuota data. Itu baru mencakup satu-dua kondisi pasar. Pola bisa berubah, dan sudah terbukti berubah. Karena itu model dilatih ulang setiap hari.`,
+              en: `Our history spans only ~${months} months (since ${dateLabel(meta.history_start, lang)}), limited by data quota. That covers one or two market conditions. Patterns can change, and already have. That's why the model retrains every day.`,
             },
             {
               id: "Saham yang diuji adalah yang aktif hari ini. Saham yang sudah tidak aktif tidak ikut diuji, dan itu bisa membuat hasil terlihat sedikit lebih baik.",
@@ -168,6 +199,15 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
         <ul className="mt-5 space-y-4 text-[15px] leading-relaxed text-ink-2">
           <li>
             <span className="font-medium text-ink">
+              <T id="Klaim skor 1 bulan dari histori pendek." en="A 1-month claim from a short history." />
+            </span>{" "}
+            <T
+              id="Versi awal hanya diuji April–September 2026, dan kelompok 1 bulan teratas tampak +11% di atas IHSG. Setelah histori diperpanjang ke Juli 2025, keunggulan itu hilang: pada Januari–Maret 2026 skornya terbalik. Dugaan “hanya gagal saat reli lebar” kami uji dengan aturan yang ditetapkan sebelum melihat hasil, dan dugaan itu tidak terbukti. Maka skor 1 bulan kami tandai belum terbukti. Skor Besok, yang tetap konsisten, menjadi skor utama."
+              en="The first version was tested on April–September 2026 only, where the top 1-month group looked +11% above IHSG. Once the history was extended back to July 2025 that edge vanished: in January–March 2026 the score ran backwards. We tested the idea that it “only fails in broad rallies” with a rule fixed before looking at results, and it didn't hold. So the 1-month score is labelled not proven, and the next-day score, which stayed consistent, became the primary one."
+            />
+          </li>
+          <li>
+            <span className="font-medium text-ink">
               <T id="Target “mengalahkan IHSG”." en="A “beat IHSG” target." />
             </span>{" "}
             <T
@@ -189,8 +229,8 @@ export function HonestyView({ meta, models }: Pick<Bundle, "meta" | "models">) {
               <T id="Mengejar momentum dan dana asing." en="Chasing momentum and foreign money." />
             </span>{" "}
             <T
-              id="Banyak screener memberi nilai tinggi pada saham yang sedang naik dan diborong asing. Di data setahun terakhir, cara itu justru sedikit di bawah lempar koin. Arus belajar dari data, bukan dari kebiasaan."
-              en="Many screeners rate stocks highly when they're rising and foreigners are buying. Over the past year that approach did slightly worse than a coin flip. Arus learns from data, not habit."
+              id="Banyak screener memberi nilai tinggi pada saham yang sedang naik dan diborong asing. Di data uji, untuk jangka 1 bulan cara itu justru sedikit di bawah lempar koin, dan untuk besok hanya sedikit di atasnya. Arus belajar dari data, bukan dari kebiasaan."
+              en="Many screeners rate stocks highly when they're rising and foreigners are buying. In our test data, over one month that approach did slightly worse than a coin flip, and next-day only slightly better. Arus learns from data, not habit."
             />
           </li>
         </ul>

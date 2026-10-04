@@ -121,6 +121,8 @@ export type Metrics = {
   auc_by_fold_max: number;
   folds_beating_chance: number;
   n_folds: number;
+  /** AUC > 0.5, most periods beat chance, and top group beat bottom group, all out of sample. */
+  proven?: boolean;
 };
 
 export type Model = {

@@ -81,8 +81,15 @@ def predict_logistic(w: np.ndarray, A: np.ndarray) -> np.ndarray:
 
 
 def platt_fit(q, y) -> np.ndarray:
+    """Monotone by construction: a negative slope would turn the ranking upside down, so when the
+    out-of-sample evidence points that way the curve collapses to the flat base rate instead."""
     q = np.asarray(q, dtype=float)
-    return fit_logistic((q - 0.5)[:, None], np.asarray(y, dtype=float), l2=1.0)
+    y = np.asarray(y, dtype=float)
+    w = fit_logistic((q - 0.5)[:, None], y, l2=1.0)
+    if w[1] < 0:
+        p = min(max(y.mean(), 1e-6), 1 - 1e-6)
+        w = np.array([np.log(p / (1 - p)), 0.0])
+    return w
 
 
 def platt_apply(w: np.ndarray, q) -> np.ndarray:
@@ -293,6 +300,11 @@ def walk_forward(X: pd.DataFrame, aux: dict, horizon: int) -> CalibrationResult:
         "folds_beating_chance": int(sum(a > 0.5 for a in fold_aucs)),
         "n_folds": len(folds),
     }
+    # The score is only presented as evidence when all three hold out of sample; otherwise the
+    # site labels this horizon "not proven" rather than dressing up a coin flip.
+    metrics["proven"] = bool(metrics["auc_model"] > 0.5
+                             and 2 * metrics["folds_beating_chance"] > metrics["n_folds"]
+                             and metrics["top_decile_hit"] > metrics["bottom_decile_hit"])
 
     oos["bin"] = pd.qcut(oos["q"].rank(method="first"), 10, labels=False)
     rel = oos.groupby("bin").agg(pred=("p_cal", "mean"), obs=("y", "mean"), n=("y", "size")).reset_index()

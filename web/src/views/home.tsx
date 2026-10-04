@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { FlowField } from "@/components/flow-field";
 import { MarketMap } from "@/components/charts/treemap";
 import { Term } from "@/components/term";
-import { Badge, HorizonToggle, Reason, ScoreBar, Segmented, StarButton, Toggle, VerdictBadge } from "@/components/ui";
+import { Badge, HorizonToggle, Reason, UnprovenNote, ScoreBar, Segmented, StarButton, Toggle, VerdictBadge } from "@/components/ui";
 import { FEATURE, SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, price, signed } from "@/lib/format";
 import { T, useLang } from "@/lib/i18n";
@@ -63,8 +63,8 @@ function Hero({ ranking, meta }: { ranking: Stock[]; meta: Bundle["meta"] }) {
         </h1>
         <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-ink-2 text-pretty sm:text-[17px]">
           <T
-            id={`Setiap hari Arus menilai ${meta.n_ranked} saham paling aktif di BEI memakai data Sectors, lalu memberi skor peluang yang sudah diuji ke data setahun terakhir, lengkap dengan alasannya.`}
-            en={`Every day Arus scores the ${meta.n_ranked} most active IDX stocks using Sectors data, giving each one odds that were tested on the past year, with the reasons behind them.`}
+            id={`Setiap hari Arus menilai ${meta.n_ranked} saham paling aktif di BEI memakai data Sectors, lalu memberi skor peluang yang diuji ke data historis, lengkap dengan alasannya dan catatan mana yang belum terbukti.`}
+            en={`Every day Arus scores the ${meta.n_ranked} most active IDX stocks using Sectors data, giving each one odds tested on historical data, with the reasons behind them and a note on what is not yet proven.`}
           />
         </p>
       </motion.div>
@@ -111,6 +111,7 @@ function Hero({ ranking, meta }: { ranking: Stock[]; meta: Bundle["meta"] }) {
         </div>
         <HorizonToggle size="lg" />
       </motion.div>
+      <UnprovenNote className="relative mt-3 max-w-3xl" />
     </section>
   );
 }

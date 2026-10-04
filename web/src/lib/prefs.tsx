@@ -12,7 +12,7 @@ type Ctx = {
 };
 
 const PrefsContext = createContext<Ctx>({
-  horizon: 20,
+  horizon: 1,
   setHorizon: () => {},
   watchlist: [],
   toggleWatch: () => {},
@@ -35,12 +35,12 @@ function write(key: string, v: unknown) {
 }
 
 export function PrefsProvider({ children }: { children: React.ReactNode }) {
-  const [horizon, setH] = useState<Horizon>(20);
+  const [horizon, setH] = useState<Horizon>(1);
   const [watchlist, setW] = useState<string[]>([]);
 
   useEffect(() => {
-    const h = read<number>("arus.horizon", 20);
-    setH(h === 1 ? 1 : 20);
+    const h = read<number>("arus.horizon", 1);
+    setH(h === 20 ? 20 : 1);
     setW(read<string[]>("arus.watchlist", []));
   }, []);
 

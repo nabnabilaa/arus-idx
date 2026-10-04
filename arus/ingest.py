@@ -22,7 +22,7 @@ from arus import config
 from arus.client import SectorsClient
 
 AS_OF = date(2026, 10, 3)          # the last trading day is 2026-10-02 (Fri)
-N_WINDOWS = 4                      # 4 × 90 days ≈ 1 year of trading history
+N_WINDOWS = 5                      # 5 × 90 days ≈ 15 months of trading history
 N_CANDIDATES = 200                 # companies screened by market cap
 N_HISTORY = 120                    # most liquid names that get full history
 

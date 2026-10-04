@@ -34,8 +34,8 @@ export const GLOSSARY: Record<string, Term> = {
   verdict: {
     title: { id: "Lima tingkat penilaian", en: "Five levels" },
     body: {
-      id: "Setiap hari semua saham diurutkan. 10% teratas = Sangat diunggulkan, berikutnya Diunggulkan, tengah = Netral, lalu Kurang diunggulkan, dan 10% terbawah = Waspada. Data setahun menunjukkan Arus paling akurat justru saat memberi tanda Waspada.",
-      en: "Every day all stocks are ranked. The top 10% = Strong edge, then Edge, the middle = Neutral, then Weak, and the bottom 10% = Caution. A year of data shows Arus is most accurate when it flags Caution.",
+      id: "Setiap hari semua saham diurutkan. 10% teratas = Sangat diunggulkan, berikutnya Diunggulkan, tengah = Netral, lalu Kurang diunggulkan, dan 10% terbawah = Waspada. Untuk skor Besok, uji historis menunjukkan Arus paling akurat justru saat memberi tanda Waspada.",
+      en: "Every day all stocks are ranked. The top 10% = Strong edge, then Edge, the middle = Neutral, then Weak, and the bottom 10% = Caution. For the next-day score, historical testing shows Arus is most accurate when it flags Caution.",
     },
   },
   evidence: {

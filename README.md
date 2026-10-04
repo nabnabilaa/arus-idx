@@ -1,6 +1,6 @@
 # 🌊 Arus — skor peluang saham IDX yang jujur
 
-> **Untuk investor ritel IDX yang kebanjiran data tapi kekurangan keyakinan, Arus memberi setiap saham satu skor peluang yang sudah diuji ke data setahun, menjelaskan alasannya dalam bahasa biasa, dan berani bilang “tidak yakin” saat buktinya tipis.**
+> **Untuk investor ritel IDX yang kebanjiran data tapi kekurangan keyakinan, Arus memberi setiap saham satu skor peluang yang diuji jujur ke data historis, menjelaskan alasannya dalam bahasa biasa, dan berani bilang “belum terbukti” saat buktinya tidak ada.**
 
 Sectors Hackathon 2026 · Track 03 — Market Intelligence · Data: [Sectors API](https://sectors.app)
 
@@ -12,9 +12,9 @@ Setiap hari bursa Arus menilai 120 saham paling aktif di BEI dan menjawab satu p
 
 **“Dari 100 kondisi di masa lalu yang mirip saham ini hari ini, berapa yang berakhir lebih baik daripada separuh saham lain?”**
 
-- **Skor X/100** dengan 50 = lempar koin, untuk dua jangka waktu: **Besok** (trader harian) dan **1 bulan** (swing/investor).
+- **Skor X/100** dengan 50 = lempar koin, untuk dua jangka waktu: **Besok** (trader harian, skor utama) dan **1 bulan** (swing/investor, saat ini ditandai *belum terbukti*).
 - **Lima tingkat yang mudah dibaca:** Sangat diunggulkan · Diunggulkan · Netral · Kurang diunggulkan · Waspada.
-- **Alasan dalam bahasa biasa** untuk setiap skor (mis. “Pergerakan tenang — di data setahun terakhir, saham yang tenang lebih sering unggul”).
+- **Alasan dalam bahasa biasa** untuk setiap skor (mis. “Pergerakan tenang — di data uji, saham yang tenang lebih sering unggul”).
 - **Level penting harian:** gerak normal harian, batas bawah/atas 1 bulan, batas sinyal batal.
 - **Bukti tambahan yang sengaja tidak dicampur ke skor:** jejak bandar (broker institusi vs ritel), fundamental vs rekan sektor, transaksi orang dalam, kejadian tak biasa.
 - **Agen harian + bot Telegram** yang mengambil data baru, belajar ulang, **menilai dirinya sendiri**, lalu mengirim ringkasan.
@@ -25,22 +25,25 @@ Banyak laporan saham menulis “Confidence 78%” tanpa pernah menguji dari mana
 
 | | Skor biasa | Arus |
 |---|---|---|
-| Asal angka | Bobot buatan manusia | Dipelajari dari data setahun |
+| Asal angka | Bobot buatan manusia | Dipelajari dari data ±15 bulan |
 | Diuji? | Jarang | Walk-forward seperti dipakai sungguhan, dengan jeda anti-bocor |
 | Arti “56” | Tidak jelas | 56 dari 100 kejadian serupa memang unggul (dikalibrasi) |
 | Saat bukti lemah | Tetap terdengar yakin | Skor dekat 50, label “Netral” |
 | Periode gagal | Disembunyikan | Ditampilkan di halaman Bukti |
+| Skor yang gagal uji | Tetap dijual | Ditandai “belum terbukti” secara otomatis |
 
 ## Hasil uji (jujur, out-of-sample)
 
 | Jangka waktu | Periode di atas acak | “Sangat diunggulkan” unggul | “Waspada” unggul |
 |---|---|---|---|
-| Besok | **6 dari 7** | 53 dari 100 | 47 dari 100 |
-| 1 bulan | 4 dari 5 | 53 dari 100 | 43 dari 100 |
+| Besok (Des 2025 – Okt 2026) | **7 dari 10** | 52 dari 100 | 47 dari 100 |
+| 1 bulan (Jan – Sep 2026) | 4 dari 8 | 50 dari 100 | 59 dari 100 — **terbalik** |
 
-Sinyalnya nyata tapi sederhana, seperti hampir semua sinyal pasar yang jujur. Arus paling bisa diandalkan sebagai **saringan pertama**: 57 dari 100 saham bertanda Waspada memang berakhir di separuh bawah dalam sebulan. Detail lengkap (AUC, kalibrasi, stabilitas per periode) ada di halaman **Bukti**.
+**Skor besok:** sinyalnya nyata tapi tipis (AUC 0,513), konsisten di hampir semua bulan. Arus paling bisa diandalkan sebagai **saringan pertama**: 53 dari 100 saham bertanda Waspada memang berakhir di separuh bawah keesokan harinya. Keunggulan sekecil ini habis dimakan biaya kalau dipakai beli-jual setiap hari (simulasi: −29% terhadap IHSG setelah biaya), jadi gunakan sebagai penyaring, bukan strategi.
 
-Temuan menarik: di pasar 2026 yang sedang turun, **mengejar momentum dan dana asing justru sedikit di bawah lempar koin**, sedangkan saham yang tenang dan tidak terlalu ramai lebih sering unggul. Arus belajar dari data, bukan dari kebiasaan.
+**Skor 1 bulan: belum terbukti.** Versi awal hanya diuji April–September 2026 dan tampak +11% di atas IHSG. Setelah histori diperpanjang ke Juli 2025, Januari–Maret 2026 ternyata terbalik (AUC 0,32–0,45) dan keunggulannya hilang (AUC total 0,479). Dugaan “hanya gagal saat reli lebar” kami uji dengan aturan breadth yang ditetapkan sebelum melihat hasil, dan tidak terbukti. Kalibrasinya dibuat monoton, jadi skor 1 bulan kini datar di sekitar 50 dan situs menandainya *belum terbukti* secara otomatis. Begitu uji ulang harian menunjukkan sebaliknya, tanda itu hilang sendiri.
+
+Detail lengkap (AUC, kalibrasi, stabilitas per periode) ada di halaman **Bukti**.
 
 ## Arsitektur
 
@@ -68,7 +71,7 @@ Sectors API ──► client.py (cache permanen + meteran kredit + throttle)
 
 `/v2/daily/{symbol}` · `/v2/foreign-flow/{symbol}` · `/v2/foreign-flow/` · `/v2/index-daily/ihsg` · `/v2/companies` (screener + JII70) · `/v2/broker-summary/{symbol}/top` · `/v2/brokers` · `/v2/filings` · `/v2/suspensions` · `/v2/corporate-actions`
 
-Hemat kredit: endpoint per-saham menerima jendela 90 hari di masa lalu seharga 1 kredit, jadi histori setahun cukup 4 panggilan per saham; screener dengan `include_query_values` memberi 200 emiten × 12 data fundamental dalam 2 panggilan; setiap respons di-cache permanen. Total pembangunan awal ≈ 1.130 kredit.
+Hemat kredit: endpoint per-saham menerima jendela 90 hari di masa lalu seharga 1 kredit, jadi histori ±15 bulan cukup 5 panggilan per saham; screener dengan `include_query_values` memberi 200 emiten × 12 data fundamental dalam 2 panggilan; setiap respons di-cache permanen. Total kredit terpakai ≈ 1.400. Kuota inilah yang membatasi panjang histori.
 
 ## Menjalankan
 
@@ -99,9 +102,9 @@ Situs membaca `web/src/data/`, jadi bisa dibuka **tanpa API key**. Pipeline teta
 ## Keterbatasan
 
 - Data harian (final setelah bursa tutup), bukan detik-ke-detik.
-- Satu tahun data, sebagian besar di pasar yang sedang turun; model dilatih ulang setiap hari.
+- Hanya ±15 bulan data (Juli 2025 – Oktober 2026), dibatasi kuota kredit; itu baru satu-dua kondisi pasar. Model dilatih ulang setiap hari.
 - Universe = saham aktif hari ini (bias survivorship kecil).
-- Tanpa biaya transaksi dan slippage.
+- Angka hit rate belum termasuk biaya; kurva backtest menampilkan versi setelah biaya ±0,4% per putaran. Slippage tidak dihitung.
 - Jejak bandar & fundamental hanya snapshot, karena itu tidak diskor.
 
 ## Disclaimer
@@ -112,4 +115,4 @@ Arus adalah alat informasi dan analisis, **bukan nasihat keuangan** dan bukan aj
 
 ### English summary
 
-Arus gives every one of the 120 most active IDX stocks a daily **score out of 100** — of 100 past situations that looked like this stock today, how many ended better than half of all other stocks — for two horizons (next day, 1 month). The model learns from a year of Sectors data, is validated with purged walk-forward testing, calibrated so its numbers mean what they say, explains every score in plain language, shows the evidence that disagrees, and runs as a daily agent that grades itself and reports to Telegram. Information, not financial advice.
+Arus gives every one of the 120 most active IDX stocks a daily **score out of 100** — of 100 past situations that looked like this stock today, how many ended better than half of all other stocks — for two horizons (next day, the primary score; 1 month, currently labelled not proven after it failed a longer out-of-sample test). The model learns from ~15 months of Sectors data, is validated with purged walk-forward testing, calibrated so its numbers mean what they say, explains every score in plain language, shows the evidence that disagrees, and runs as a daily agent that grades itself and reports to Telegram. Information, not financial advice.

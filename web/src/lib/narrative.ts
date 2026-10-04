@@ -33,12 +33,12 @@ export function reasonMeaning(k: FeatureKey, weight: number, pctl: number | null
   const helps = ((pctl ?? 0.5) >= 0.5) === prefersHigh;
   return helps
     ? {
-        id: `${state.id}. Di data setahun terakhir, saham dengan kondisi “${liked.id.toLowerCase()}” lebih sering unggul.`,
-        en: `${state.en}. Over the past year, stocks showing “${liked.en.toLowerCase()}” won more often.`,
+        id: `${state.id}. Di data uji, saham dengan kondisi “${liked.id.toLowerCase()}” lebih sering unggul.`,
+        en: `${state.en}. In testing, stocks showing “${liked.en.toLowerCase()}” won more often.`,
       }
     : {
-        id: `${state.id}. Di data setahun terakhir, yang lebih sering unggul justru saham dengan kondisi “${liked.id.toLowerCase()}”.`,
-        en: `${state.en}. Over the past year, the stocks that won more often showed “${liked.en.toLowerCase()}” instead.`,
+        id: `${state.id}. Di data uji, yang lebih sering unggul justru saham dengan kondisi “${liked.id.toLowerCase()}”.`,
+        en: `${state.en}. In testing, the stocks that won more often showed “${liked.en.toLowerCase()}” instead.`,
       };
 }
 

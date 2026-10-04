@@ -262,16 +262,17 @@ ASK_RULES = (
 
 
 def ask(question: str, bundle: dict, p: dict) -> str:
-    """Free-form question → answer grounded in the snapshot. Engine set by ARUS_ASK in .env."""
+    """Free-form question → answer grounded in the snapshot, via the CLI named in ARUS_ASK_CMD."""
     import re
     import shutil
     import subprocess
-    engine = env().get("ARUS_ASK", "").lower()
+    cmd = env().get("ARUS_ASK_CMD", "").strip()
     lang = p.get("lang", "id")
-    if engine != "llm":
-        return ("Untuk bertanya bebas, aktifkan mesin jawaban (ARUS_ASK=llm di .env). Sementara itu coba /saham KODE atau /hari_ini."
-                if lang == "id" else "Free-form questions need an answer engine (ARUS_ASK=llm in .env). Meanwhile try /saham CODE or /hari_ini.")
-    exe = shutil.which("llm") or shutil.which("llm.cmd")
+    if not cmd:
+        return ("Untuk bertanya bebas, isi ARUS_ASK_CMD di .env dengan perintah CLI model bahasa yang menerima pertanyaan lewat stdin. Sementara itu coba /saham KODE atau /hari_ini."
+                if lang == "id" else "Free-form questions need ARUS_ASK_CMD in .env: a language-model CLI that reads the prompt from stdin. Meanwhile try /saham CODE or /hari_ini.")
+    parts = cmd.split()
+    exe = shutil.which(parts[0]) or shutil.which(parts[0] + ".cmd")
     if not exe:
         return "Mesin jawaban tidak ditemukan di server bot." if lang == "id" else "Answer engine not found on the bot host."
     by = {s["symbol"]: s for s in bundle["ranking"]}
@@ -289,7 +290,7 @@ def ask(question: str, bundle: dict, p: dict) -> str:
     }
     prompt = f"{ASK_RULES}\n\nDATA ARUS:\n{json.dumps(ctx, ensure_ascii=False, default=str)}\n\nPERTANYAAN: {question}"
     try:
-        r = subprocess.run([exe, "-p"], input=prompt, capture_output=True, text=True, encoding="utf-8", timeout=180)
+        r = subprocess.run([exe, *parts[1:]], input=prompt, capture_output=True, text=True, encoding="utf-8", timeout=180)
         out = (r.stdout or "").strip()
         return out[:3500] if out else ("Maaf, belum bisa menjawab sekarang." if lang == "id" else "Sorry, I can't answer right now.")
     except (subprocess.SubprocessError, OSError):

@@ -94,7 +94,7 @@ Situs membaca `web/src/data/`, jadi bisa dibuka **tanpa API key**. Pipeline teta
 
 ## Bot Telegram
 
-`/hari_ini` · `/saham BBRI` · `/unggul` · `/waspada` · `/pantau KODE` · `/pantauan` · `/syariah on` · `/harga 1000` · `/rapor` · `/bahasa en` · atau tanya bebas (“BBRI masih layak dipantau?”). Bot membaca snapshot, jadi bertanya tidak menghabiskan kredit API. Tanya bebas opsional (`ARUS_ASK=llm` di `.env`).
+`/hari_ini` · `/saham BBRI` · `/unggul` · `/waspada` · `/pantau KODE` · `/pantauan` · `/syariah on` · `/harga 1000` · `/rapor` · `/bahasa en` · atau tanya bebas (“BBRI masih layak dipantau?”). Bot membaca snapshot, jadi bertanya tidak menghabiskan kredit API. Tanya bebas opsional: isi `ARUS_ASK_CMD` di `.env` dengan perintah CLI model bahasa yang menerima pertanyaan lewat stdin.
 
 ## Keterbatasan
 

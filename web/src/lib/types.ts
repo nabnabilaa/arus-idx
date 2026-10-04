@@ -65,6 +65,10 @@ export type Stock = {
   beta_vix?: number | null;
   beta_usd?: number | null;
   beta_us10y?: number | null;
+  ff_today?: number | null;
+  ff_typical?: number | null;
+  vol_mult?: number | null;
+  ret_typical?: number | null;
   fin_score?: number | null;
   fin_n?: number | null;
   fin_grade?: FinGrade | null;
@@ -202,6 +206,7 @@ export type Bundle = {
   families: Record<string, FeatureKey[]>;
   cones?: Record<string, Partial<Record<"1" | "20", { steps: number; lo: number; mid: number; hi: number }[]>>>;
   financials?: Record<string, FinHealth>;
+  anomalyHistory?: Record<string, { n1: number; beat1: number | null; med1: number | null; n5: number; beat5: number | null; med5: number | null }>;
   coneCoverage?: Record<"1" | "20", { raw: number; calibrated: number; factor: number; target: number; steps: number; n: number }>;
 };
 

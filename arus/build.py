@@ -339,6 +339,7 @@ def main():
               "ranking": _records(rank), "sectors": _records(sectors),
               "sectorTs": _records(sector_ts), "market": _records(mkt), "brokers": brokers, "bandar": bandar,
               "cones": cones, "coneCoverage": cone_cov, "financials": health,
+              "anomalyHistory": context.anomaly_history(aux),
               "families": fam}
 
     snap = config.SNAPSHOT_DIR

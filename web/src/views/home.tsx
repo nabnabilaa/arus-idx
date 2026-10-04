@@ -8,11 +8,12 @@ import { useMemo, useState } from "react";
 import { FlowField } from "@/components/flow-field";
 import { MarketMap } from "@/components/charts/treemap";
 import { Term } from "@/components/term";
-import { Badge, HorizonToggle, Reason, ScoreBar, Segmented, StarButton, Toggle, VerdictBadge } from "@/components/ui";
-import { FEATURE, SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
+import { Badge, HorizonToggle, Reason, ScoreBar, Segmented, StarButton, Toggle } from "@/components/ui";
+import { FEATURE, SECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, price, signed } from "@/lib/format";
-import { T, useLang } from "@/lib/i18n";
+import { T, useLang, type Bi } from "@/lib/i18n";
 import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/data";
+import { FIN_GRADE } from "@/components/perspectives";
 import { usePrefs } from "@/lib/prefs";
 import type { Bundle, FeatureKey, Horizon, Stock } from "@/lib/types";
 import { get, HORIZON_LABEL, VERDICT, VERDICT_ORDER, verdictOf, type VerdictKey } from "@/lib/verdict";
@@ -34,7 +35,7 @@ export function HomeView({ ranking, meta, market, models }: Props) {
       <Hero ranking={ranking} meta={meta} />
       <HowToRead />
       <MarketToday ranking={ranking} market={market} horizon={horizon} model={model} />
-      <Highlights scored={scored} horizon={horizon} model={model} />
+      <Highlights scored={scored} />
       <Screener scored={scored} horizon={horizon} />
     </>
   );
@@ -141,15 +142,15 @@ function HowToRead() {
     {
       t: { id: "Baca skornya", en: "Read the score" },
       d: {
-        id: "56/100 artinya: dari 100 kondisi serupa di masa lalu, 56 bergerak lebih baik daripada separuh saham lain. 50 = lempar koin.",
-        en: "56/100 means: of 100 similar past situations, 56 did better than half of all other stocks. 50 = a coin flip.",
+        id: "Skor besok 56 artinya: dari 100 hari dengan kondisi mirip, 56 kali saham seperti ini bergerak lebih baik dari separuh saham lain esok harinya. 50 berarti sama saja dengan memilih acak.",
+        en: "A next-day score of 56 means: out of 100 days with a similar setup, 56 times a stock like this beat half of all others the next day. 50 means no better than picking at random.",
       },
       vis: (
         <div className="w-full max-w-56">
           <ScoreBar value={0.56} lo={0.5} hi={0.61} color="#5cc8ff" />
           <div className="num mt-1 flex justify-between text-[10.5px] text-muted">
             <span>40</span>
-            <span>50 · {tx({ id: "koin", en: "coin" })}</span>
+            <span>50 · {tx({ id: "acak", en: "random" })}</span>
             <span>60</span>
           </div>
         </div>
@@ -158,8 +159,8 @@ function HowToRead() {
     {
       t: { id: "Klik untuk alasannya", en: "Click for the why" },
       d: {
-        id: "Setiap saham punya halaman berisi grafik, alasan skor dalam bahasa biasa, level harga penting, dan risikonya.",
-        en: "Every stock has a page with a chart, the reasons in plain words, key price levels, and its risks.",
+        id: "Setiap saham punya halaman dengan tiga sudut pandang: besok, beberapa minggu, dan jangka panjang. Ada juga perencana CL/TP, jejak bandar, dan kesehatan keuangannya.",
+        en: "Every stock has a page with three views: tomorrow, a few weeks, and the long term. Plus a stop/target planner, broker footprints, and financial health.",
       },
       vis: (
         <div className="flex flex-wrap gap-1.5">
@@ -358,60 +359,78 @@ function MarketToday({ ranking, market, horizon, model }: { ranking: Stock[]; ma
 /* ------------------------------------------------------------------ highlights */
 type Scored = { s: Stock; g: ReturnType<typeof get>; v: VerdictKey };
 
-function Highlights({ scored, horizon, model }: { scored: Scored[]; horizon: Horizon; model: Bundle["models"]["1"] }) {
+function Highlights({ scored }: { scored: Scored[] }) {
   const { tx } = useLang();
-  const best = scored.slice(0, 5);
-  const worst = scored.slice(-5).reverse();
-  const m = model.metrics;
+  const unusual = (x: Stock) => Math.max(Math.abs(x.z_foreign ?? 0), Math.abs(x.z_volume ?? 0));
+  const why = (x: Stock): Bi => {
+    const zf = x.z_foreign ?? 0;
+    const zv = x.z_volume ?? 0;
+    if (Math.abs(zf) >= Math.abs(zv)) return zf > 0 ? { id: "asing borong", en: "heavy foreign buying" } : { id: "asing jual besar", en: "heavy foreign selling" };
+    return zv > 0 ? { id: "volume melonjak", en: "volume spike" } : { id: "volume sepi", en: "volume dried up" };
+  };
+  const health = (x: Stock) => (x.fin_score != null && x.fin_n ? x.fin_score / x.fin_n + (x.rev_cagr ?? 0) * 0.1 : -1);
+  const cols: { title: Bi; note: Bi; href?: string; rows: { s: Stock; value: React.ReactNode; tone?: string }[] }[] = [
+    {
+      title: { id: "Skor besok tertinggi", en: "Top next-day scores" },
+      note: { id: "Untuk trader harian", en: "For day traders" },
+      rows: scored.slice(0, 5).map(({ s, v }) => ({ s, value: tx(VERDICT[v].short), tone: "text-arus" })),
+    },
+    {
+      title: { id: "Keuangan paling sehat", en: "Healthiest financials" },
+      note: { id: "Untuk investor jangka panjang", en: "For long-term investors" },
+      rows: [...scored.map((x) => x.s)]
+        .sort((a, b) => health(b) - health(a))
+        .slice(0, 5)
+        .map((x) => ({ s: x, value: `${x.fin_score}/${x.fin_n}`, tone: "text-[#7fd4a8]" })),
+    },
+    {
+      title: { id: "Paling tidak biasa hari ini", en: "Most unusual today" },
+      note: { id: "Aktivitas jauh dari kebiasaannya", en: "Activity far from its norm" },
+      href: "/anomali/",
+      rows: [...scored.map((x) => x.s)]
+        .sort((a, b) => unusual(b) - unusual(a))
+        .slice(0, 5)
+        .map((x) => ({ s: x, value: tx(why(x)), tone: (x.z_foreign ?? 0) >= 0 && Math.abs(x.z_foreign ?? 0) >= Math.abs(x.z_volume ?? 0) ? "text-[#9cc5f5]" : "text-ink-2" })),
+    },
+  ];
   return (
     <section className="mb-16">
       <h2 className="text-2xl font-semibold tracking-tight">
-        <T id="Sorotan" en="Highlights" /> · <span className="text-ink-2">{tx(HORIZON_LABEL[horizon].name)}</span>
+        <T id="Sorotan hari ini" en="Today's highlights" />
       </h2>
-      <p className="mt-2 max-w-[70ch] text-[14px] leading-relaxed text-muted">
-        <T
-          id={`Di data uji, saham "Sangat diunggulkan" unggul ${Math.round(m.top_decile_hit * 100)} dari 100 kali, sedangkan saham "Waspada" hanya ${Math.round(m.bottom_decile_hit * 100)} dari 100.`}
-          en={`In testing, "Strong edge" stocks won ${Math.round(m.top_decile_hit * 100)} of 100 times, while "Caution" stocks won only ${Math.round(m.bottom_decile_hit * 100)} of 100.`}
-        />
-      </p>
-      <div className="mt-6 grid gap-10 lg:grid-cols-2">
-        {[
-          { title: { id: "Paling diunggulkan", en: "Strongest edge" }, list: best, note: { id: "Peluang terbaik hari ini.", en: "Best odds today." } },
-          { title: { id: "Waspada", en: "Caution" }, list: worst, note: { id: "Kelompok yang secara historis paling sering tertinggal.", en: "The group that historically lagged most often." } },
-        ].map((col) => (
-          <div key={col.title.en}>
-            <div className="flex items-baseline justify-between gap-3 border-b border-line pb-2">
+      <div className="mt-6 grid gap-5 lg:grid-cols-3">
+        {cols.map((col, ci) => (
+          <motion.div
+            key={col.title.en}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: ci * 0.06, ease: EASE }}
+            className="rounded-2xl bg-surface p-5 ring-1 ring-line"
+          >
+            <div className="flex items-baseline justify-between gap-3">
               <h3 className="text-[15px] font-semibold">{tx(col.title)}</h3>
-              <span className="text-[12px] text-muted">{tx(col.note)}</span>
+              {col.href && (
+                <Link href={col.href} className="text-[12px] text-muted hover:text-arus">
+                  {tx({ id: "Lihat semua", en: "See all" })}
+                </Link>
+              )}
             </div>
-            <ul className="divide-y divide-line">
-              {col.list.map(({ s, g, v }, i) => (
-                <motion.li key={s.symbol} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.35, delay: i * 0.05, ease: EASE }}>
-                  <Link href={`/saham/${s.symbol}/`} className="group flex items-center gap-4 py-3.5">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[16px] font-semibold">{s.symbol}</span>
-                        <VerdictBadge v={v} />
-                        {s.sharia && <Badge tone="good">{tx({ id: "Syariah", en: "Sharia" })}</Badge>}
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {(v === "caution" || v === "weak" ? g.neg : g.pos).slice(0, 2).map((k) => (
-                          <Reason key={k} k={k} pctl={(s as unknown as Record<string, number>)[k]} helps={!(v === "caution" || v === "weak")} />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="num text-2xl font-semibold tracking-tight">
-                        {Math.round(g.conf * 100)}
-                        <span className="text-xs font-normal text-muted">/100</span>
-                      </div>
-                    </div>
-                    <ArrowUpRight size={18} className="shrink-0 text-muted transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-arus" />
+            <p className="text-[12px] text-muted">{tx(col.note)}</p>
+            <ol className="mt-3 divide-y divide-line">
+              {col.rows.map(({ s, value, tone }, i) => (
+                <li key={s.symbol}>
+                  <Link href={`/saham/${s.symbol}/`} className="group flex items-center gap-3 py-2.5">
+                    <span className="num w-4 text-[12px] text-muted">{i + 1}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14.5px] font-semibold text-ink group-hover:text-arus">{s.symbol}</span>
+                      <span className="block truncate text-[12px] text-muted">{s.name}</span>
+                    </span>
+                    <span className={`num shrink-0 text-right text-[14px] font-semibold ${tone ?? "text-ink"}`}>{value}</span>
                   </Link>
-                </motion.li>
+                </li>
               ))}
-            </ul>
-          </div>
+            </ol>
+          </motion.div>
         ))}
       </div>
     </section>
@@ -429,10 +448,11 @@ type Filters = {
   sector: string;
   foreignBuy: boolean;
   hideSusp: boolean;
+  health: "all" | "strong" | "fairUp";
 };
-const DEFAULTS: Filters = { q: "", tab: "all", verdicts: [], price: "all", cap: "all", liq: 1e9, sector: "all", foreignBuy: false, hideSusp: false };
+const DEFAULTS: Filters = { q: "", tab: "all", verdicts: [], price: "all", cap: "all", liq: 1e9, sector: "all", foreignBuy: false, hideSusp: false, health: "all" };
 const LIQ = [1e9, 5e9, 1e10, 5e10, 1e11];
-type SortKey = "score" | "move" | "foreign" | "price";
+type SortKey = "score" | "health" | "move" | "foreign" | "price";
 
 function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
   const { tx, lang } = useLang();
@@ -468,13 +488,16 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
       if (f.sector !== "all" && s.sector !== f.sector) return false;
       if (f.foreignBuy && !((s.ff_net_20 ?? 0) > 0)) return false;
       if (f.hideSusp && s.suspended_recent) return false;
+      if (f.health === "strong" && s.fin_grade !== "strong") return false;
+      if (f.health === "fairUp" && !(s.fin_grade === "strong" || s.fin_grade === "fair")) return false;
       return true;
     });
-    const key = (x: Scored) => (sort === "score" ? x.g.conf : sort === "move" ? x.s.ret_1 ?? 0 : sort === "foreign" ? x.s.ff_net_20 ?? 0 : x.s.price ?? 0);
+    const key = (x: Scored) =>
+      sort === "score" ? x.g.conf : sort === "health" ? (x.s.fin_n ? (x.s.fin_score ?? 0) / x.s.fin_n : -1) : sort === "move" ? x.s.ret_1 ?? 0 : sort === "foreign" ? x.s.ff_net_20 ?? 0 : x.s.price ?? 0;
     return [...r].sort((a, b) => key(b) - key(a));
   }, [scored, f, sort, watchlist]);
 
-  const activeCount = (["verdicts", "price", "cap", "liq", "sector", "foreignBuy", "hideSusp"] as (keyof Filters)[]).filter((k) =>
+  const activeCount = (["verdicts", "price", "cap", "liq", "sector", "foreignBuy", "hideSusp", "health"] as (keyof Filters)[]).filter((k) =>
     Array.isArray(f[k]) ? (f[k] as unknown[]).length > 0 : f[k] !== DEFAULTS[k],
   ).length;
 
@@ -520,7 +543,8 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
               <T id="Urutkan" en="Sort" />
             </span>
             <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)} className="h-9 cursor-pointer rounded-lg bg-surface px-2 text-[13px] text-ink ring-1 ring-line focus:outline-none">
-              <option value="score">{tx({ id: "Skor tertinggi", en: "Highest score" })}</option>
+              <option value="score">{tx({ id: "Skor besok tertinggi", en: "Highest next-day score" })}</option>
+              <option value="health">{tx({ id: "Keuangan paling sehat", en: "Healthiest financials" })}</option>
               <option value="move">{tx({ id: "Naik terbanyak hari ini", en: "Top gainers today" })}</option>
               <option value="foreign">{tx({ id: "Paling dibeli asing", en: "Most foreign-bought" })}</option>
               <option value="price">{tx({ id: "Harga tertinggi", en: "Highest price" })}</option>
@@ -532,7 +556,7 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
           {more && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: EASE }} className="overflow-hidden">
               <div className="grid gap-x-8 gap-y-5 pb-1 pt-4 md:grid-cols-2 xl:grid-cols-3">
-                <Field label={tx({ id: "Penilaian", en: "Verdict" })} help={<Term k="verdict"><T id="Apa artinya?" en="What does it mean?" /></Term>}>
+                <Field label={tx({ id: "Penilaian besok", en: "Next-day verdict" })} help={<Term k="verdict"><T id="Apa artinya?" en="What does it mean?" /></Term>}>
                   <div className="flex flex-wrap gap-1.5">
                     {VERDICT_ORDER.map((k) => {
                       const on = f.verdicts.includes(k);
@@ -548,6 +572,18 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
                       );
                     })}
                   </div>
+                </Field>
+                <Field label={tx({ id: "Kesehatan keuangan", en: "Financial health" })}>
+                  <Segmented
+                    label="health"
+                    value={f.health}
+                    onChange={(v) => set("health", v)}
+                    options={[
+                      { value: "all", label: tx({ id: "Semua", en: "All" }) },
+                      { value: "fairUp", label: tx({ id: "Cukup ke atas", en: "Fair or better" }) },
+                      { value: "strong", label: tx({ id: "Sehat saja", en: "Healthy only" }) },
+                    ]}
+                  />
                 </Field>
                 <Field label={tx({ id: "Harga per lembar", en: "Price per share" })} help={tx({ id: "Harga murah bukan berarti saham murah.", en: "A low price doesn't mean a cheap stock." })}>
                   <Segmented
@@ -647,14 +683,11 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
               </th>
               <th className="py-3 pr-4 font-normal">
                 <Term k="score">
-                  <T id="Skor" en="Score" /> · {tx(HORIZON_LABEL[horizon].name)}
+                  <T id="Skor besok" en="Next-day score" />
                 </Term>
               </th>
               <th className="py-3 pr-4 font-normal">
-                <T id="Penilaian" en="Verdict" />
-              </th>
-              <th className="py-3 pr-4 font-normal">
-                <T id="Alasan utama" en="Main reason" />
+                <T id="Keuangan" en="Financials" />
               </th>
               <th className="py-3 pr-2 text-right font-normal">
                 <T id="Asing 1 bln" en="Foreign 1 mo" />
@@ -663,8 +696,6 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
           </thead>
           <tbody>
             {rows.slice(page * PER, page * PER + PER).map(({ s, g, v }) => {
-              const helps = !(v === "caution" || v === "weak");
-              const k = (helps ? g.pos : g.neg)[0];
               return (
                 <tr key={s.symbol} className="group transition-colors duration-150 hover:bg-surface">
                   <td className="border-t border-line py-2">
@@ -683,17 +714,20 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
                   <td className="num border-t border-line py-2.5 pr-4 text-right text-ink-2">{price(s.price, lang)}</td>
                   <td className={`num border-t border-line py-2.5 pr-4 text-right ${(s.ret_1 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</td>
                   <td className="border-t border-line py-2.5 pr-4">
-                    <div className="flex items-center gap-3">
-                      <span className="num w-8 text-[15px] font-semibold text-ink">{Math.round(g.conf * 100)}</span>
-                      <div className="w-28">
-                        <ScoreBar value={g.conf} lo={g.lo} hi={g.hi} color={VERDICT[v].color} />
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="num w-7 text-[15px] font-semibold" style={{ color: VERDICT[v].color }}>{Math.round(g.conf * 100)}</span>
+                      <span className="text-[12px] text-muted">{tx(VERDICT[v].label)}</span>
                     </div>
                   </td>
                   <td className="border-t border-line py-2.5 pr-4">
-                    <VerdictBadge v={v} />
+                    {s.fin_grade ? (
+                      <span className={FIN_GRADE[s.fin_grade].tone}>
+                        {tx(FIN_GRADE[s.fin_grade].label)} <span className="num text-[12px] text-muted">{s.fin_score}/{s.fin_n}</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted">–</span>
+                    )}
                   </td>
-                  <td className="border-t border-line py-2.5 pr-4">{k && <Reason k={k} pctl={(s as unknown as Record<string, number>)[k]} helps={helps} />}</td>
                   <td className={`num border-t border-line py-2.5 pr-2 text-right ${(s.ff_net_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{idr(s.ff_net_20, lang)}</td>
                 </tr>
               );
@@ -705,8 +739,6 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
       {/* mobile cards */}
       <ul className="mt-2 divide-y divide-line md:hidden">
         {rows.slice(page * PER, page * PER + PER).map(({ s, g, v }) => {
-          const helps = !(v === "caution" || v === "weak");
-          const k = (helps ? g.pos : g.neg)[0];
           return (
             <li key={s.symbol} className="flex items-center gap-2 py-3">
               <StarButton symbol={s.symbol} />
@@ -717,12 +749,12 @@ function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
                     <span className={`num text-xs ${(s.ret_1 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</span>
                     {s.sharia && <Badge tone="good">{tx({ id: "Syariah", en: "Sharia" })}</Badge>}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                    <VerdictBadge v={v} />
-                    {k && <Reason k={k} pctl={(s as unknown as Record<string, number>)[k]} helps={helps} />}
+                  <div className="mt-0.5 truncate text-[12px] text-muted">
+                    {s.name}
+                    {s.fin_grade && <span className={`ml-1.5 ${FIN_GRADE[s.fin_grade].tone}`}>· {tx(FIN_GRADE[s.fin_grade].label)}</span>}
                   </div>
                 </div>
-                <div className="num text-right text-xl font-semibold">
+                <div className="num text-right text-xl font-semibold" style={{ color: VERDICT[v].color }}>
                   {Math.round(g.conf * 100)}
                   <span className="block text-[10px] font-normal text-muted">/100</span>
                 </div>

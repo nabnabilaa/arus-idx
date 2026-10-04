@@ -52,7 +52,7 @@ const MACRO_INFO: Record<MacroKey, { name: Bi; unit: Bi; scale: number; up: Bi; 
   us10y: { name: { id: "Bunga AS 10 tahun", en: "US 10-year yield" }, unit: { id: "yield naik 0,1 poin", en: "yield rises 0.1 pt" }, scale: 0.1, up: { id: "naik", en: "rose" }, down: { id: "turun", en: "fell" } },
 };
 
-export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf }: Props) {
+export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total }: Props) {
   const { tx, lang } = useLang();
   const horizon: Horizon = 1;
   const [tab, setTab] = useState<Tab>("ringkasan");
@@ -137,7 +137,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
         </dl>
       </motion.header>
 
-      <Perspectives s={s} candles={candles} cone={cone ?? null} fin={fin} />
+      <Perspectives s={s} candles={candles} cone={cone ?? null} fin={fin} total={total} />
 
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }} className="mt-6 min-w-0 rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
         {candles ? <CandleChart data={candles} levels={levels} ihsg={ihsg} horizon={horizon} cone={cone?.[20]} height={480} /> : null}
@@ -197,8 +197,7 @@ function SummaryTab({ s, broker, weights, pctl, asOf }: { s: Stock; broker: Brok
           </p>
           <ul className="mt-4 space-y-3.5">
             {reasons.map(({ k, helps }) => (
-              <li key={k} className="flex gap-3">
-                <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[13px] font-bold ${helps ? "bg-up/15 text-[#9cc5f5]" : "bg-down/15 text-[#f0a3a3]"}`}>{helps ? "+" : "−"}</span>
+              <li key={k}>
                 <div className="min-w-0">
                   <Reason k={k} pctl={pctl(k)} helps={helps} />
                   <p className="mt-1 text-[13px] leading-relaxed text-ink-2">{tx(reasonMeaning(k, weights[k] ?? 0, pctl(k)))}</p>

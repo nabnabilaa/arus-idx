@@ -28,17 +28,16 @@ export function headline(s: Stock, h: Horizon): Bi {
 /** Why a signal pushes the score, in words, from the learned weight direction. */
 export function reasonMeaning(k: FeatureKey, weight: number, pctl: number | null): Bi {
   const prefersHigh = weight >= 0;
-  const state = (pctl ?? 0.5) >= 0.5 ? FEATURE[k].hi : FEATURE[k].lo;
   const liked = prefersHigh ? FEATURE[k].hi : FEATURE[k].lo;
   const helps = ((pctl ?? 0.5) >= 0.5) === prefersHigh;
   return helps
     ? {
-        id: `${state.id}. Di data uji, saham dengan kondisi “${liked.id.toLowerCase()}” lebih sering unggul.`,
-        en: `${state.en}. In testing, stocks showing “${liked.en.toLowerCase()}” won more often.`,
+        id: `Di data uji, saham dengan kondisi “${liked.id.toLowerCase()}” lebih sering unggul esok harinya.`,
+        en: `In testing, stocks showing “${liked.en.toLowerCase()}” more often won the next day.`,
       }
     : {
-        id: `${state.id}. Di data uji, yang lebih sering unggul justru saham dengan kondisi “${liked.id.toLowerCase()}”.`,
-        en: `${state.en}. In testing, the stocks that won more often showed “${liked.en.toLowerCase()}” instead.`,
+        id: `Di data uji, yang lebih sering unggul esok harinya justru saham dengan kondisi “${liked.id.toLowerCase()}”.`,
+        en: `In testing, the stocks that more often won the next day showed “${liked.en.toLowerCase()}” instead.`,
       };
 }
 

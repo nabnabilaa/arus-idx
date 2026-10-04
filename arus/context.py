@@ -152,9 +152,44 @@ def anomaly_radar(aux: dict, symbols: list[str]) -> pd.DataFrame:
             mad = (hist - med).abs().median() * 1.4826
             return float((today - med) / mad) if mad > 0 else np.nan
 
+        hist_n, hist_v, hist_r = n.iloc[:-1], v.iloc[:-1], r.iloc[:-1]
         rows.append({"symbol": s, "z_foreign": rz(n), "z_volume": rz(np.log(v + 1)),
-                     "z_return": rz(r)})
+                     "z_return": rz(r),
+                     # the same event in plain units, so "unusual" can be read as rupiah and multiples
+                     "ff_today": float(n.iloc[-1]) if len(n) else np.nan,
+                     "ff_typical": float(hist_n.abs().median()) if len(hist_n) else np.nan,
+                     "vol_mult": float(v.iloc[-1] / hist_v.median()) if len(hist_v) and hist_v.median() > 0 else np.nan,
+                     "ret_typical": float(hist_r.abs().median()) if len(hist_r) else np.nan})
     return pd.DataFrame(rows)
+
+
+def anomaly_history(aux: dict, threshold: float = 3.0) -> dict:
+    """
+    What followed past events of each kind across the universe: for every stock-day whose
+    robust z-score (vs the prior 60 days) passed the threshold, did the stock beat the median
+    stock over the next 1 and 5 sessions? Descriptive and in-sample, over Arus' own history.
+    """
+    net, tv, close = aux["net"], aux["tv"], aux["close"]
+    vol = np.log(tv / close + 1)
+    ret = close.pct_change(fill_method=None)
+    fwd = {h: close.shift(-h) / close - 1 for h in (1, 5)}
+    excess = {h: f.sub(f.median(axis=1), axis=0) for h, f in fwd.items()}
+    out = {}
+    for key, x in (("foreign", net), ("volume", vol), ("return", ret)):
+        prior = x.shift(1)
+        med = prior.rolling(60, min_periods=30).median()
+        mad = (prior - med).abs().rolling(60, min_periods=30).median() * 1.4826
+        z = (x - med) / mad.where(mad > 0)
+        for sign, name in ((1, "up"), (-1, "down")):
+            mask = (z * sign) >= threshold
+            row = {}
+            for h in (1, 5):
+                e = excess[h][mask].stack().dropna()
+                row[f"n{h}"] = int(len(e))
+                row[f"beat{h}"] = float((e > 0).mean()) if len(e) else None
+                row[f"med{h}"] = float(e.median()) if len(e) else None
+            out[f"{key}_{name}"] = row
+    return out
 
 
 # ---------------------------------------------------------------------------

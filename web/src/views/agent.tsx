@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Bot, CalendarClock, Database, RefreshCcw, Send, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Bot, Database, RefreshCcw, Send, ShieldCheck } from "lucide-react";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { dateLabel } from "@/lib/format";
 import { VERDICT } from "@/lib/verdict";
@@ -189,22 +189,23 @@ export function AgentView({ digest, track }: { digest: { as_of: string; id: stri
             <T id="Isi di atas adalah keluaran asli agen, bukan contoh rekaan. Saham pantauan contoh: BBCA, TLKM." en="The message above is the agent's real output, not a mock-up. Example watchlist: BBCA, TLKM." />
           </p>
 
-          <div className="mt-8 rounded-xl bg-surface p-5 ring-1 ring-line">
-            <div className="flex items-center gap-2 text-[14px] font-semibold">
-              <CalendarClock size={16} className="text-arus" />
-              <T id="Menjalankan agen sendiri" en="Run the agent yourself" />
-            </div>
-            <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[13px] leading-relaxed text-ink-2">
-              <li><T id="Buat bot lewat @BotFather di Telegram, salin tokennya." en="Create a bot with @BotFather on Telegram and copy its token." /></li>
-              <li><T id="Isi TELEGRAM_BOT_TOKEN dan SECTORS_API_KEY di file .env." en="Put TELEGRAM_BOT_TOKEN and SECTORS_API_KEY in .env." /></li>
-              <li>
-                <T id="Jadwalkan" en="Schedule" /> <code className="num text-arus">python -m arus.agent daily</code> <T id="setiap hari bursa pukul 17.45." en="every trading day at 5:45 pm." />
-              </li>
-              <li>
-                <T id="Jalankan" en="Run" /> <code className="num text-arus">python -m arus.agent bot</code> <T id="agar bot menjawab perintah." en="so the bot answers commands." />
-              </li>
-            </ol>
-          </div>
+          <a
+            href="https://t.me/nab_arus_bot"
+            target="_blank"
+            rel="noreferrer"
+            className="group mt-8 flex items-center gap-4 rounded-2xl bg-arus/10 p-5 ring-1 ring-arus/40 transition-colors duration-150 hover:bg-arus/15"
+          >
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-arus text-ground">
+              <Send size={20} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold text-ink">
+                <T id="Buka bot Arus di Telegram" en="Open the Arus bot on Telegram" />
+              </span>
+              <span className="block text-[13px] text-ink-2">@nab_arus_bot · <T id="ketik /start, gratis" en="type /start, free" /></span>
+            </span>
+            <ArrowUpRight size={18} className="shrink-0 text-arus transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+          </a>
         </div>
       </section>
 

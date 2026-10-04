@@ -56,11 +56,12 @@ function Card({ i, icon, who, when, children }: { i: number; icon: React.ReactNo
 }
 
 /** One stock, three holding periods: the next session, a few weeks, and years. */
-export function Perspectives({ s, candles, cone, fin }: { s: Stock; candles: Candles | null; cone: Record<1 | 20, Cone> | null; fin: FinHealth | null }) {
+export function Perspectives({ s, candles, cone, fin, total }: { s: Stock; candles: Candles | null; cone: Record<1 | 20, Cone> | null; fin: FinHealth | null; total: number }) {
   const { tx, lang } = useLang();
   const g = get(s, 1);
   const v = verdictOf(g.q);
   const score = Math.round(g.conf * 100);
+  const rank = Math.min(total, Math.max(1, Math.round((1 - g.q) * total) + 1));
 
   const week = cone?.[1]?.at(-1);
   const month = cone?.[20]?.at(-1);
@@ -74,10 +75,11 @@ export function Perspectives({ s, candles, cone, fin }: { s: Stock; candles: Can
     <div className="mt-6 grid gap-4 lg:grid-cols-3">
       <Card i={0} icon={<Zap size={17} />} who={tx({ id: "Trader harian", en: "Day trader" })} when={tx({ id: "untuk besok", en: "for tomorrow" })}>
         <div className="flex items-baseline gap-2">
-          <span className="num text-4xl font-semibold tracking-tight" style={{ color: VERDICT[v].color }}>
-            {score}
+          <span className="text-[13px] text-muted">#</span>
+          <span className="num -ml-1.5 text-4xl font-semibold tracking-tight" style={{ color: VERDICT[v].color }}>
+            {rank}
           </span>
-          <span className="text-[13px] text-muted">/ 100</span>
+          <span className="text-[13px] text-muted">{tx({ id: `dari ${total}`, en: `of ${total}` })}</span>
           <span className="ml-auto rounded-full px-2.5 py-0.5 text-[12px] font-medium ring-1" style={{ color: VERDICT[v].color, borderColor: VERDICT[v].color }}>
             {tx(VERDICT[v].label)}
           </span>
@@ -85,8 +87,8 @@ export function Perspectives({ s, candles, cone, fin }: { s: Stock; candles: Can
         <p className="mt-3 text-[13.5px] leading-relaxed text-ink-2">{tx(scoreWords(g.q))}</p>
         <p className="mt-auto pt-3 text-[12px] leading-relaxed text-muted">
           {tx({
-            id: `Dari 100 hari dengan kondisi mirip, ${score} kali saham seperti ini bergerak lebih baik dari separuh saham lain esok harinya. Angka 50 berarti sama saja dengan memilih acak.`,
-            en: `Out of 100 days with a similar setup, ${score} times a stock like this beat half of all others the next day. 50 means no better than picking at random.`,
+            id: `Peringkat peluang untuk besok di antara ${total} saham. Secara historis, kondisi seperti ini mengalahkan separuh saham lain ${score} dari 100 kali; perbedaan antarsaham memang tipis, jadi lihat peringkatnya, bukan angkanya saja.`,
+            en: `Next-day odds rank among ${total} stocks. Historically this setup beat half of all others ${score} times in 100; differences between stocks are slim, so read the rank, not just the number.`,
           })}
         </p>
       </Card>

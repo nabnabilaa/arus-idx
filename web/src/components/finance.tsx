@@ -164,7 +164,7 @@ export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null;
   return (
     <div className="space-y-10">
       {fin ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
           <section className="rounded-2xl bg-surface p-5 ring-1 ring-line">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="text-[16px] font-semibold">
@@ -244,7 +244,7 @@ export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null;
 
       {fin && <Statement fin={fin} />}
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid items-start gap-8 lg:grid-cols-2">
         <section>
           <h3 className="mb-3 text-[15px] font-semibold">
             <T id="Statistik kunci" en="Key stats" />

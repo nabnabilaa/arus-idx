@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { Star } from "lucide-react";
 import { useId } from "react";
-import { PUBLISHED } from "@/lib/data";
+import { PUBLISHED } from "@/lib/published";
 import { describe } from "@/lib/features";
 import { useLang } from "@/lib/i18n";
 import { usePrefs } from "@/lib/prefs";

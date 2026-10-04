@@ -40,6 +40,9 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
         .slice(0, 8)
         .map((r) => ({ symbol: r.symbol, name: r.name, fin_grade: r.fin_grade, fin_score: r.fin_score, fin_n: r.fin_n, pct_value: r.pct_value, rev_cagr: r.rev_cagr }))}
       fin={bundle.financials?.[symbol] ?? null}
+      profile={bundle.brokerProfiles?.[symbol] ?? null}
+      summary={bundle.brokerSummary?.[symbol] ?? null}
+      news={bundle.news?.[symbol] ?? []}
       asOf={bundle.meta.as_of}
     />
   );

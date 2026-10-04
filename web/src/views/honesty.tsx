@@ -8,7 +8,7 @@ import { EquityChart } from "@/components/charts/equity";
 import { ChartTitle } from "@/components/charts/kit";
 import { Term } from "@/components/term";
 import { HorizonToggle } from "@/components/ui";
-import { PUBLISHED } from "@/lib/data";
+import { PUBLISHED } from "@/lib/published";
 import { FAMILY, type FamilyKey } from "@/lib/features";
 import { dateLabel, signed } from "@/lib/format";
 import { T, useLang } from "@/lib/i18n";

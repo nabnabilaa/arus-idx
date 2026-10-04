@@ -171,6 +171,48 @@ export type FinHealth = {
   dividend_years: number;
 };
 
+export type BrokerStyle = "chase" | "absorb" | "steady" | "sell_strength" | "mixed";
+export type BrokerProfile = {
+  days: number;
+  start: string;
+  end: string;
+  pump_days: string[];
+  brokers: {
+    code: string;
+    name: string | null;
+    cohort: string | null;
+    foreign: boolean;
+    net: number;
+    gross: number;
+    active: number;
+    days_buy: number;
+    days_sell: number;
+    avg_buy: number | null;
+    avg_sell: number | null;
+    buy_ret: number | null;
+    buy_vol: number | null;
+    style: BrokerStyle;
+    follow3: number | null;
+    n_follow: number;
+  }[];
+};
+export type BrokerMap = Record<string, { name: string | null; cohort: string | null; foreign: boolean; gross: number; acc: { s: string; net: number }[]; dist: { s: string; net: number }[] }>;
+export type BrokerSummaryRow = { code: string; net: number; nlot: number; avg: number | null; cohort: string | null; foreign: boolean };
+export type BrokerSummary = { from: string; to: string; n: number; buyers: BrokerSummaryRow[]; sellers: BrokerSummaryRow[]; top5_buy: number; top5_sell: number };
+export type BrokerIndex = Record<
+  string,
+  {
+    name: string | null;
+    cohort: string | null;
+    foreign: boolean;
+    gross: number;
+    net: number;
+    n_stocks: number;
+    stocks: { s: string; net: number; gross: number; days_buy: number; days_sell: number; avg_buy: number | null; avg_sell: number | null; style: BrokerStyle; follow3: number | null; n_follow: number; rank: number }[];
+  }
+>;
+export type NewsItem = { url: string; ts: string; title: string; body: string; thumb: string | null; symbols: string[]; tags: string[] };
+
 export type MacroKey = "idr" | "oil" | "spx" | "vix" | "usd" | "us10y";
 
 export type Bundle = {
@@ -209,6 +251,10 @@ export type Bundle = {
   families: Record<string, FeatureKey[]>;
   cones?: Record<string, Partial<Record<"1" | "20", { steps: number; lo: number; mid: number; hi: number }[]>>>;
   financials?: Record<string, FinHealth>;
+  brokerProfiles?: Record<string, BrokerProfile>;
+  brokerSummary?: Record<string, Record<"1" | "5" | "all", BrokerSummary>>;
+  news?: Record<string, NewsItem[]>;
+  newsLatest?: NewsItem[];
   anomalyHistory?: Record<string, { n1: number; beat1: number | null; med1: number | null; n5: number; beat5: number | null; med5: number | null }>;
   coneCoverage?: Record<"1" | "20", { raw: number; calibrated: number; factor: number; target: number; steps: number; n: number }>;
 };

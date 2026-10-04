@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { DEFAULT_HORIZON, PUBLISHED } from "./data";
+import { DEFAULT_HORIZON, PUBLISHED } from "./published";
 import type { Horizon } from "./types";
 
 type Ctx = {

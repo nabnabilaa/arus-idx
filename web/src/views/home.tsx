@@ -12,7 +12,7 @@ import { Badge, HorizonToggle, Reason, ScoreBar, Segmented, StarButton, Toggle }
 import { FEATURE, SECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
-import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/data";
+import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/published";
 import { FIN_GRADE } from "@/components/perspectives";
 import { usePrefs } from "@/lib/prefs";
 import type { Bundle, FeatureKey, Horizon, Stock } from "@/lib/types";

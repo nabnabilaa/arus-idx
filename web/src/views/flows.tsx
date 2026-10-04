@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { NewsList } from "@/components/brokers";
+import { cohortDot } from "@/components/broker-summary";
 import { motion } from "motion/react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Search } from "lucide-react";
+import { useState } from "react";
 import { LineArea, SignedBars } from "@/components/charts/series";
 import { ChartTitle } from "@/components/charts/kit";
 import { Term } from "@/components/term";
@@ -16,7 +19,7 @@ import { get, verdictOf } from "@/lib/verdict";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-export function FlowsView({ market, brokers, ranking }: Pick<Bundle, "market" | "brokers" | "ranking">) {
+export function FlowsView({ market, brokers, ranking, bandar, summary, news }: Pick<Bundle, "market" | "brokers" | "ranking" | "bandar"> & { summary?: Bundle["brokerSummary"]; news?: Bundle["newsLatest"] }) {
   const { tx, lang } = useLang();
   const { horizon } = usePrefs();
   const rows = Object.entries(brokers)
@@ -31,6 +34,19 @@ export function FlowsView({ market, brokers, ranking }: Pick<Bundle, "market" | 
   const byForeign = [...ranking].filter((r) => r.ff_net_20 != null).sort((a, b) => (b.ff_net_20 ?? 0) - (a.ff_net_20 ?? 0));
   const ff20 = market.slice(-20).reduce((a, m) => a + (m.foreign_net ?? 0), 0);
   const tone = (t: string) => (t === "pos" ? "text-[#9cc5f5]" : t === "neg" ? "text-[#f0a3a3]" : "text-ink-2");
+  const [q, setQ] = useState("");
+  const [sortBy, setSortBy] = useState<"inst" | "retail" | "foreign">("inst");
+  const sum = (xs: number[] | undefined) => (xs ?? []).reduce((a, b) => a + b, 0);
+  const foot = ranking
+    .filter((r) => bandar?.[r.symbol])
+    .map((r) => {
+      const b = bandar![r.symbol];
+      const all = summary?.[r.symbol]?.all;
+      const tilt = all && all.top5_buy + all.top5_sell > 0 ? (all.top5_buy - all.top5_sell) / (all.top5_buy + all.top5_sell) : 0;
+      return { sym: r.symbol, name: r.name, inst: sum(b.inst), retail: sum(b.retail), foreign: sum(b.foreign), days: b.dates.length, tilt, top: all?.buyers[0] ?? null };
+    })
+    .filter((r) => !q.trim() || r.sym.toLowerCase().includes(q.trim().toLowerCase()) || (r.name ?? "").toLowerCase().includes(q.trim().toLowerCase()) || r.top?.code.toLowerCase() === q.trim().toLowerCase())
+    .sort((a, b) => b[sortBy] - a[sortBy]);
 
   return (
     <div className="pt-10 sm:pt-12">
@@ -104,8 +120,8 @@ export function FlowsView({ market, brokers, ranking }: Pick<Bundle, "market" | 
         </h2>
         <p className="mt-2 max-w-[70ch] text-[14px] leading-relaxed text-muted">
           <T
-            id="Diambil dari 10 broker pembeli dan penjual terbesar selama 20 hari terakhir, lalu dikelompokkan: broker yang melayani institusi atau ritel. Dicek untuk saham peringkat teratas dan terbawah."
-            en="From the 10 largest buying and selling brokers over the last 20 days, grouped by whether they serve institutions or retail. Checked for the top- and bottom-ranked stocks."
+            id="Untuk setiap saham: berapa yang dibeli bersih oleh broker institusi, broker ritel, dan investor asing selama periode data broker, serta siapa pembeli terbesarnya. Cari kode saham atau kode broker."
+            en="For every stock: how much institutional brokers, retail brokers and foreign investors net bought over the broker-data window, and who the biggest buyer was. Search by stock or broker code."
           />
         </p>
 
@@ -142,61 +158,91 @@ export function FlowsView({ market, brokers, ranking }: Pick<Bundle, "market" | 
           </div>
         )}
 
-        <div className="mt-6 hidden md:block">
-          <table className="w-full border-separate border-spacing-0 text-[13.5px]">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60 sm:max-w-80">
+            <Search size={15} className="text-muted" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari saham atau kode broker (mis. BBCA, YP)", en: "Search a stock or broker code (e.g. BBCA, YP)" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
+          </label>
+          <label className="flex items-center gap-2 text-[12.5px] text-muted">
+            <T id="Urutkan" en="Sort" />
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className="h-10 cursor-pointer rounded-lg bg-surface px-2 text-[13px] text-ink ring-1 ring-line focus:outline-none">
+              <option value="inst">{tx({ id: "Paling diborong institusi", en: "Most bought by institutions" })}</option>
+              <option value="retail">{tx({ id: "Paling diborong ritel", en: "Most bought by retail" })}</option>
+              <option value="foreign">{tx({ id: "Paling diborong asing", en: "Most bought by foreigners" })}</option>
+            </select>
+          </label>
+          <span className="text-[12.5px] text-muted">{tx({ id: `${foot.length} saham`, en: `${foot.length} stocks` })}</span>
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13.5px]">
             <thead>
               <tr className="text-left text-xs text-muted">
                 <th className="py-3 pr-4 font-normal"><T id="Saham" en="Stock" /></th>
-                <th className="py-3 pr-4 font-normal"><T id="Penilaian Arus" en="Arus verdict" /></th>
-                <th className="py-3 pr-4 font-normal"><T id="Jejak bandar" en="Broker footprint" /></th>
+                <th className="py-3 pr-4 font-normal"><T id="Arah broker" en="Broker tilt" /></th>
+                <th className="py-3 pr-4 font-normal"><T id="Pembeli utama" en="Top buyer" /></th>
                 <th className="py-3 pr-4 text-right font-normal"><T id="Institusi" en="Institutions" /></th>
                 <th className="py-3 pr-4 text-right font-normal"><T id="Ritel" en="Retail" /></th>
                 <th className="py-3 pr-2 text-right font-normal"><T id="Asing" en="Foreign" /></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ sym, b, v }) => (
-                <tr key={sym} className="hover:bg-surface">
-                  <td className="border-t border-line py-3 pr-4">
-                    <Link href={`/saham/${sym}/`} className="font-semibold text-ink hover:text-arus">{sym}</Link>
+              {foot.slice(0, 40).map((r) => (
+                <tr key={r.sym} className="hover:bg-surface">
+                  <td className="border-t border-line py-2.5 pr-4">
+                    <Link href={`/saham/${r.sym}/`} className="font-semibold text-ink hover:text-arus">{r.sym}</Link>
+                    <div className="max-w-52 truncate text-[11.5px] text-muted">{r.name}</div>
                   </td>
-                  <td className="border-t border-line py-3 pr-4"><VerdictBadge v={v} /></td>
-                  <td className={`border-t border-line py-3 pr-4 ${tone(b.tone)}`}>{tx(BROKER_VERDICT[b.verdict] ?? { id: b.verdict, en: b.verdict })}</td>
-                  <td className={`num border-t border-line py-3 pr-4 text-right ${b.inst_net >= 0 ? "text-up" : "text-down"}`}>{idr(b.inst_net, lang)}</td>
-                  <td className={`num border-t border-line py-3 pr-4 text-right ${b.retail_net >= 0 ? "text-up" : "text-down"}`}>{idr(b.retail_net, lang)}</td>
-                  <td className={`num border-t border-line py-3 pr-2 text-right ${b.foreign_investor_net >= 0 ? "text-up" : "text-down"}`}>{idr(b.foreign_investor_net, lang)}</td>
+                  <td className={`border-t border-line py-2.5 pr-4 ${r.tilt > 0.15 ? "text-up" : r.tilt < -0.15 ? "text-down" : "text-ink-2"}`}>
+                    {r.tilt > 0.15 ? tx({ id: "Akumulasi", en: "Accumulation" }) : r.tilt < -0.15 ? tx({ id: "Distribusi", en: "Distribution" }) : tx({ id: "Seimbang", en: "Balanced" })}
+                  </td>
+                  <td className="border-t border-line py-2.5 pr-4">
+                    {r.top ? (
+                      <Link href={`/broker/${r.top.code}/`} className="inline-flex items-center gap-1.5 font-medium text-ink hover:text-arus">
+                        {cohortDot(r.top.cohort, r.top.foreign)} {r.top.code}
+                      </Link>
+                    ) : (
+                      "–"
+                    )}
+                  </td>
+                  <td className={`num border-t border-line py-2.5 pr-4 text-right ${r.inst >= 0 ? "text-up" : "text-down"}`}>{idr(r.inst, lang)}</td>
+                  <td className={`num border-t border-line py-2.5 pr-4 text-right ${r.retail >= 0 ? "text-up" : "text-down"}`}>{idr(r.retail, lang)}</td>
+                  <td className={`num border-t border-line py-2.5 pr-2 text-right ${r.foreign >= 0 ? "text-up" : "text-down"}`}>{idr(r.foreign, lang)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <ul className="mt-6 divide-y divide-line md:hidden">
-          {rows.map(({ sym, b, v }) => (
-            <li key={sym}>
-              <Link href={`/saham/${sym}/`} className="block py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-semibold">{sym}</span>
-                  <VerdictBadge v={v} />
-                </div>
-                <div className={`mt-1 text-[13px] ${tone(b.tone)}`}>{tx(BROKER_VERDICT[b.verdict] ?? { id: b.verdict, en: b.verdict })}</div>
-                <div className="num mt-1 flex gap-4 text-[12px] text-muted">
-                  <span>
-                    {tx({ id: "Institusi", en: "Inst." })} <span className={b.inst_net >= 0 ? "text-up" : "text-down"}>{idr(b.inst_net, lang)}</span>
-                  </span>
-                  <span>
-                    {tx({ id: "Ritel", en: "Retail" })} <span className={b.retail_net >= 0 ? "text-up" : "text-down"}>{idr(b.retail_net, lang)}</span>
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        {rows.length === 0 && (
+        {foot.length > 40 && <p className="mt-2 text-[12px] text-muted">{tx({ id: "Menampilkan 40 teratas. Gunakan pencarian untuk saham lain.", en: "Showing the top 40. Use search for other stocks." })}</p>}
+        {foot.length === 0 && (
           <p className="py-8 text-[14px] text-muted">
-            <T id="Belum ada data broker." en="No broker data yet." />
+            <T id="Tidak ada yang cocok." en="Nothing matches." />
           </p>
         )}
       </section>
+
+      <Link href="/broker/" className="group mt-12 flex items-center gap-4 rounded-2xl bg-arus/10 p-5 ring-1 ring-arus/40 transition-colors duration-150 hover:bg-arus/15">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-semibold text-ink">
+            <T id="Direktori broker" en="Broker directory" />
+          </span>
+          <span className="block text-[13.5px] text-ink-2">
+            <T id="Cari broker mana pun dan lihat di saham apa saja ia mengumpulkan atau melepas, beserta gaya belinya." en="Look up any broker and see which stocks it is accumulating or unloading, and how it buys." />
+          </span>
+        </span>
+        <ArrowUpRight size={20} className="shrink-0 text-arus transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+      </Link>
+
+      {news && news.length > 0 && (
+        <section className="mt-16 max-w-3xl">
+          <h2 className="text-2xl font-semibold tracking-tight">
+            <T id="Berita terbaru" en="Latest news" />
+          </h2>
+          <div className="mt-5">
+            <NewsList items={news.slice(0, 12)} />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

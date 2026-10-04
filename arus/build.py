@@ -278,6 +278,8 @@ def main():
 
     rank = rank.merge(fund, on="symbol", how="left").merge(insider, on="symbol", how="left") \
         .merge(anomalies, on="symbol", how="left").merge(levels, on="symbol", how="left")
+    profiles, broker_index, broker_summary = context.broker_profiles(conn, aux)
+    news_by_stock, news_latest = context.recent_news(conn)
     health = financial.load(conn)
     rank["fin_score"] = rank["symbol"].map(lambda s: health.get(s, {}).get("score"))
     rank["fin_n"] = rank["symbol"].map(lambda s: health.get(s, {}).get("n"))
@@ -340,6 +342,8 @@ def main():
               "sectorTs": _records(sector_ts), "market": _records(mkt), "brokers": brokers, "bandar": bandar,
               "cones": cones, "coneCoverage": cone_cov, "financials": health,
               "anomalyHistory": context.anomaly_history(aux),
+              "brokerProfiles": profiles, "brokerSummary": broker_summary,
+              "news": news_by_stock, "newsLatest": news_latest,
               "families": fam}
 
     snap = config.SNAPSHOT_DIR
@@ -349,6 +353,11 @@ def main():
     for path in (snap / "arus.json", web / "arus.json"):
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(_clean(bundle), fh, ensure_ascii=False, allow_nan=False)
+    published = [h for h in HORIZONS if models[h]["metrics"].get("proven", True)] or [1]
+    (web / "published.json").write_text(json.dumps({"horizons": published}), encoding="utf-8")
+    for path in (snap / "brokers.json", web / "brokers.json"):
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(_clean(broker_index), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
     for path in (snap / "series.json", web / "series.json"):
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(_clean(series), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))

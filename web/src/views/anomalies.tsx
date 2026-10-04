@@ -140,13 +140,13 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
             : tx({ id: "Untuk saham itu sendiri, kejadian seperti ini kira-kira sekali sebulan.", en: "For that stock, an event like this happens about once a month." })}
         </p>
 
-        <ul className="mt-5 divide-y divide-line overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+        <ul className="mt-5 grid items-start gap-2.5 lg:grid-cols-2">
           {rows.slice(0, all ? rows.length : 10).map((s) => {
             const events = ORDER.filter((e) => hits(s, e, 2));
             const up = (s.ret_1 ?? 0) >= 0;
             const isOpen = open === s.symbol;
             return (
-              <li key={s.symbol}>
+              <li key={s.symbol} className="overflow-hidden rounded-xl bg-surface ring-1 ring-line">
                 <button onClick={() => setOpen(isOpen ? null : s.symbol)} aria-expanded={isOpen} className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-raised/40 sm:px-5">
                   <span className="w-14 shrink-0 text-[15px] font-semibold text-ink">{s.symbol}</span>
                   <span className={`num w-14 shrink-0 text-[12.5px] ${up ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</span>
@@ -166,7 +166,7 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
                         <div className="mb-2 text-[12.5px] text-muted">
                           {s.name} · {price(s.price, lang)}
                         </div>
-                        <ul className="grid gap-2 md:grid-cols-2">
+                        <ul className="grid gap-2">
                           {events.map((e) => {
                             const h = history?.[e];
                             return (

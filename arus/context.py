@@ -258,3 +258,168 @@ def bandar_daily(conn: sqlite3.Connection) -> dict:
                     "n_buyers": n_buyers, "n_sellers": n_sellers, "top_buy": top_buy, "top_sell": top_sell,
                     "bandar_avg": bandar_avg, "inst_streak": streak, "top_buy_total": tot_val}
     return out
+
+
+# ---------------------------------------------------------------------------
+# broker behaviour: how each broker trades a stock, not just how much
+# ---------------------------------------------------------------------------
+def broker_profiles(conn: sqlite3.Connection, aux: dict) -> tuple[dict, dict, dict]:
+    """
+    Broker behaviour from Sectors' daily per-broker rows, three ways:
+
+    - per stock: the most active brokers, when they tend to buy (into rising, crowded days =
+      chasing; into falling days = absorbing), and what the price did over the next 3 sessions
+      after their buying against the median stock; plus "pump-like" days (a sharp rise on heavy
+      volume while retail brokers buy and institutions sell);
+    - per broker: every tracked stock it traded, with the same statistics, for the broker page;
+    - per stock summaries for the last 1, 5 and all sessions (top buyers and sellers with lots,
+      value and average price), the broker-summary view traders know.
+
+    Windows are a few weeks long, so these describe recent habits, not proven edges.
+    """
+    registry = {r[0]: {"name": r[1], "foreign": bool(r[2]), "cohort": r[3]}
+                for r in conn.execute("SELECT code, name, is_foreign, cohort FROM brokers")}
+    close, tv = aux["close"], aux["tv"]
+    ret = close.pct_change(fill_method=None)
+    vol = tv / close
+    vol_ratio = vol / vol.rolling(20, min_periods=10).median().shift(1)
+    fwd3 = close.shift(-3) / close - 1
+    excess3 = fwd3.sub(fwd3.median(axis=1), axis=0)
+
+    rows = conn.execute("SELECT symbol, date, payload FROM broker_daily ORDER BY symbol, date").fetchall()
+    by_sym: dict[str, list] = {}
+    for sym, d, payload in rows:
+        by_sym.setdefault(sym, []).append((d, json.loads(payload)))
+
+    def wavg(items, k):
+        pts = [(it[0], it[k]) for it in items if it[k] is not None and np.isfinite(it[k])]
+        tot = sum(w for w, _ in pts)
+        return float(sum(w * v for w, v in pts) / tot) if tot else None
+
+    def summarise(code, a):
+        reg = registry.get(code, {})
+        buy_ret, buy_vol = wavg(a["buy_days"], 1), wavg(a["buy_days"], 2)
+        sell_ret = wavg(a["sell_days"], 1)
+        style = "mixed"
+        if len(a["buy_days"]) >= 3 and buy_ret is not None:
+            if buy_ret > 0.01 and (buy_vol or 0) > 1.3:
+                style = "chase"
+            elif buy_ret < -0.005:
+                style = "absorb"
+            elif len(a["buy_days"]) >= 0.7 * a["active"]:
+                style = "steady"
+        if style == "mixed" and len(a["sell_days"]) >= 3 and sell_ret is not None and sell_ret > 0.01:
+            style = "sell_strength"
+        follow = [it[3] for it in a["buy_days"] if it[3] is not None and np.isfinite(it[3])]
+        return {
+            "code": code, "name": reg.get("name"), "cohort": reg.get("cohort"), "foreign": reg.get("foreign", False),
+            "net": a["net"], "gross": a["gross"], "active": a["active"],
+            "days_buy": len(a["buy_days"]), "days_sell": len(a["sell_days"]),
+            "avg_buy": a["bval"] / (a["blot"] * 100) if a["blot"] else None,
+            "avg_sell": a["sval"] / (a["slot"] * 100) if a["slot"] else None,
+            "buy_ret": buy_ret, "buy_vol": buy_vol, "style": style,
+            "follow3": float(np.mean(follow)) if follow else None, "n_follow": len(follow),
+        }
+
+    def period(days):
+        """Top buyers and sellers over a run of days, as lots, value and average price."""
+        acc = {}
+        for _, summ in days:
+            for b in summ:
+                code = b["broker_code"]
+                if code not in registry:
+                    continue
+                a = acc.setdefault(code, [0.0, 0.0, 0.0, 0.0])
+                a[0] += b.get("bval") or 0
+                a[1] += b.get("blot") or 0
+                a[2] += b.get("sval") or 0
+                a[3] += b.get("slot") or 0
+        rows_ = [{"code": c, "net": v[0] - v[2], "bval": v[0], "blot": v[1], "sval": v[2], "slot": v[3],
+                  "avg": (v[0] / (v[1] * 100) if v[0] > v[2] and v[1] else v[2] / (v[3] * 100) if v[3] else None),
+                  "cohort": registry[c]["cohort"], "foreign": registry[c]["foreign"]}
+                 for c, v in acc.items()]
+        buyers = sorted([r for r in rows_ if r["net"] > 0], key=lambda r: -r["net"])[:10]
+        sellers = sorted([r for r in rows_ if r["net"] < 0], key=lambda r: r["net"])[:10]
+        for r in buyers + sellers:
+            r["nlot"] = r["blot"] - r["slot"]
+            for k in ("bval", "blot", "sval", "slot"):
+                del r[k]
+        top_b = sum(r["net"] for r in buyers[:5])
+        top_s = -sum(r["net"] for r in sellers[:5])
+        return {"from": days[0][0], "to": days[-1][0], "n": len(days), "buyers": buyers, "sellers": sellers,
+                "top5_buy": top_b, "top5_sell": top_s}
+
+    profiles, per_broker, summaries = {}, {}, {}
+    for sym, days in by_sym.items():
+        if sym not in close.columns:
+            continue
+        acc: dict[str, dict] = {}
+        pump_days = []
+        for d, summ in days:
+            r = ret[sym].get(d)
+            vr = vol_ratio[sym].get(d)
+            ex = excess3[sym].get(d)
+            inst = retail = 0.0
+            for b in summ:
+                code = b["broker_code"]
+                if code not in registry:          # "--" and other non-member rows
+                    continue
+                net = (b.get("bval") or 0) - (b.get("sval") or 0)
+                cohort = registry[code]["cohort"]
+                inst += net if cohort == "institutional" else 0
+                retail += net if cohort == "retail" else 0
+                a = acc.setdefault(code, {"net": 0.0, "gross": 0.0, "bval": 0.0, "blot": 0.0, "sval": 0.0, "slot": 0.0,
+                                          "buy_days": [], "sell_days": [], "active": 0})
+                a["net"] += net
+                a["gross"] += (b.get("bval") or 0) + (b.get("sval") or 0)
+                a["bval"] += b.get("bval") or 0
+                a["blot"] += b.get("blot") or 0
+                a["sval"] += b.get("sval") or 0
+                a["slot"] += b.get("slot") or 0
+                a["active"] += 1
+                if net > 0:
+                    a["buy_days"].append((net, r, vr, ex))
+                elif net < 0:
+                    a["sell_days"].append((-net, r, vr, ex))
+            if r is not None and vr is not None and np.isfinite(r) and np.isfinite(vr) and r > 0.03 and vr > 2 and retail > 0 > inst:
+                pump_days.append(d)
+
+        stats = {code: summarise(code, a) for code, a in acc.items()}
+        ranked = sorted(stats.values(), key=lambda x: -x["gross"])
+        profiles[sym] = {"days": len(days), "start": days[0][0], "end": days[-1][0], "brokers": ranked[:8], "pump_days": pump_days}
+        for st in ranked:
+            if st["gross"] <= 0:
+                continue
+            row = {k: st[k] for k in ("net", "gross", "days_buy", "days_sell", "avg_buy", "avg_sell", "style", "follow3", "n_follow")}
+            row["s"] = sym
+            row["rank"] = ranked.index(st) + 1             # 1 = the most active broker in that stock
+            per_broker.setdefault(st["code"], []).append(row)
+        summaries[sym] = {"1": period(days[-1:]), "5": period(days[-5:]), "all": period(days)}
+
+    broker_index = {}
+    for code, lst in per_broker.items():
+        reg = registry.get(code, {})
+        lst.sort(key=lambda r: -r["gross"])
+        broker_index[code] = {"name": reg.get("name"), "cohort": reg.get("cohort"), "foreign": reg.get("foreign", False),
+                              "gross": sum(r["gross"] for r in lst), "net": sum(r["net"] for r in lst),
+                              "n_stocks": len(lst), "stocks": lst[:60]}
+    return profiles, broker_index, summaries
+
+
+def recent_news(conn: sqlite3.Connection, per_stock: int = 6) -> tuple[dict, list]:
+    """Stored Sectors news, newest first: a few per stock plus the latest across the market."""
+    try:
+        rows = conn.execute("SELECT url, ts, title, body, thumbnail, symbols, tags FROM news ORDER BY ts DESC").fetchall()
+    except sqlite3.OperationalError:
+        return {}, []
+    by_sym, latest = {}, []
+    for url, ts, title, body, thumb, syms, tags in rows:
+        item = {"url": url, "ts": ts, "title": title, "body": body, "thumb": thumb,
+                "symbols": json.loads(syms or "[]"), "tags": json.loads(tags or "[]")}
+        if len(latest) < 24:
+            latest.append(item)
+        for s in item["symbols"]:
+            lst = by_sym.setdefault(s, [])
+            if len(lst) < per_stock:
+                lst.append(item)
+    return by_sym, latest

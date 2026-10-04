@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { useState } from "react";
 import { Heatmap, SectorMap } from "@/components/charts/analytics";
 import { Term } from "@/components/term";
@@ -10,14 +10,20 @@ import { SUBSECTOR_ID } from "@/lib/features";
 import { idr, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { usePrefs } from "@/lib/prefs";
-import type { Bundle, Sector } from "@/lib/types";
+import type { Bundle, FinGrade, Sector } from "@/lib/types";
+import { FIN_GRADE } from "@/components/perspectives";
+import { price } from "@/lib/format";
+
+export type SectorStock = { symbol: string; name: string | null; sub_sector: string | null; price: number | null; ret_1: number | null; ret_20: number | null; ff_net_20: number | null; fin_grade: FinGrade | null };
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-export function SectorsView({ sectors, sectorTs }: Pick<Bundle, "sectors" | "sectorTs">) {
+export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors" | "sectorTs"> & { stocks: SectorStock[] }) {
   const { tx, lang } = useLang();
   const { horizon } = usePrefs();
   const [history, setHistory] = useState(false);
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState<string | null>(null);
   const label = (s: string) => (lang === "id" ? SUBSECTOR_ID[s] ?? s : s);
   const rows = sectors.filter((s) => s.rs_20 != null && s.foreign_intensity_20 != null && s.n >= 2);
   const byRs = [...rows].sort((a, b) => (b.rs_20 ?? 0) - (a.rs_20 ?? 0));
@@ -97,9 +103,17 @@ export function SectorsView({ sectors, sectorTs }: Pick<Bundle, "sectors" | "sec
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {list.length === 0 && <span className="text-[13px] text-muted">–</span>}
                   {list.map((r) => (
-                    <span key={r.sub_sector} className="rounded-full bg-raised px-2.5 py-1 text-[12.5px] text-ink ring-1 ring-line">
+                    <button
+                      key={r.sub_sector}
+                      onClick={() => {
+                        setQ("");
+                        setOpen(r.sub_sector);
+                        document.getElementById("semua-sektor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="cursor-pointer rounded-full bg-raised px-2.5 py-1 text-[12.5px] text-ink ring-1 ring-line hover:ring-arus/50"
+                    >
                       {label(r.sub_sector)}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -120,64 +134,86 @@ export function SectorsView({ sectors, sectorTs }: Pick<Bundle, "sectors" | "sec
         </div>
       </section>
 
-      <section className="mt-14">
+      <section id="semua-sektor" className="mt-14 scroll-mt-28">
         <h2 className="text-2xl font-semibold tracking-tight">
           <T id="Semua sektor" en="All sectors" />
         </h2>
-        <div className="mt-5 hidden md:block">
-          <table className="w-full border-separate border-spacing-0 text-[13.5px]">
-            <thead>
-              <tr className="text-left text-xs text-muted">
-                <th className="py-3 pr-4 font-normal"><T id="Kelompok industri" en="Industry group" /></th>
-                <th className="py-3 pr-4 text-right font-normal"><T id="Jumlah saham" en="Stocks" /></th>
-                <th className="py-3 pr-4 text-right font-normal"><T id="Naik vs IHSG (1 bln)" en="vs IHSG (1 mo)" /></th>
-                <th className="py-3 pr-4 text-right font-normal"><T id="Naik vs IHSG (3 bln)" en="vs IHSG (3 mo)" /></th>
-                <th className="py-3 pr-4 text-right font-normal"><T id="Dana asing (1 bln)" en="Foreign flow (1 mo)" /></th>
-                <th className="py-3 pr-4 text-right font-normal"><T id="Rata-rata skor" en="Avg score" /></th>
-                <th className="py-3 pr-2 font-normal"><T id="Skor tertinggi" en="Top score" /></th>
-              </tr>
-            </thead>
-            <tbody>
-              {byRs.map((s) => (
-                <tr key={s.sub_sector} className="hover:bg-surface">
-                  <td className="border-t border-line py-3 pr-4 text-ink">{label(s.sub_sector)}</td>
-                  <td className="num border-t border-line py-3 pr-4 text-right text-ink-2">{s.n}</td>
-                  <td className={`num border-t border-line py-3 pr-4 text-right ${(s.rs_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.rs_20 ?? 0) * 100, 1, "%")}</td>
-                  <td className={`num border-t border-line py-3 pr-4 text-right ${(s.rs_60 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.rs_60 ?? 0) * 100, 1, "%")}</td>
-                  <td className={`num border-t border-line py-3 pr-4 text-right ${(s.foreign_net_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{idr(s.foreign_net_20, lang)}</td>
-                  <td className="num border-t border-line py-3 pr-4 text-right text-ink">{Math.round((avg(s) ?? 0.5) * 100)}</td>
-                  <td className="border-t border-line py-3 pr-2">
-                    {s.top_pick && (
-                      <Link href={`/saham/${s.top_pick}/`} className="font-medium text-arus hover:underline">
-                        {s.top_pick}
-                      </Link>
+        <label className="mt-4 flex h-10 max-w-md items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60">
+          <Search size={15} className="text-muted" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari sektor atau kode saham (mis. bank, BBCA)", en: "Search a sector or stock (e.g. banks, BBCA)" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
+        </label>
+        <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+          {byRs
+            .filter((sec) => {
+              const t = q.trim().toLowerCase();
+              if (!t) return true;
+              if (label(sec.sub_sector).toLowerCase().includes(t) || sec.sub_sector.toLowerCase().includes(t)) return true;
+              return stocks.some((x) => x.sub_sector === sec.sub_sector && (x.symbol.toLowerCase().includes(t) || (x.name ?? "").toLowerCase().includes(t)));
+            })
+            .map((sec) => {
+              const isOpen = open === sec.sub_sector || (q.trim().length >= 3 && stocks.some((x) => x.sub_sector === sec.sub_sector && x.symbol.toLowerCase() === q.trim().toLowerCase()));
+              const members = stocks.filter((x) => x.sub_sector === sec.sub_sector).sort((a, z) => (z.ret_20 ?? 0) - (a.ret_20 ?? 0));
+              return (
+                <li key={sec.sub_sector}>
+                  <button onClick={() => setOpen(isOpen ? null : sec.sub_sector)} aria-expanded={isOpen} className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-4 py-3 text-left hover:bg-raised/40 sm:grid-cols-[minmax(0,1fr)_90px_110px_130px_auto] sm:px-5">
+                    <span className="min-w-0">
+                      <span className="block truncate text-[14.5px] font-medium text-ink">{label(sec.sub_sector)}</span>
+                      <span className="block text-[11.5px] text-muted">{sec.n} {tx({ id: "saham", en: "stocks" })}</span>
+                    </span>
+                    <span className={`num text-right text-[13px] ${(sec.rs_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>
+                      {signed((sec.rs_20 ?? 0) * 100, 1, "%")}
+                      <span className="block text-[10.5px] text-muted">{tx({ id: "vs IHSG 1 bln", en: "vs IHSG 1 mo" })}</span>
+                    </span>
+                    <span className={`num hidden text-right text-[13px] sm:block ${(sec.rs_60 ?? 0) >= 0 ? "text-up" : "text-down"}`}>
+                      {signed((sec.rs_60 ?? 0) * 100, 1, "%")}
+                      <span className="block text-[10.5px] text-muted">{tx({ id: "vs IHSG 3 bln", en: "vs IHSG 3 mo" })}</span>
+                    </span>
+                    <span className={`num hidden text-right text-[13px] sm:block ${(sec.foreign_net_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>
+                      {idr(sec.foreign_net_20, lang)}
+                      <span className="block text-[10.5px] text-muted">{tx({ id: "asing 1 bln", en: "foreign 1 mo" })}</span>
+                    </span>
+                    <ChevronDown size={16} className={`shrink-0 text-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: EASE }} className="overflow-hidden">
+                        <div className="overflow-x-auto px-4 pb-4 sm:px-5">
+                          <table className="w-full min-w-[560px] border-separate border-spacing-0 text-[13px]">
+                            <thead>
+                              <tr className="text-right text-[11px] text-muted">
+                                <th className="py-1.5 pr-3 text-left font-normal">{tx({ id: "Saham", en: "Stock" })}</th>
+                                <th className="py-1.5 pr-3 font-normal">{tx({ id: "Harga", en: "Price" })}</th>
+                                <th className="py-1.5 pr-3 font-normal">{tx({ id: "Hari ini", en: "Today" })}</th>
+                                <th className="py-1.5 pr-3 font-normal">{tx({ id: "1 bulan", en: "1 month" })}</th>
+                                <th className="py-1.5 pr-3 font-normal">{tx({ id: "Asing 1 bln", en: "Foreign 1 mo" })}</th>
+                                <th className="py-1.5 font-normal">{tx({ id: "Keuangan", en: "Financials" })}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {members.map((x) => (
+                                <tr key={x.symbol} className="num text-right">
+                                  <td className="border-t border-line py-1.5 pr-3 text-left">
+                                    <Link href={`/saham/${x.symbol}/`} className="font-semibold text-ink hover:text-arus">
+                                      {x.symbol}
+                                    </Link>
+                                    <span className="ml-2 hidden text-[11.5px] text-muted lg:inline">{x.name}</span>
+                                  </td>
+                                  <td className="border-t border-line py-1.5 pr-3 text-ink-2">{price(x.price, lang)}</td>
+                                  <td className={`border-t border-line py-1.5 pr-3 ${(x.ret_1 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((x.ret_1 ?? 0) * 100, 1, "%")}</td>
+                                  <td className={`border-t border-line py-1.5 pr-3 ${(x.ret_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((x.ret_20 ?? 0) * 100, 1, "%")}</td>
+                                  <td className={`border-t border-line py-1.5 pr-3 ${(x.ff_net_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{idr(x.ff_net_20, lang)}</td>
+                                  <td className={`border-t border-line py-1.5 ${x.fin_grade ? FIN_GRADE[x.fin_grade].tone : "text-muted"}`}>{x.fin_grade ? tx(FIN_GRADE[x.fin_grade].label) : "–"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </motion.div>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <ul className="mt-4 divide-y divide-line md:hidden">
-          {byRs.map((s) => (
-            <li key={s.sub_sector} className="py-3">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="font-medium text-ink">{label(s.sub_sector)}</span>
-                <span className={`num text-[13px] ${(s.rs_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.rs_20 ?? 0) * 100, 1, "%")} vs IHSG</span>
-              </div>
-              <div className="mt-1 flex flex-wrap gap-x-4 text-[12.5px] text-muted">
-                <span>
-                  {tx({ id: "Asing", en: "Foreign" })} <span className={`num ${(s.foreign_net_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{idr(s.foreign_net_20, lang)}</span>
-                </span>
-                <span>{s.n} {tx({ id: "saham", en: "stocks" })}</span>
-                {s.top_pick && (
-                  <Link href={`/saham/${s.top_pick}/`} className="text-arus">
-                    {s.top_pick}
-                  </Link>
-                )}
-              </div>
-            </li>
-          ))}
+                  </AnimatePresence>
+                </li>
+              );
+            })}
         </ul>
       </section>
 

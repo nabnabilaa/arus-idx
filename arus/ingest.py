@@ -332,6 +332,24 @@ def pull_financials(c: SectorsClient, conn):
     print(f"[ingest] financials for {len(fin)}/{len(wanted)} companies", flush=True)
 
 
+def pull_news(c: SectorsClient, conn, start: str, end: str, pages: int = 4):
+    """Recent IDX news that mentions any ranked stock: 30 articles per page, 1 credit per page."""
+    conn.execute("""CREATE TABLE IF NOT EXISTS news (
+        url TEXT PRIMARY KEY, ts TEXT, title TEXT, body TEXT, thumbnail TEXT, symbols TEXT, tags TEXT)""")
+    syms = [r[0] for r in conn.execute("SELECT symbol FROM companies WHERE history=1 ORDER BY market_cap DESC")]
+    for page in range(pages):
+        body = c.get("/v2/news/", {"symbols": ",".join(syms), "start": start, "end": end,
+                                   "limit": 30, **({"offset": page * 30} if page else {})})
+        items = (body or {}).get("results", [])
+        for n in items:
+            conn.execute("INSERT OR REPLACE INTO news VALUES (?,?,?,?,?,?,?)",
+                         (n.get("source"), n.get("timestamp"), n.get("title"), n.get("body"), n.get("thumbnail"),
+                          json.dumps([_bare(x) for x in n.get("symbols") or []]), json.dumps(n.get("tags") or [])))
+        conn.commit()
+        if len(items) < 30:
+            break
+
+
 # ----------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser()

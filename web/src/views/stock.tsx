@@ -7,6 +7,8 @@ import { useState } from "react";
 import { CandleChart, type Cone } from "@/components/charts/candles";
 import { DivergingBars } from "@/components/charts/analytics";
 import { BandarBars } from "@/components/charts/bandar";
+import { BrokerBehaviour, NewsList } from "@/components/brokers";
+import { BrokerSummaryView } from "@/components/broker-summary";
 import { FinanceTab } from "@/components/finance";
 import { Perspectives } from "@/components/perspectives";
 import { Tabs } from "@/components/tabs";
@@ -17,7 +19,7 @@ import { SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, pct, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { BROKER_VERDICT, reasonMeaning, risks } from "@/lib/narrative";
-import type { Broker, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, MacroKey, Stock } from "@/lib/types";
+import type { Broker, BrokerProfile, BrokerSummary, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, MacroKey, NewsItem, Stock } from "@/lib/types";
 import { get, verdictOf } from "@/lib/verdict";
 
 type BandarDaily = NonNullable<Bundle["bandar"]>[string];
@@ -35,12 +37,15 @@ type Props = {
   peers: { symbol: string; name: string | null; fin_grade?: FinGrade | null; fin_score?: number | null; fin_n?: number | null; pct_value?: number | null; rev_cagr?: number | null }[];
   fin: FinHealth | null;
   asOf: string;
+  profile: BrokerProfile | null;
+  summary: Record<"1" | "5" | "all", BrokerSummary> | null;
+  news: NewsItem[];
   ihsg: { date: string; v: number | null }[];
   cone?: Record<Horizon, Cone> | null;
   coneCoverage?: Bundle["coneCoverage"] | null;
 };
 
-type Tab = "ringkasan" | "simulasi" | "bandar" | "keuangan" | "global" | "harian";
+type Tab = "ringkasan" | "simulasi" | "bandar" | "keuangan" | "berita" | "global" | "harian";
 const EASE = [0.23, 1, 0.32, 1] as const;
 
 const MACRO_INFO: Record<MacroKey, { name: Bi; unit: Bi; scale: number; up: Bi; down: Bi }> = {
@@ -52,7 +57,7 @@ const MACRO_INFO: Record<MacroKey, { name: Bi; unit: Bi; scale: number; up: Bi; 
   us10y: { name: { id: "Bunga AS 10 tahun", en: "US 10-year yield" }, unit: { id: "yield naik 0,1 poin", en: "yield rises 0.1 pt" }, scale: 0.1, up: { id: "naik", en: "rose" }, down: { id: "turun", en: "fell" } },
 };
 
-export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total }: Props) {
+export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total, profile, news, summary }: Props) {
   const { tx, lang } = useLang();
   const horizon: Horizon = 1;
   const [tab, setTab] = useState<Tab>("ringkasan");
@@ -78,8 +83,9 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
   const tabs: { value: Tab; label: string }[] = [
     { value: "ringkasan", label: tx({ id: "Ringkasan", en: "Summary" }) },
     { value: "simulasi", label: tx({ id: "Rencana trade", en: "Trade plan" }) },
-    ...(bandar || broker ? [{ value: "bandar" as Tab, label: tx({ id: "Bandar & asing", en: "Brokers & foreign" }) }] : []),
+    ...(summary || bandar || broker ? [{ value: "bandar" as Tab, label: tx({ id: "Bandar", en: "Brokers" }) }] : []),
     { value: "keuangan", label: tx({ id: "Keuangan", en: "Financials" }) },
+    ...(news.length ? [{ value: "berita" as Tab, label: tx({ id: `Berita (${news.length})`, en: `News (${news.length})` }) }] : []),
     { value: "global", label: tx({ id: "Pengaruh global", en: "Global influence" }) },
     { value: "harian", label: tx({ id: "Data harian", en: "Daily data" }) },
   ];
@@ -155,9 +161,35 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
         <Tabs label={tx({ id: "Bagian halaman", en: "Page sections" })} value={tab} onChange={setTab} items={tabs} />
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.25, ease: EASE }} className="pt-7">
-            {tab === "ringkasan" && <SummaryTab s={s} broker={broker} weights={weights[1]} pctl={pctl} asOf={asOf} />}
+            {tab === "ringkasan" && (
+              <div className="space-y-10">
+                <SummaryTab s={s} broker={broker} weights={weights[1]} pctl={pctl} asOf={asOf} />
+                {summary && (
+                  <div>
+                    <BrokerSummaryView data={summary} last={s.price} compact />
+                    <button onClick={() => setTab("bandar")} className="mt-2 cursor-pointer text-[13px] text-arus hover:underline">
+                      {tx({ id: "Lihat detail bandar dan perilaku broker →", en: "See full broker detail and behaviour →" })}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             {tab === "simulasi" && candles && <TradeSim candles={candles} />}
-            {tab === "bandar" && <BandarTab s={s} bandar={bandar} broker={broker} />}
+            {tab === "bandar" && (
+              <div className="space-y-8">
+                {summary && <BrokerSummaryView data={summary} last={s.price} />}
+                <BandarTab s={s} bandar={bandar} broker={broker} />
+                {profile && <BrokerBehaviour p={profile} last={s.price} />}
+              </div>
+            )}
+            {tab === "berita" && (
+              <div className="max-w-3xl">
+                <NewsList items={news} />
+                <p className="mt-4 text-[12px] text-muted">
+                  <T id="Ringkasan berita dari Sectors (berbahasa Inggris), tautan menuju sumber aslinya." en="News summaries from Sectors, linking to the original source." />
+                </p>
+              </div>
+            )}
             {tab === "keuangan" && <FinanceTab s={s} fin={fin} peers={peers} />}
             {tab === "global" && <GlobalTab s={s} macro={macro} />}
             {tab === "harian" && candles && <DailyTab candles={candles} />}

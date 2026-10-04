@@ -478,7 +478,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["daily", "digest", "bot", "grade", "setup-bot"])
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--cap", type=float, default=200, help="max credits for the refresh")
+    ap.add_argument("--cap", type=float, default=200, help="max credits for the refresh (--source sectors only)")
+    ap.add_argument("--source", choices=["idx", "sectors"], default="idx",
+                    help="daily prices and foreign flow: the free IDX summary (default) or Sectors credits")
     ap.add_argument("--end", default=None, help="last trading day to pull (default: today)")
     args = ap.parse_args()
     token = env().get("TELEGRAM_BOT_TOKEN")
@@ -497,20 +499,34 @@ def main():
         before = load_bundle() if (SNAP / "arus.json").exists() else None
         if before:
             save_picks(before)
-        c = SectorsClient(dry_run=args.dry_run, credit_cap=args.cap)
         conn = ingest.connect()
         end = date.fromisoformat(args.end) if args.end else date.today()
-        if args.dry_run:
+        if args.source == "idx":
+            from arus import idx
+            last = ingest.last_date(conn)
+            sys.argv = ["idx", "--until", end.isoformat()]
+            idx.main()
+            if ingest.last_date(conn) == last:
+                print("[agent] no new trading day — nothing to do")
+                return
+            sys.argv = ["build"]
+            build.main()
+            args.source = "done"
+        c = SectorsClient(dry_run=args.dry_run, credit_cap=args.cap)
+        if args.source == "done":
+            pass
+        elif args.dry_run:
             n_hist = conn.execute("SELECT COUNT(*) FROM companies WHERE history=1").fetchone()[0]
             print(f"[agent] dry-run: ≈{n_hist + 22 + 2} credits per new trading day (since {ingest.last_date(conn)})")
             return
-        info = ingest.pull_increment(c, conn, end)
-        print(f"[agent] refresh: {info} · {c.summary()}", flush=True)
-        if not info.get("new_days"):
-            print("[agent] no new trading day — nothing to do")
-            return
-        sys.argv = ["build"]
-        build.main()
+        else:
+            info = ingest.pull_increment(c, conn, end)
+            print(f"[agent] refresh: {info} · {c.summary()}", flush=True)
+            if not info.get("new_days"):
+                print("[agent] no new trading day — nothing to do")
+                return
+            sys.argv = ["build"]
+            build.main()
 
     bundle = load_bundle()
     graded = grade(bundle) if args.cmd in ("daily", "grade") else None

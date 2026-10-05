@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { CalendarDays, Clock, Coins, Landmark, Scissors, Split, Ticket } from "lucide-react";
+import { CalendarDays, Coins, Landmark, Scissors, Split, Ticket } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { amount, useAgendaDetail } from "@/components/agenda";
 import { C } from "@/components/charts/kit";
@@ -55,58 +55,59 @@ function Sym({ s, ranked, className = "" }: { s: string; ranked: boolean; classN
 
 const shortName = (n: string | null) => (n ?? "").replace(/^PT\.? /, "").replace(/ Tbk\.?$/, "");
 
-/* ------------------------------------------------------------- countdown cards */
+/* ------------------------------------------------------------- what's next, as a timeline */
 function Soon({ items, ranked, today }: { items: AgendaItem[]; ranked: Set<string>; today: number | null }) {
   const { tx, lang } = useLang();
   const detail = useAgendaDetail();
+  const half = Math.ceil(items.length / 2);
   return (
-    <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
-      {items.map((it, i) => {
-        const st = TYPE_STYLE[it.type];
-        const cd = countdown(it.type === "dividend" && it.cum ? it.cum : it.date, today);
-        const d = new Date(it.date + "T00:00:00");
-        return (
-          <motion.article
-            key={`${it.type}-${it.s}-${it.date}`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.05, ease: EASE }}
-            className="relative w-64 shrink-0 snap-start overflow-hidden rounded-2xl bg-surface p-4 ring-1 ring-line sm:w-auto"
-          >
-            <div className="absolute inset-x-0 top-0 h-1" style={{ background: st.color }} />
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-baseline gap-2">
-                <span className="num text-[2.6rem] font-semibold leading-none tracking-tight text-ink">{d.getDate()}</span>
-                <span className="text-[13px] uppercase text-ink-2">{d.toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { month: "short", weekday: "short" })}</span>
-              </div>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${st.bg}`} style={{ color: st.color }}>
-                {st.icon}
-                {tx(AGENDA_LABEL[it.type].label)}
-              </span>
-            </div>
-            <div className="mt-4">
-              <Sym s={it.s} ranked={ranked.has(it.s)} className="text-2xl font-semibold tracking-tight text-ink" />
-              <div className="truncate text-[12.5px] text-muted">{shortName(it.name)}</div>
-            </div>
-            {it.type === "dividend" && it.yield != null ? (
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="num text-xl font-semibold" style={{ color: st.color }}>{pct(it.yield, 1)}</span>
-                <span className="num text-[12px] text-muted">Rp{amount(it.amt, lang)}/{tx({ id: "saham", en: "sh" })}</span>
-              </div>
-            ) : (
-              <div className="num mt-3 text-[13px] text-ink-2">{detail(it)}</div>
-            )}
-            {cd && (
-              <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-2.5 text-[12px] text-ink-2">
-                <Clock size={13} className="text-muted" />
-                {it.type === "dividend" && it.cum
-                  ? tx({ id: `Terakhir beli ${dateLabel(it.cum, "id", { year: undefined })} · ${cd.id}`, en: `Buy by ${dateLabel(it.cum, "en", { year: undefined })} · ${cd.en}` })
-                  : tx(cd)}
-              </div>
-            )}
-          </motion.article>
-        );
-      })}
+    <div className="grid gap-x-8 rounded-2xl bg-surface px-5 py-2 ring-1 ring-line md:grid-cols-2">
+      {[items.slice(0, half), items.slice(half)].map((col, c) => (
+        <ol key={c} className="divide-y divide-line">
+          {col.map((it, i) => {
+            const st = TYPE_STYLE[it.type];
+            const key = it.type === "dividend" && it.cum ? it.cum : it.date;
+            const cd = countdown(key, today);
+            const d = new Date(it.date + "T00:00:00");
+            return (
+              <motion.li
+                key={`${it.type}-${it.s}-${it.date}`}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: (c * half + i) * 0.04, ease: EASE }}
+                className="flex items-center gap-4 py-3"
+              >
+                <div className="w-11 shrink-0 text-center">
+                  <div className="num text-xl font-semibold leading-none text-ink">{d.getDate()}</div>
+                  <div className="mt-0.5 text-[10.5px] uppercase text-muted">{d.toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { month: "short" })}</div>
+                </div>
+                <span className="h-9 w-[3px] shrink-0 rounded-full" style={{ background: st.color }} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <Sym s={it.s} ranked={ranked.has(it.s)} className="text-[15px] font-semibold text-ink" />
+                    <span className="text-[11.5px] font-medium" style={{ color: st.color }}>{tx(AGENDA_LABEL[it.type].label)}</span>
+                  </div>
+                  <div className="num truncate text-[12.5px] text-ink-2">
+                    {it.type === "dividend" && it.yield != null ? (
+                      <>
+                        <span className="font-semibold" style={{ color: st.color }}>{pct(it.yield, 1)}</span> · Rp{amount(it.amt, lang)}/{tx({ id: "saham", en: "sh" })}
+                      </>
+                    ) : (
+                      detail(it)
+                    )}
+                  </div>
+                </div>
+                {cd && (
+                  <span className="shrink-0 text-right text-[11.5px] text-muted">
+                    {it.type === "dividend" ? tx({ id: "beli s.d.", en: "buy by" }) : ""}
+                    <span className={`block text-[12px] font-medium ${cd.id === "hari ini" || cd.id === "besok" ? "text-warn" : "text-ink-2"}`}>{tx(cd)}</span>
+                  </span>
+                )}
+              </motion.li>
+            );
+          })}
+        </ol>
+      ))}
     </div>
   );
 }

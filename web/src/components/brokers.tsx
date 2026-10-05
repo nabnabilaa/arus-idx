@@ -130,6 +130,23 @@ export function BrokerBehaviour({ p, last }: { p: BrokerProfile; last: number | 
   );
 }
 
+const TONE_TAG: Record<string, { c: string; l: { id: string; en: string } }> = {
+  Bullish: { c: "#7fd4a8", l: { id: "Nada positif", en: "Positive tone" } },
+  Neutral: { c: "#75839a", l: { id: "Nada netral", en: "Neutral tone" } },
+  Bearish: { c: "#e66767", l: { id: "Nada negatif", en: "Negative tone" } },
+};
+
+/** Topics a reader actually filters by, mapped from Sectors' news tags. */
+const TOPICS: { k: string; l: { id: string; en: string }; tags: string[] }[] = [
+  { k: "div", l: { id: "Dividen", en: "Dividends" }, tags: ["Dividend Announcement"] },
+  { k: "own", l: { id: "Kepemilikan & orang dalam", en: "Ownership & insiders" }, tags: ["Ownership", "Insider Trading", "Institutional Investor"] },
+  { k: "deal", l: { id: "Merger & akuisisi", en: "M&A" }, tags: ["Mergers & Acquisitions", "Partnerships & Agreements", "MoU"] },
+  { k: "fund", l: { id: "Pendanaan & utang", en: "Funding & debt" }, tags: ["Capital & Funding", "Debt Issuance", "Bonds", "Rights Issue"] },
+  { k: "buy", l: { id: "Buyback", en: "Buybacks" }, tags: ["Stock Buyback"] },
+  { k: "an", l: { id: "Analis & kinerja", en: "Analysts & results" }, tags: ["Analyst Ratings", "Financial Metrics", "Undervalued"] },
+  { k: "for", l: { id: "Asing", en: "Foreign money" }, tags: ["Foreign Investment"] },
+];
+
 function NewsItemRow({ n }: { n: NewsItem }) {
   const { tx, lang } = useLang();
   const [open, setOpen] = useState(false);
@@ -137,65 +154,95 @@ function NewsItemRow({ n }: { n: NewsItem }) {
   try {
     host = new URL(n.url).hostname.replace(/^www\./, "");
   } catch {}
+  const tone = n.tags.map((t) => TONE_TAG[t]).find(Boolean);
   return (
-    <li className="flex flex-col rounded-xl bg-surface p-4 ring-1 ring-line transition-colors duration-150 hover:ring-line-strong">
-      <div className="flex flex-wrap items-center gap-x-2 text-[11.5px] text-muted">
-        <span className="num">{dateLabel(n.ts.slice(0, 10), lang)}</span>
-        {host && (
-          <>
-            <span>·</span>
-            <span className="truncate">{host}</span>
-          </>
-        )}
-      </div>
-      <a href={n.url} target="_blank" rel="noreferrer" className="group mt-1.5 block">
-        <span className="text-[14.5px] font-semibold leading-snug text-ink group-hover:text-arus">{n.title}</span>
-      </a>
-      {n.body && (
-        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="mt-1.5 cursor-pointer text-left">
-          <span className={`block text-[13px] leading-relaxed text-ink-2 ${open ? "" : "line-clamp-2"}`}>{n.body}</span>
-          <span className="mt-0.5 block text-[12px] text-arus hover:underline">{open ? tx({ id: "Ringkas", en: "Less" }) : tx({ id: "Selengkapnya", en: "More" })}</span>
-        </button>
-      )}
-      {n.symbols.length > 0 && (
-        <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
-          {n.symbols.slice(0, 6).map((sym) => (
-            <Link key={sym} href={`/saham/${sym}/`} className="rounded bg-raised px-1.5 py-0.5 text-[11.5px] font-medium text-ink-2 ring-1 ring-line hover:text-arus">
-              {sym}
-            </Link>
-          ))}
+    <li className="py-3.5">
+      <div className="flex items-start gap-3">
+        <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ background: tone?.c ?? "#3a465a" }} title={tone ? tx(tone.l) : undefined} />
+        <div className="min-w-0 flex-1">
+          <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="block cursor-pointer text-left">
+            <span className="text-[14.5px] font-medium leading-snug text-ink hover:text-arus">{n.title}</span>
+          </button>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
+            <span className="num">{dateLabel(n.ts.slice(0, 10), lang, { year: undefined })}</span>
+            {host && <span>· {host}</span>}
+            {n.symbols.slice(0, 5).map((sym) => (
+              <Link key={sym} href={`/saham/${sym}/`} className="rounded bg-raised px-1.5 py-px text-[11px] font-medium text-ink-2 ring-1 ring-line hover:text-arus">
+                {sym}
+              </Link>
+            ))}
+          </div>
+          {open && (
+            <div className="mt-2 rounded-lg bg-ground/60 p-3 ring-1 ring-line">
+              {n.body && <p className="text-[13.5px] leading-relaxed text-ink-2">{n.body}</p>}
+              <a href={n.url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[12.5px] text-arus hover:underline">
+                {tx({ id: "Baca di sumber aslinya →", en: "Read at the source →" })}
+              </a>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </li>
   );
 }
 
-/** A calm news feed: headline, source and related stocks up front; the summary only on request. */
+/** Headlines first: a tone dot, source and stocks; the summary opens on click. Topic chips narrow the feed. */
 export function NewsList({ items, searchable = false }: { items: NewsItem[]; searchable?: boolean }) {
   const { tx } = useLang();
   const [q, setQ] = useState("");
+  const [topic, setTopic] = useState<string | null>(null);
   if (!items.length) return <p className="text-[14px] text-muted">{tx({ id: "Belum ada berita terbaru untuk saham ini.", en: "No recent news for this stock yet." })}</p>;
   const t = q.trim().toLowerCase();
-  const shown = t
-    ? items.filter((n) => n.title.toLowerCase().includes(t) || (n.body ?? "").toLowerCase().includes(t) || n.symbols.some((s) => s.toLowerCase() === t) || n.tags.some((g) => g.toLowerCase().includes(t)))
-    : items;
+  const tp = TOPICS.find((x) => x.k === topic);
+  const shown = items.filter(
+    (n) =>
+      (!tp || n.tags.some((g) => tp.tags.includes(g))) &&
+      (!t || n.title.toLowerCase().includes(t) || (n.body ?? "").toLowerCase().includes(t) || n.symbols.some((s) => s.toLowerCase() === t)),
+  );
+  const topics = TOPICS.filter((x) => items.some((n) => n.tags.some((g) => x.tags.includes(g))));
+  const half = Math.ceil(shown.length / 2);
   return (
     <div>
       {searchable && (
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60 sm:max-w-96">
+        <div className="mb-2 flex flex-col gap-3">
+          <label className="flex h-10 max-w-md items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60">
             <Search size={15} className="text-muted" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari berita, kode saham, atau topik (mis. BBCA, dividen)", en: "Search news, a stock code or topic (e.g. BBCA, dividend)" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari judul atau kode saham (mis. BBCA)", en: "Search a headline or ticker (e.g. BBCA)" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
           </label>
-          <span className="text-[12.5px] text-muted">{tx({ id: `${shown.length} berita`, en: `${shown.length} articles` })}</span>
+          {topics.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              {[{ k: null as string | null, l: { id: "Semua", en: "All" } }, ...topics].map((x) => (
+                <button
+                  key={x.k ?? "all"}
+                  onClick={() => setTopic(x.k)}
+                  className={`cursor-pointer rounded-full px-3 py-1 text-[12.5px] ring-1 transition-colors duration-150 ${topic === x.k ? "bg-arus/15 text-arus ring-arus/40" : "text-ink-2 ring-line hover:text-ink"}`}
+                >
+                  {tx(x.l)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
-      <ul className="grid gap-3 md:grid-cols-2">
-        {shown.map((n) => (
-          <NewsItemRow key={n.url} n={n} />
+      <div className="grid gap-x-10 md:grid-cols-2">
+        {[shown.slice(0, half), shown.slice(half)].map((col, c) => (
+          <ul key={c} className="divide-y divide-line">
+            {col.map((n) => (
+              <NewsItemRow key={n.url} n={n} />
+            ))}
+          </ul>
         ))}
-      </ul>
+      </div>
       {shown.length === 0 && <p className="py-8 text-[14px] text-muted">{tx({ id: "Tidak ada berita yang cocok.", en: "No articles match." })}</p>}
+      <p className="mt-3 flex flex-wrap items-center gap-3 text-[11.5px] text-muted">
+        {Object.values(TONE_TAG).map((v) => (
+          <span key={v.c} className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: v.c }} />
+            {tx(v.l)}
+          </span>
+        ))}
+        <span>· {tx({ id: "klik judul untuk ringkasannya", en: "click a headline for its summary" })}</span>
+      </p>
     </div>
   );
 }

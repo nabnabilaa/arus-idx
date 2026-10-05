@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUpRight, ChevronDown, Globe, TrendingDown, TrendingUp, Waves } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Globe, Search, TrendingDown, TrendingUp, Waves } from "lucide-react";
 import { useState } from "react";
 import { ShareCard } from "@/components/share";
 import { Segmented } from "@/components/ui";
@@ -33,9 +33,20 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
   const [min, setMin] = useState<Level>(3);
   const [open, setOpen] = useState<string | null>(null);
   const [all, setAll] = useState(false);
+  const [q, setQ] = useState("");
 
   const strength = (s: Stock) => Math.max(...ORDER.filter((e) => focus === "all" || e === focus).map((e) => (EVENT[e].z(s) ?? 0) * EVENT[e].sign));
-  const rows = ranking.filter((s) => strength(s) >= min).sort((a, b) => strength(b) - strength(a));
+  const query = q.trim().toUpperCase();
+  const rows = ranking
+    .filter((s) => strength(s) >= min)
+    .filter((s) => !query || s.symbol.includes(query) || (s.name ?? "").toUpperCase().includes(query))
+    .sort((a, b) => strength(b) - strength(a));
+  const standouts = ranking
+    .filter((s) => ORDER.some((e) => hits(s, e, 3)))
+    .sort((a, b) => Math.max(...ORDER.map((e) => (EVENT[e].z(b) ?? 0) * EVENT[e].sign)) - Math.max(...ORDER.map((e) => (EVENT[e].z(a) ?? 0) * EVENT[e].sign)))
+    .slice(0, 3);
+  const topEvent = (s: Stock) => ORDER.reduce((best, e) => ((EVENT[e].z(s) ?? 0) * EVENT[e].sign > (EVENT[best].z(s) ?? 0) * EVENT[best].sign ? e : best), ORDER[0]);
+  const strength2 = (s: Stock) => Math.max(...ORDER.map((e) => (EVENT[e].z(s) ?? 0) * EVENT[e].sign));
   const countToday = (e: Event) => ranking.filter((s) => hits(s, e, min)).length;
 
   const detail = (s: Stock, e: Event): string => {
@@ -125,6 +136,100 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
         </p>
       </motion.header>
 
+      {/* the three loudest today */}
+      {standouts.length > 0 && (
+        <section className="mt-8 grid gap-3 md:grid-cols-3">
+          {standouts.map((s, i) => {
+            const e = topEvent(s);
+            const h = history?.[e];
+            return (
+              <motion.div key={s.symbol} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: i * 0.07, ease: EASE }}>
+                <Link href={`/saham/${s.symbol}/`} className="group flex h-full flex-col rounded-2xl bg-surface p-5 ring-1 ring-line transition-colors duration-150 hover:ring-arus/40">
+                  <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-arus">
+                    {EVENT[e].icon}
+                    {tx(EVENT[e].label)}
+                  </span>
+                  <span className="mt-3 flex items-baseline gap-2.5">
+                    <span className="text-2xl font-semibold tracking-tight text-ink group-hover:text-arus">{s.symbol}</span>
+                    <span className={`num text-[14px] ${(s.ret_1 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</span>
+                  </span>
+                  <span className="truncate text-[12.5px] text-muted">{(s.name ?? "").replace(/^PT\.? /, "")}</span>
+                  <span className="mt-3 text-[14px] leading-snug text-ink-2">{detail(s, e)}</span>
+                  {h?.beat5 != null && (
+                    <span className="mt-auto pt-3 text-[12px] text-muted">
+                      {tx({ id: `Sesudah kejadian serupa: unggul ${Math.round(h.beat5 * 100)} dari 100 kali dalam 5 hari`, en: `After similar events: won ${Math.round(h.beat5 * 100)} in 100 over 5 days` })}
+                    </span>
+                  )}
+                </Link>
+              </motion.div>
+            );
+          })}
+        </section>
+      )}
+
+      {/* today */}
+      <section className="mt-10">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+              {focus === "all" ? <T id="Semua kejadian hari ini" en="Everything unusual today" /> : tx(EVENT[focus].label)} · <span className="num text-ink-2">{rows.length}</span> <T id="saham" en="stocks" />
+            </h2>
+          </div>
+          <Segmented<Level>
+            label={tx({ id: "Seberapa tidak biasa", en: "How unusual" })}
+            value={min}
+            onChange={setMin}
+            options={[
+              { value: 3, label: tx({ id: "Sangat tidak biasa", en: "Very unusual" }) },
+              { value: 2, label: tx({ id: "Agak tidak biasa", en: "Somewhat unusual" }) },
+            ]}
+          />
+        </div>
+        <p className="mt-1.5 text-[12.5px] text-muted">
+          {min === 3
+            ? tx({ id: "Untuk saham itu sendiri, kejadian seperti ini hanya beberapa kali setahun.", en: "For that stock, an event like this happens only a few times a year." })
+            : tx({ id: "Untuk saham itu sendiri, kejadian seperti ini kira-kira sekali sebulan.", en: "For that stock, an event like this happens about once a month." })}
+        </p>
+
+        <div className="mt-4 flex flex-col gap-3">
+          <label className="flex h-10 max-w-sm items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60">
+            <Search size={15} className="text-muted" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx({ id: "Cari kode atau nama saham", en: "Search a ticker or name" })} className="w-full bg-transparent text-[13.5px] text-ink placeholder:text-muted focus:outline-none" />
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {(["all", ...ORDER] as (Event | "all")[]).map((e) => (
+              <button
+                key={e}
+                onClick={() => setFocus(e)}
+                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] ring-1 transition-colors duration-150 ${focus === e ? "bg-arus/15 text-arus ring-arus/40" : "text-ink-2 ring-line hover:text-ink"}`}
+              >
+                {e === "all" ? tx({ id: "Semua", en: "All" }) : tx(EVENT[e].label)}
+                <span className="num text-[11px] text-muted">{e === "all" ? ranking.filter((s) => strength2(s) >= min).length : countToday(e)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <ul className="mt-5 flex flex-col gap-2.5 lg:hidden">{visible.map(renderRow)}</ul>
+        <div className="mt-5 hidden items-start gap-2.5 lg:grid lg:grid-cols-2">
+          {[0, 1].map((c) => (
+            <ul key={c} className="flex flex-col gap-2.5">
+              {visible.filter((_, i) => i % 2 === c).map(renderRow)}
+            </ul>
+          ))}
+        </div>
+        {rows.length > 10 && (
+          <button onClick={() => setAll((v) => !v)} className="mt-3 cursor-pointer text-[13px] text-arus hover:underline">
+            {all ? tx({ id: "Tampilkan lebih sedikit", en: "Show fewer" }) : tx({ id: `Tampilkan semua (${rows.length})`, en: `Show all (${rows.length})` })}
+          </button>
+        )}
+        {rows.length === 0 && (
+          <p className="py-14 text-center text-[14px] text-muted">
+            <T id="Hari ini tidak ada saham yang setidak biasa ini. Coba pilih “Agak tidak biasa”." en="No stock is this unusual today. Try “Somewhat unusual”." />
+          </p>
+        )}
+      </section>
+
       {/* what usually follows */}
       <section className="mt-10">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -132,8 +237,8 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
         </h2>
         <p className="mt-1.5 max-w-[75ch] text-[13.5px] leading-relaxed text-muted">
           <T
-            id="Dari semua kejadian serupa di histori Arus (Juli 2025 – Oktober 2026): seberapa sering saham itu mengalahkan saham rata-rata sesudahnya. 50 berarti tidak ada bedanya. Klik kartu untuk menyaring daftar di bawah."
-            en="From every similar event in Arus' history (July 2025 – October 2026): how often the stock beat the median stock afterwards. 50 means no difference. Click a card to filter the list below."
+            id="Dari semua kejadian serupa di histori Arus (Juli 2025 – Oktober 2026): seberapa sering saham itu mengalahkan saham rata-rata sesudahnya. 50 berarti tidak ada bedanya. Klik kartu untuk menyaring daftar di atas."
+            en="From every similar event in Arus' history (July 2025 – October 2026): how often the stock beat the median stock afterwards. 50 means no difference. Click a card to filter the list above."
           />
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -175,50 +280,6 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
             );
           })}
         </div>
-      </section>
-
-      {/* today */}
-      <section className="mt-10">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-              {focus === "all" ? <T id="Hari ini" en="Today" /> : tx(EVENT[focus].label)} · <span className="num text-ink-2">{rows.length}</span> <T id="saham" en="stocks" />
-            </h2>
-          </div>
-          <Segmented<Level>
-            label={tx({ id: "Seberapa tidak biasa", en: "How unusual" })}
-            value={min}
-            onChange={setMin}
-            options={[
-              { value: 3, label: tx({ id: "Sangat tidak biasa", en: "Very unusual" }) },
-              { value: 2, label: tx({ id: "Agak tidak biasa", en: "Somewhat unusual" }) },
-            ]}
-          />
-        </div>
-        <p className="mt-1.5 text-[12.5px] text-muted">
-          {min === 3
-            ? tx({ id: "Untuk saham itu sendiri, kejadian seperti ini hanya beberapa kali setahun.", en: "For that stock, an event like this happens only a few times a year." })
-            : tx({ id: "Untuk saham itu sendiri, kejadian seperti ini kira-kira sekali sebulan.", en: "For that stock, an event like this happens about once a month." })}
-        </p>
-
-        <ul className="mt-5 flex flex-col gap-2.5 lg:hidden">{visible.map(renderRow)}</ul>
-        <div className="mt-5 hidden items-start gap-2.5 lg:grid lg:grid-cols-2">
-          {[0, 1].map((c) => (
-            <ul key={c} className="flex flex-col gap-2.5">
-              {visible.filter((_, i) => i % 2 === c).map(renderRow)}
-            </ul>
-          ))}
-        </div>
-        {rows.length > 10 && (
-          <button onClick={() => setAll((v) => !v)} className="mt-3 cursor-pointer text-[13px] text-arus hover:underline">
-            {all ? tx({ id: "Tampilkan lebih sedikit", en: "Show fewer" }) : tx({ id: `Tampilkan semua (${rows.length})`, en: `Show all (${rows.length})` })}
-          </button>
-        )}
-        {rows.length === 0 && (
-          <p className="py-14 text-center text-[14px] text-muted">
-            <T id="Hari ini tidak ada saham yang setidak biasa ini. Coba pilih “Agak tidak biasa”." en="No stock is this unusual today. Try “Somewhat unusual”." />
-          </p>
-        )}
       </section>
 
       <p className="mt-10 max-w-[75ch] text-[13px] leading-relaxed text-muted">

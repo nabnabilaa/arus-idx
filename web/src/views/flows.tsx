@@ -37,7 +37,7 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"asing" | "bandar" | "berita">("asing");
   const [page, setPage] = useState(0);
-  const PER = 20;
+  const PER = 24;
   const [sortBy, setSortBy] = useState<"inst" | "retail" | "foreign">("inst");
   const sum = (xs: number[] | undefined) => (xs ?? []).reduce((a, b) => a + b, 0);
   const foot = ranking
@@ -196,57 +196,40 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
           <span className="text-[12.5px] text-muted">{tx({ id: `${foot.length} saham`, en: `${foot.length} stocks` })}</span>
         </div>
 
-        <ul className="mt-4 grid gap-2.5 lg:grid-cols-2">
+        <ul className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
           {foot.slice(page * PER, page * PER + PER).map((r) => {
             const tilt = r.tilt > 0.15 ? "up" : r.tilt < -0.15 ? "down" : "flat";
-            // each card on its own scale: the bars show who dominates this stock's flow
-            const rowMax = Math.max(1, Math.abs(r.inst), Math.abs(r.retail), Math.abs(r.foreign));
             return (
-              <li key={r.sym} className="rounded-xl bg-surface px-4 py-3 ring-1 ring-line transition-colors duration-150 hover:ring-line-strong">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <Link href={`/saham/${r.sym}/`} className="text-[15px] font-semibold text-ink hover:text-arus">{r.sym}</Link>
-                    <span className="ml-2 truncate text-[12px] text-muted">{(r.name ?? "").replace(/^PT\.? /, "").replace(/ Tbk\.?$/, "")}</span>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium ring-1 ${
-                      tilt === "up" ? "bg-up/10 text-[#9cc5f5] ring-up/30" : tilt === "down" ? "bg-down/10 text-[#f0a3a3] ring-down/30" : "text-ink-2 ring-line-strong"
-                    }`}
-                  >
-                    {tilt === "up" ? tx({ id: "Akumulasi", en: "Accumulation" }) : tilt === "down" ? tx({ id: "Distribusi", en: "Distribution" }) : tx({ id: "Seimbang", en: "Balanced" })}
-                  </span>
-                </div>
-                <div className="mt-2.5 grid grid-cols-3 gap-3">
-                  {(
-                    [
-                      [tx({ id: "Institusi", en: "Institutions" }), r.inst],
-                      [tx({ id: "Ritel", en: "Retail" }), r.retail],
-                      [tx({ id: "Asing", en: "Foreign" }), r.foreign],
-                    ] as [string, number][]
-                  ).map(([l, v]) => (
-                    <div key={l}>
-                      <div className="flex items-baseline justify-between gap-1">
-                        <span className="text-[11px] text-muted">{l}</span>
-                        <span className={`num text-[12.5px] ${v >= 0 ? "text-up" : "text-down"}`}>{idr(v, lang)}</span>
-                      </div>
-                      <div className="relative mt-1 h-2 rounded-full bg-raised">
-                        <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
-                        <span
-                          className={`absolute inset-y-0 rounded-full ${v >= 0 ? "left-1/2 bg-up" : "right-1/2 bg-down"}`}
-                          style={{ width: `${Math.min(50, (Math.abs(v) / rowMax) * 50)}%` }}
-                        />
-                      </div>
+              <li key={r.sym}>
+                <Link href={`/saham/${r.sym}/`} className="group block rounded-xl bg-surface px-4 py-3.5 ring-1 ring-line transition-colors duration-150 hover:ring-line-strong">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[15px] font-semibold text-ink group-hover:text-arus">{r.sym}</div>
+                      <div className="truncate text-[12px] text-muted">{(r.name ?? "").replace(/^PT\.? /, "").replace(/ Tbk\.?$/, "")}</div>
                     </div>
-                  ))}
-                </div>
-                {r.top && (
-                  <div className="mt-2.5 flex items-center gap-1.5 text-[12px] text-muted">
-                    {tx({ id: "Pembeli utama", en: "Top buyer" })}
-                    <Link href={`/broker/${r.top.code}/`} className="inline-flex items-center gap-1 font-medium text-ink hover:text-arus">
-                      {cohortDot(r.top.cohort, r.top.foreign)} {r.top.code}
-                    </Link>
+                    <span className={`shrink-0 text-[11.5px] font-medium ${tilt === "up" ? "text-[#9cc5f5]" : tilt === "down" ? "text-[#f0a3a3]" : "text-muted"}`}>
+                      {tilt === "up" ? tx({ id: "Akumulasi", en: "Accumulation" }) : tilt === "down" ? tx({ id: "Distribusi", en: "Distribution" }) : tx({ id: "Seimbang", en: "Balanced" })}
+                    </span>
                   </div>
-                )}
+                  <div className="mt-3 flex items-baseline justify-between gap-3">
+                    <span className="text-[11.5px] text-muted">{tx({ id: "Institusi bersih", en: "Institutions net" })}</span>
+                    <span className={`num text-lg font-semibold ${r.inst >= 0 ? "text-up" : "text-down"}`}>{idr(r.inst, lang)}</span>
+                  </div>
+                  <div className="num mt-1 flex justify-between gap-3 text-[12px] text-muted">
+                    <span>
+                      {tx({ id: "Ritel", en: "Retail" })} <span className={r.retail >= 0 ? "text-up" : "text-down"}>{idr(r.retail, lang)}</span>
+                    </span>
+                    <span>
+                      {tx({ id: "Asing", en: "Foreign" })} <span className={r.foreign >= 0 ? "text-up" : "text-down"}>{idr(r.foreign, lang)}</span>
+                    </span>
+                    {r.top && (
+                      <span className="inline-flex items-center gap-1">
+                        {cohortDot(r.top.cohort, r.top.foreign)}
+                        <span className="text-ink-2">{r.top.code}</span>
+                      </span>
+                    )}
+                  </div>
+                </Link>
               </li>
             );
           })}

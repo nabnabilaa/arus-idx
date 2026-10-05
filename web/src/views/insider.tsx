@@ -85,30 +85,6 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
         ))}
       </section>
 
-      {/* what followed */}
-      <section className="mt-10">
-        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
-          <T id="Kalau orang dalam membeli, apakah sahamnya lalu unggul?" en="When insiders buy, does the stock then do better?" />
-        </h2>
-        <p className="mt-1.5 max-w-[75ch] text-[13.5px] leading-relaxed text-muted">
-          <T
-            id="Dari setiap laporan transaksi pasar 90 hari terakhir: seberapa sering saham itu mengalahkan saham rata-rata BEI, dihitung sejak hari pertama laporan bisa diperdagangkan. 50 berarti tidak ada bedanya."
-            en="From every market-trade filing in the last 90 days: how often the stock beat the median IDX stock, counted from the first session the filing could be traded on. 50 means no difference."
-          />
-        </p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <AfterCard i={0} a={book.after.buy} label={tx({ id: "Orang dalam membeli", en: "Insider buys" })} note={tx({ id: "Semua laporan beli.", en: "Every buy filing." })} />
-          <AfterCard i={1} a={book.after.chain_buy} label={tx({ id: "Membeli berulang (3+ kali)", en: "Repeated buying (3+ times)" })} note={tx({ id: "Pemegang yang sama, saham yang sama.", en: "Same holder, same stock." })} />
-          <AfterCard i={2} a={book.after.sell} label={tx({ id: "Orang dalam menjual", en: "Insider sells" })} note={tx({ id: "Semua laporan jual.", en: "Every sell filing." })} />
-        </div>
-        <p className="mt-3 max-w-[75ch] text-[13px] leading-relaxed text-ink-2">
-          <T
-            id="Temuan Arus: dalam 90 hari ini, pembelian orang dalam belum menjadi tanda saham akan unggul. Gunakan sebagai konteks (siapa yang yakin, di harga berapa), bukan sebagai sinyal beli."
-            en="Arus' finding: over these 90 days, insider buying has not marked stocks that go on to do better. Use it as context (who is committed, at what price), not as a buy signal."
-          />
-        </p>
-      </section>
-
       {/* chains */}
       <section id="rantai" className="mt-10 scroll-mt-24">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -148,6 +124,30 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
             noun={{ id: "rantai", en: "chains" }}
           />
         )}
+      </section>
+
+      {/* what followed */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          <T id="Kalau orang dalam membeli, apakah sahamnya lalu unggul?" en="When insiders buy, does the stock then do better?" />
+        </h2>
+        <p className="mt-1.5 max-w-[75ch] text-[13.5px] leading-relaxed text-muted">
+          <T
+            id="Dari setiap laporan transaksi pasar 90 hari terakhir: seberapa sering saham itu mengalahkan saham rata-rata BEI, dihitung sejak hari pertama laporan bisa diperdagangkan. 50 berarti tidak ada bedanya."
+            en="From every market-trade filing in the last 90 days: how often the stock beat the median IDX stock, counted from the first session the filing could be traded on. 50 means no difference."
+          />
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <AfterCard i={0} a={book.after.buy} label={tx({ id: "Orang dalam membeli", en: "Insider buys" })} note={tx({ id: "Semua laporan beli.", en: "Every buy filing." })} />
+          <AfterCard i={1} a={book.after.chain_buy} label={tx({ id: "Membeli berulang (3+ kali)", en: "Repeated buying (3+ times)" })} note={tx({ id: "Pemegang yang sama, saham yang sama.", en: "Same holder, same stock." })} />
+          <AfterCard i={2} a={book.after.sell} label={tx({ id: "Orang dalam menjual", en: "Insider sells" })} note={tx({ id: "Semua laporan jual.", en: "Every sell filing." })} />
+        </div>
+        <p className="mt-3 max-w-[75ch] text-[13px] leading-relaxed text-ink-2">
+          <T
+            id="Temuan Arus: dalam 90 hari ini, pembelian orang dalam belum menjadi tanda saham akan unggul. Gunakan sebagai konteks (siapa yang yakin, di harga berapa), bukan sebagai sinyal beli."
+            en="Arus' finding: over these 90 days, insider buying has not marked stocks that go on to do better. Use it as context (who is committed, at what price), not as a buy signal."
+          />
+        </p>
       </section>
 
       {/* every filing */}

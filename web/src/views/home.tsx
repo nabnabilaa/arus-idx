@@ -13,7 +13,6 @@ import { FEATURE, SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/published";
-import { MarketBrief } from "@/components/brief";
 import { AgendaWeek } from "@/components/agenda";
 import { MacroStrip } from "@/components/macro-strip";
 import { Explore, type ExploreStats } from "@/components/explore";
@@ -27,7 +26,7 @@ import { get, HORIZON_LABEL, VERDICT, VERDICT_ORDER, verdictOf, type VerdictKey 
 type Props = Pick<Bundle, "ranking" | "meta" | "market" | "models" | "sectors" | "macro"> & { agenda: AgendaItem[]; explore: ExploreStats };
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-export function HomeView({ ranking, meta, market, models, sectors, agenda, macro, explore }: Props) {
+export function HomeView({ ranking, meta, market, models, agenda, macro, explore }: Props) {
   const { horizon } = usePrefs();
   const model = models[String(horizon) as "1" | "20"];
 
@@ -41,13 +40,15 @@ export function HomeView({ ranking, meta, market, models, sectors, agenda, macro
     <>
       <Hero ranking={ranking} meta={meta} />
       <MacroStrip market={market} macro={macro} asOf={meta.as_of} />
-      <Explore st={explore} />
-      <MarketBrief ranking={ranking} market={market} sectors={sectors} asOf={meta.as_of} />
-      <AgendaWeek items={agenda} ranked={ranked} asOf={meta.as_of} />
-      <HowToRead />
+      {/* the day first (what happened, what stands out), then where to go, then the full list */}
       <MarketToday ranking={ranking} market={market} horizon={horizon} model={model} />
       <Highlights scored={scored} />
+      <Explore st={explore} />
+      <AgendaWeek items={agenda} ranked={ranked} asOf={meta.as_of} />
       <Screener scored={scored} />
+      <div className="mt-14">
+        <HowToRead />
+      </div>
     </>
   );
 }

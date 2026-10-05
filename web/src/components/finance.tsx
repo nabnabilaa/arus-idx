@@ -7,6 +7,7 @@ import { FIN_GRADE } from "@/components/perspectives";
 import { idr, pct, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import type { FinCheck, FinGrade, FinHealth, Stock } from "@/lib/types";
+import { PbRoe, type ValPeer } from "@/components/valuation";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -149,7 +150,7 @@ function Statement({ fin }: { fin: FinHealth }) {
   );
 }
 
-export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null; peers: { symbol: string; name: string | null; fin_grade?: FinGrade | null; fin_score?: number | null; fin_n?: number | null; pct_value?: number | null; rev_cagr?: number | null }[] }) {
+export function FinanceTab({ s, fin, peers, valPeers = [] }: { s: Stock; fin: FinHealth | null; valPeers?: ValPeer[]; peers: { symbol: string; name: string | null; fin_grade?: FinGrade | null; fin_score?: number | null; fin_n?: number | null; pct_value?: number | null; rev_cagr?: number | null }[] }) {
   const { tx, lang } = useLang();
   const card = "rounded-2xl bg-surface p-5 ring-1 ring-line";
   const stats: [Bi, string][] = [
@@ -296,6 +297,8 @@ export function FinanceTab({ s, fin, peers }: { s: Stock; fin: FinHealth | null;
           ))}
         </div>
       </section>
+
+      <PbRoe s={s} peers={valPeers} fin={fin} />
 
       {/* 6. peers */}
       {peers.length > 0 && (

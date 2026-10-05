@@ -49,6 +49,9 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
       summary={bundle.brokerSummary?.[symbol] ?? null}
       news={bundle.news?.[symbol] ?? []}
       asOf={bundle.meta.as_of}
+      valPeers={bundle.ranking
+        .filter((r) => r.sector === stock.sector && r.symbol !== symbol && r.pb_mrq != null && r.pb_mrq > 0 && r.roe_ttm != null)
+        .map((r) => ({ symbol: r.symbol, pb: r.pb_mrq as number, roe: r.roe_ttm as number, sub: r.sub_sector === stock.sub_sector }))}
       agenda={{ items: agendaBook.upcoming.filter((it) => it.s === symbol), history: agendaBook.history[symbol] ?? [] }}
       insider={{
         events: insiderBook.events.filter((e) => e.s === symbol),

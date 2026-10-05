@@ -13,6 +13,7 @@ const LINKS: { href: string; label: Bi }[] = [
   { href: "/asing/", label: { id: "Asing & bandar", en: "Foreign & brokers" } },
   { href: "/broker/", label: { id: "Broker", en: "Brokers" } },
   { href: "/anomali/", label: { id: "Tak biasa", en: "Unusual" } },
+  { href: "/orang-dalam/", label: { id: "Orang dalam", en: "Insiders" } },
   { href: "/pantau/", label: { id: "Pantauan", en: "Watchlist" } },
   { href: "/kejujuran/", label: { id: "Bukti", en: "Proof" } },
   { href: "/agen/", label: { id: "Agen & Telegram", en: "Agent & Telegram" } },

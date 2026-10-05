@@ -17,7 +17,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from arus import config, context, financial
+from arus import config, context, financial, insider as insider_mod
 from arus.client import SectorsClient
 from arus.features import FEATURES, FEATURE_NAMES, build_features, load_panel
 from arus.ingest import pull_broker_daily, pull_broker_top
@@ -289,7 +289,9 @@ def main():
         print(f"[build] bandar daily · {c.summary()}", flush=True)
 
     fund = context.fundamental_context(conn)
-    insider = context.insider_context(conn)
+    names = dict(conn.execute("SELECT symbol, name FROM idx_companies").fetchall())
+    insider_book = insider_mod.build(conn, names)
+    insider = insider_mod.per_stock(insider_book)
     susp = context.suspension_set(conn)
     brokers = context.load_broker_evidence(conn)
     bandar = context.bandar_daily(conn)
@@ -380,6 +382,9 @@ def main():
     for path in (snap / "brokers.json", web / "brokers.json"):
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(_clean(broker_index), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+    for path in (snap / "insider.json", web / "insider.json"):
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(_clean(insider_book), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
     for path in (snap / "series.json", web / "series.json"):
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(_clean(series), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))

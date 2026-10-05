@@ -10,6 +10,7 @@ import { BrokerBehaviour, NewsList } from "@/components/brokers";
 import { BrokerSummaryView } from "@/components/broker-summary";
 import { FinanceTab } from "@/components/finance";
 import { GlobalView } from "@/components/global";
+import { InsiderPanel } from "@/components/insider";
 import { Perspectives } from "@/components/perspectives";
 import { Tabs } from "@/components/tabs";
 import { TradeSim } from "@/components/trade-sim";
@@ -19,7 +20,7 @@ import { SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, pct, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { BROKER_VERDICT, reasonMeaning, risks } from "@/lib/narrative";
-import type { Broker, BrokerProfile, BrokerSummary, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, NewsItem, Stock } from "@/lib/types";
+import type { Broker, BrokerProfile, BrokerSummary, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, InsiderChain, InsiderEvent, NewsItem, Stock } from "@/lib/types";
 import { get, verdictOf } from "@/lib/verdict";
 
 type BandarDaily = NonNullable<Bundle["bandar"]>[string];
@@ -43,13 +44,14 @@ type Props = {
   ihsg: { date: string; v: number | null }[];
   cone?: Record<Horizon, Cone> | null;
   coneCoverage?: Bundle["coneCoverage"] | null;
+  insider?: { events: InsiderEvent[]; chains: InsiderChain[]; paths: Record<string, { d: string[]; c: number[] }>; ksei: string } | null;
 };
 
-type Tab = "ringkasan" | "simulasi" | "bandar" | "keuangan" | "berita" | "global" | "harian";
+type Tab = "ringkasan" | "simulasi" | "bandar" | "orangdalam" | "keuangan" | "berita" | "global" | "harian";
 const EASE = [0.23, 1, 0.32, 1] as const;
 
 
-export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total, profile, news, summary }: Props) {
+export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total, profile, news, summary, insider }: Props) {
   const { tx, lang } = useLang();
   const horizon: Horizon = 1;
   const [tab, setTab] = useState<Tab>("ringkasan");
@@ -76,6 +78,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
     { value: "ringkasan", label: tx({ id: "Ringkasan", en: "Summary" }) },
     { value: "simulasi", label: tx({ id: "Rencana trade", en: "Trade plan" }) },
     ...(summary || bandar || broker ? [{ value: "bandar" as Tab, label: tx({ id: "Bandar", en: "Brokers" }) }] : []),
+    ...(insider?.events.length ? [{ value: "orangdalam" as Tab, label: tx({ id: `Orang dalam (${insider.events.length})`, en: `Insiders (${insider.events.length})` }) }] : []),
     { value: "keuangan", label: tx({ id: "Keuangan", en: "Financials" }) },
     ...(news.length ? [{ value: "berita" as Tab, label: tx({ id: `Berita (${news.length})`, en: `News (${news.length})` }) }] : []),
     { value: "global", label: tx({ id: "Pengaruh global", en: "Global influence" }) },
@@ -190,6 +193,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
                 </p>
               </div>
             )}
+            {tab === "orangdalam" && insider && <InsiderPanel events={insider.events} chains={insider.chains} paths={insider.paths} ksei={insider.ksei} />}
             {tab === "keuangan" && <FinanceTab s={s} fin={fin} peers={peers} />}
             {tab === "global" && <GlobalView s={s} candles={candles} macro={macro} ihsg={ihsg} />}
             {tab === "harian" && candles && <DailyTab candles={candles} />}

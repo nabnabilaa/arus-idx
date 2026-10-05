@@ -42,6 +42,7 @@ export type Stock = {
   pos_52w: number | null;
   insider_buys: number | null;
   insider_sells: number | null;
+  insider_net_val?: number | null;
   z_foreign: number | null;
   z_volume: number | null;
   z_return: number | null;
@@ -283,3 +284,57 @@ export type Candles = {
   v20?: (number | null)[];
 };
 export type Series = Record<string, Candles>;
+
+export type InsiderEvent = {
+  s: string;
+  ts: string;
+  d: string | null;
+  holder: string;
+  kind: "insider" | "institution" | "corporate-investor" | string | null;
+  side: "buy" | "sell";
+  sh: number | null;
+  px: number | null;
+  val: number | null;
+  pb: number | null;
+  pa: number | null;
+  tags: string[];
+  grp: string | null;
+  url: string | null;
+  entry: number | null;
+  since: number | null;
+  ex5: number | null;
+  ex20: number | null;
+  twoway: boolean;
+  market: boolean;
+};
+
+export type InsiderChain = {
+  s: string;
+  holder: string;
+  side: "buy" | "sell";
+  kind: string | null;
+  n: number;
+  sh: number;
+  val: number;
+  avg: number | null;
+  first: string;
+  last: string;
+  pb: number | null;
+  pa: number | null;
+  grp: string | null;
+  now: number | null;
+  vs: number | null;
+  trades: { d: string; sh: number; px: number }[];
+};
+
+export type InsiderAfter = { n_events: number; n5: number; beat5: number | null; med5: number | null; n20: number; beat20: number | null; med20: number | null };
+
+export type InsiderBook = {
+  events: InsiderEvent[];
+  chains: InsiderChain[];
+  paths: Record<string, { d: string[]; c: number[] }>;
+  after: Record<"buy" | "sell" | "chain_buy", InsiderAfter>;
+  window: { from: string; to: string; n: number } | null;
+  stocks: Record<string, { name: string | null; now: number | null }>;
+  ksei: string;
+};

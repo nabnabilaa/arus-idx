@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { bundle, series } from "@/lib/data";
+import { insiderBook } from "@/lib/insider";
 import { StockView } from "@/views/stock";
 
 export function generateStaticParams() {
@@ -47,6 +48,12 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
       summary={bundle.brokerSummary?.[symbol] ?? null}
       news={bundle.news?.[symbol] ?? []}
       asOf={bundle.meta.as_of}
+      insider={{
+        events: insiderBook.events.filter((e) => e.s === symbol),
+        chains: insiderBook.chains.filter((c) => c.s === symbol),
+        paths: insiderBook.paths[symbol] ? { [symbol]: insiderBook.paths[symbol] } : {},
+        ksei: insiderBook.ksei,
+      }}
     />
   );
 }

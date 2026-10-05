@@ -207,12 +207,12 @@ def pull_corporate_actions(c, conn):
     conn.commit()
 
 
-def pull_context(c, conn):
-    """Non-historical evidence: insider filings, suspensions, broker registry."""
+def pull_filings(c, conn, max_rows: int = 600):
+    """Insider filings for the last 90 days, every page (1 credit each); full rows stay in the cache."""
     since = (AS_OF - timedelta(days=90)).isoformat()
     for ttype in ("buy", "sell"):
         offset = 0
-        while offset < 150:
+        while offset < max_rows:
             body = c.get("/v2/filings/", {"start": since, "end": AS_OF.isoformat(),
                                           "transaction_type": ttype, "limit": 30,
                                           "offset": offset})
@@ -225,6 +225,13 @@ def pull_context(c, conn):
             if not (body or {}).get("pagination", {}).get("has_next"):
                 break
             offset += 30
+    conn.commit()
+
+
+def pull_context(c, conn):
+    """Non-historical evidence: insider filings, suspensions, broker registry."""
+    since = (AS_OF - timedelta(days=90)).isoformat()
+    pull_filings(c, conn)
     body = c.get("/v2/suspensions/", {"start": since, "end": AS_OF.isoformat(), "limit": 100})
     for r in (body or {}).get("results", []):
         conn.execute("INSERT OR REPLACE INTO suspensions VALUES (?,?,?)",

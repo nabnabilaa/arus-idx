@@ -21,6 +21,7 @@ import os
 import sys
 import time
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 import requests
 
@@ -31,7 +32,8 @@ from arus.store import open_store
 SNAP = config.SNAPSHOT_DIR
 HIST = SNAP / "history"
 TRACK = SNAP / "track.json"
-BOT_DB = config.DATA_DIR / "telegram.db"
+# Vercel functions can only write to /tmp; without Redis configured that is where the bot keeps state.
+BOT_DB = Path("/tmp/arus-telegram.db") if os.environ.get("VERCEL") else config.DATA_DIR / "telegram.db"
 
 VERDICT = {"strong": "Sangat diunggulkan", "edge": "Diunggulkan", "neutral": "Netral",
            "weak": "Kurang diunggulkan", "caution": "Waspada"}

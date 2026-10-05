@@ -6,6 +6,7 @@ import { ArrowUpRight, ShieldAlert, ThumbsUp } from "lucide-react";
 import { useMemo } from "react";
 import { useAgendaDetail } from "@/components/agenda";
 import { ShareCard } from "@/components/share";
+import { WeekLookup } from "@/components/week-lookup";
 import { WEEKLY_CARD } from "@/lib/cards";
 import { C } from "@/components/charts/kit";
 import { AGENDA_LABEL } from "@/lib/agenda";
@@ -130,6 +131,8 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
           <DayBars days={w.foreign.days.map((x) => ({ d: x.d, v: x.net }))} fmt={(v) => idr(v, lang)} />
         </Panel>
       </section>
+
+      <WeekLookup w={w} ranked={isRanked} />
 
       {/* the read */}
       <section className="mt-12 grid gap-4 lg:grid-cols-2">

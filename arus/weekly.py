@@ -100,7 +100,17 @@ def build(conn: sqlite3.Connection, names: dict[str, str], insider_book: dict, a
              "foreign": f_total, "best_sector": sector_list[0] if sector_list else None,
              "worst_sector": sector_list[-1] if sector_list else None, "n_cooling": len(cooling)}
 
+    # every stock that traded, for the "how did my stock do this week" search: weekly return, foreign
+    # net, value traded, its sector, and where the return ranks across the market (0 = worst, 1 = best)
+    rk = ret.reindex(traded).rank(pct=True)
+    wval = value.loc[week_dates].sum()
+    sec_med = {r["sector"]: r["ret"] for r in sector_list}
+    lookup = {s: [round(float(ret[s]), 4), round(float(fw.get(s, 0.0)), 0), round(float(wval.get(s, 0.0)), 0),
+                  sectors.get(s), round(float(rk[s]), 3)]
+              for s in traded}
+
     return {
+        "lookup": lookup, "names": {s: names.get(s) for s in traded}, "sector_med": sec_med,
         "from": week_dates[0], "to": end, "stats": stats, "ihsg_days": ihsg_days,
         "gainers": gainers, "losers": losers, "raw_top": raw_top,
         "foreign": {"total": f_total, "days": f_days, "buy": f_buy, "sell": f_sell},

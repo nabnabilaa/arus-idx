@@ -388,6 +388,10 @@ export type AgendaBook = {
 
 export type WeeklyMover = { s: string; name: string | null; ret: number; close: number; val: number; board: string | null };
 export type WeeklyRecap = {
+  /** symbol → [weekly return, foreign net IDR, value traded IDR, sector, return percentile] */
+  lookup: Record<string, [number, number, number, string | null, number]>;
+  names: Record<string, string | null>;
+  sector_med: Record<string, number>;
   from: string;
   to: string;
   stats: {

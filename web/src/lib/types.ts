@@ -69,6 +69,7 @@ export type Stock = {
   ff_typical?: number | null;
   vol_mult?: number | null;
   ret_typical?: number | null;
+  tier?: "full" | "basic";
   fin_score?: number | null;
   fin_n?: number | null;
   fin_grade?: FinGrade | null;
@@ -211,6 +212,16 @@ export type BrokerIndex = Record<
     stocks: { s: string; net: number; gross: number; days_buy: number; days_sell: number; avg_buy: number | null; avg_sell: number | null; style: BrokerStyle; follow3: number | null; n_follow: number; rank: number }[];
   }
 >;
+export type CompactStock = {
+  symbol: string; name: string | null; sector: string | null; sub_sector: string | null; tier: "full" | "basic";
+  price: number | null; ret_1: number | null; ret_20: number | null; q_1: number | null; conf_1: number | null;
+  fin_grade: FinGrade | null; fin_score: number | null; fin_n: number | null; rev_cagr: number | null;
+  pe_ttm: number | null; pb_mrq: number | null; yield_ttm: number | null; roe_ttm: number | null; market_cap: number | null;
+  ff_net_20: number | null; ff_today: number | null; vol_mult: number | null;
+  z_foreign: number | null; z_volume: number | null; z_return: number | null;
+  invalidate: number | null; support_20: number | null; resistance_20: number | null; atr_pct: number | null;
+  tilt5: number | null; sharia: boolean | null; week: [number, number] | null; month: [number, number] | null; closes: number[];
+};
 export type NewsItem = { url: string; ts: string; title: string; body: string; thumb: string | null; symbols: string[]; tags: string[] };
 
 export type MacroKey = "idr" | "oil" | "spx" | "vix" | "usd" | "us10y";

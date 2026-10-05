@@ -126,7 +126,45 @@ def published(bundle: dict) -> list[int]:
     return [h for h in (1, 20) if proven(bundle, h)] or [1]
 
 
-def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = None, lang: str = "id") -> str:
+def _tilt(bundle: dict | None, sym: str):
+    d = ((bundle or {}).get("brokerSummary") or {}).get(sym, {}).get("5")
+    if not d or d["top5_buy"] + d["top5_sell"] <= 0:
+        return None
+    return (d["top5_buy"] - d["top5_sell"]) / (d["top5_buy"] + d["top5_sell"])
+
+
+def watch_alerts(bundle: dict, prev: dict | None, sym: str, lang: str = "id") -> list[str]:
+    """What changed today for one watched stock that is worth a ping."""
+    s = next((x for x in bundle["ranking"] if x["symbol"] == sym), None)
+    if not s:
+        return []
+    id_ = lang == "id"
+    out = []
+    zf, zv, zr = s.get("z_foreign") or 0, s.get("z_volume") or 0, s.get("z_return") or 0
+    if abs(zf) >= 3:
+        amt = abs(s.get("ff_today") or 0) / 1e9
+        out.append((f"asing {'borong' if zf > 0 else 'jual besar'} Rp{amt:.1f} M" if id_ else
+                    f"heavy foreign {'buying' if zf > 0 else 'selling'} IDR {amt:.1f}B"))
+    if zv >= 3:
+        out.append(f"volume melonjak {s.get('vol_mult') or 0:.1f}×" if id_ else f"volume spike {s.get('vol_mult') or 0:.1f}×")
+    if abs(zr) >= 3:
+        out.append(f"harga bergerak tajam {_pct(s.get('ret_1'))}" if id_ else f"sharp price move {_pct(s.get('ret_1'))}")
+    px = s.get("price") or 0
+    if s.get("invalidate") and px < s["invalidate"]:
+        out.append(f"di bawah batas sinyal batal {s['invalidate']:,.0f}" if id_ else f"below the signal-void level {s['invalidate']:,.0f}")
+    elif s.get("support_20") and px < s["support_20"]:
+        out.append(f"jebol batas bawah 1 bln {s['support_20']:,.0f}" if id_ else f"broke the 1-mo floor {s['support_20']:,.0f}")
+    if s.get("resistance_20") and px > s["resistance_20"]:
+        out.append(f"menembus batas atas 1 bln {s['resistance_20']:,.0f}" if id_ else f"broke above the 1-mo ceiling {s['resistance_20']:,.0f}")
+    t0, t1 = _tilt(prev, sym), _tilt(bundle, sym)
+    if t0 is not None and t1 is not None and abs(t1) > 0.15 and (t0 > 0.15) != (t1 > 0.15) and (t0 < -0.15) != (t1 < -0.15):
+        a = ("akumulasi" if t0 > 0.15 else "distribusi" if t0 < -0.15 else "seimbang") if id_ else ("accumulation" if t0 > 0.15 else "distribution" if t0 < -0.15 else "balanced")
+        b = ("akumulasi" if t1 > 0 else "distribusi") if id_ else ("accumulation" if t1 > 0 else "distribution")
+        out.append(f"arah broker berbalik: {a} → {b}" if id_ else f"broker tilt flipped: {a} → {b}")
+    return out
+
+
+def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = None, lang: str = "id", prev: dict | None = None) -> str:
     V = VERDICT if lang == "id" else VERDICT_EN
     rk = bundle["ranking"]
     by = {s["symbol"]: s for s in rk}
@@ -177,6 +215,14 @@ def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = Non
                 what.append(("volume melonjak" if s["z_volume"] > 0 else "volume sepi") if lang == "id" else ("volume spike" if s["z_volume"] > 0 else "volume dried up"))
             L.append(f"• {s['symbol']}: {', '.join(what)}")
 
+    pings = [(sym, watch_alerts(bundle, prev, sym, lang)) for sym in (watch or [])]
+    pings = [(sym, a) for sym, a in pings if a]
+    if pings:
+        L.append("")
+        L.append("🔔 <b>Peringatan pantauan</b>" if lang == "id" else "🔔 <b>Watchlist alerts</b>")
+        for sym, a in pings:
+            L.append(f"• <b>{sym}</b>: {'; '.join(a)}")
+
     if watch:
         L.append("")
         L.append("⭐ <b>Pantauanmu</b>" if lang == "id" else "⭐ <b>Your watchlist</b>")
@@ -199,7 +245,7 @@ def stock_text(bundle: dict, sym: str, lang: str = "id") -> str:
     V = VERDICT if lang == "id" else VERDICT_EN
     s = next((x for x in bundle["ranking"] if x["symbol"] == sym.upper()), None)
     if not s:
-        return ("Saham tidak ditemukan di 120 saham yang dipantau Arus." if lang == "id" else "Stock not in Arus' 120-stock universe.")
+        return (f"Saham tidak ditemukan di {len(bundle['ranking'])} saham yang dipantau Arus." if lang == "id" else f"Stock not in Arus' {len(bundle['ranking'])}-stock universe.")
     L = [f"<b>{s['symbol']}</b> · {s.get('name') or ''}",
          f"{'Harga' if lang == 'id' else 'Price'} {s.get('price'):,.0f} ({_pct(s.get('ret_1'))} {'hari ini' if lang == 'id' else 'today'})", ""]
     for h, nm in ((1, "Besok" if lang == "id" else "Next day"), (20, "1 bulan" if lang == "id" else "1 month")):
@@ -443,8 +489,8 @@ def setup_bot(token: str):
         ("setMyName", {"name": "Arus · IDX Stock Odds", "language_code": "en"}),
         ("setMyShortDescription", {"short_description": "Skor peluang saham IDX yang teruji, setiap hari bursa."}),
         ("setMyShortDescription", {"short_description": "Tested odds for IDX stocks, every trading day.", "language_code": "en"}),
-        ("setMyDescription", {"description": "Arus menilai 120 saham paling aktif di BEI setiap hari dari data Sectors dan memberi skor peluang yang sudah diuji ke data setahun. Ketik /start untuk mulai. Informasi, bukan nasihat keuangan."}),
-        ("setMyDescription", {"description": "Arus scores the 120 most active IDX stocks daily from Sectors data, with odds tested on a year of history. Send /start to begin. Information, not financial advice.", "language_code": "en"}),
+        ("setMyDescription", {"description": "Arus menilai ratusan saham paling aktif di BEI setiap hari dari data Sectors dan memberi skor peluang yang sudah diuji ke data setahun. Ketik /start untuk mulai. Informasi, bukan nasihat keuangan."}),
+        ("setMyDescription", {"description": "Arus scores hundreds of the most active IDX stocks daily from Sectors data, with odds tested on a year of history. Send /start to begin. Information, not financial advice.", "language_code": "en"}),
         ("setMyCommands", {"commands": [{"command": c, "description": d} for c, d, _ in BOT_COMMANDS]}),
         ("setMyCommands", {"commands": [{"command": c, "description": e} for c, _, e in BOT_COMMANDS], "language_code": "en"}),
     ]
@@ -494,6 +540,7 @@ def main():
             run_bot(token)
         return
 
+    before = None
     if args.cmd == "daily":
         from arus import build, ingest
         before = load_bundle() if (SNAP / "arus.json").exists() else None
@@ -540,7 +587,7 @@ def main():
         print(digest_text(bundle, graded))
         print("\n[agent] (no TELEGRAM_BOT_TOKEN — printed instead of sent)")
         return
-    n = broadcast(lambda lang, watch: digest_text(bundle, graded, watch, lang), token)
+    n = broadcast(lambda lang, watch: digest_text(bundle, graded, watch, lang, prev=before), token)
     print(f"[agent] digest sent to {n} chat(s) at {datetime.now():%H:%M}")
 
 

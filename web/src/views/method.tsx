@@ -70,10 +70,10 @@ const DECISIONS: { chose: Bi; why: Bi; rejected: Bi; term?: string }[] = [
     term: "broker",
   },
   {
-    chose: { id: "120 saham paling aktif, dengan batas transaksi minimal Rp1 miliar/hari untuk belajar.", en: "The 120 most active stocks, with a IDR 1B/day minimum for learning." },
+    chose: { id: "Semua saham dengan transaksi median minimal Rp1 miliar/hari: 120 saham data lengkap + ratusan saham data dasar.", en: "Every stock trading at least IDR 1B/day on median: 120 full-data stocks plus hundreds on basic data." },
     why: {
-      id: "Ini batas teknis, bukan selera: saham yang sangat sepi bisa digerakkan satu pihak dan merusak pola untuk semua saham. Batas ini adalah batas bawah; saham besar yang bertransaksi triliunan tetap ikut. Preferensi lain seperti syariah, harga, sektor, dan ukuran adalah filter pilihan Anda.",
-      en: "A technical limit, not a taste: very thin stocks can be moved by one party and corrupt the patterns for all. It's a floor; large caps trading trillions are included. Other preferences like sharia, price, sector and size are your optional filters.",
+      id: "Saham yang sangat sepi bisa digerakkan satu pihak dan merusak pola untuk semua saham, jadi batas Rp1 miliar adalah batas bawah. 120 saham utama punya data lengkap dari Sectors (histori, broker harian, laporan keuangan, berita). Saham lain memakai ringkasan perdagangan resmi BEI (harga, volume, dana asing), gratis setiap hari. Preferensi lain seperti syariah, harga, sektor, dan ukuran adalah filter pilihan Anda.",
+      en: "Very thin stocks can be moved by one party and corrupt the patterns for all, so IDR 1B is a floor. The 120 core stocks get full Sectors data (history, daily brokers, statements, news); the rest use the exchange's official daily trading summary (prices, volume, foreign flow), free every day. Other preferences like sharia, price, sector and size are your optional filters.",
     },
     rejected: { id: "Seluruh 900+ emiten (didominasi saham sepi).", en: "All 900+ listings (dominated by thin stocks)." },
     term: "liquidity",

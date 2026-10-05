@@ -1,5 +1,6 @@
 "use client";
 
+import { Palette, type SearchIndex } from "@/components/palette";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
@@ -12,6 +13,7 @@ const LINKS: { href: string; label: Bi }[] = [
   { href: "/asing/", label: { id: "Asing & bandar", en: "Foreign & brokers" } },
   { href: "/broker/", label: { id: "Broker", en: "Brokers" } },
   { href: "/anomali/", label: { id: "Tak biasa", en: "Unusual" } },
+  { href: "/pantau/", label: { id: "Pantauan", en: "Watchlist" } },
   { href: "/kejujuran/", label: { id: "Bukti", en: "Proof" } },
   { href: "/agen/", label: { id: "Agen & Telegram", en: "Agent & Telegram" } },
   { href: "/metodologi/", label: { id: "Cara kerja", en: "How it works" } },
@@ -42,7 +44,7 @@ function LangSwitch() {
   );
 }
 
-export function Nav() {
+export function Nav({ index }: { index: SearchIndex }) {
   const path = usePathname();
   const { tx } = useLang();
   const links = (
@@ -71,7 +73,8 @@ export function Nav() {
           <span className="text-[15px] font-semibold tracking-tight">Arus</span>
         </Link>
         <div className="hidden min-w-0 flex-1 overflow-x-auto lg:block">{links}</div>
-        <div className="ml-auto lg:ml-0">
+        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+          <Palette index={index} />
           <LangSwitch />
         </div>
       </div>

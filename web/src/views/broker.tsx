@@ -97,8 +97,8 @@ export function BrokerDirectory({ rows, period }: { rows: DirectoryRow[]; period
         </h1>
         <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
           {tx({
-            id: `Setiap broker anggota bursa: di saham mana ia paling banyak mengumpulkan dan melepas selama ${period}, dari 120 saham yang dipantau Arus. Klik broker untuk melihat seluruh jejak dan gaya belinya.`,
-            en: `Every exchange-member broker: where it has been accumulating and unloading most over ${period}, across the 120 stocks Arus tracks. Click a broker for its full footprint and buying style.`,
+            id: `Setiap broker anggota bursa: di saham mana ia paling banyak mengumpulkan dan melepas selama ${period}, dari 120 saham utama yang punya data broker harian. Klik broker untuk melihat seluruh jejak dan gaya belinya.`,
+            en: `Every exchange-member broker: where it has been accumulating and unloading most over ${period}, across the 120 core stocks with daily broker data. Click a broker for its full footprint and buying style.`,
           })}
         </p>
       </motion.header>

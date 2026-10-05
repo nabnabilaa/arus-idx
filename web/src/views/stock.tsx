@@ -95,6 +95,9 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-semibold tracking-[-0.02em] sm:text-4xl">{s.symbol}</h1>
               <StarButton symbol={s.symbol} size={18} />
+              <Link href={`/bandingkan/?s=${s.symbol}`} className="ml-1 rounded-full px-2.5 py-1 text-[12px] text-muted ring-1 ring-line hover:text-arus">
+                {tx({ id: "Bandingkan", en: "Compare" })}
+              </Link>
             </div>
             <p className="mt-0.5 text-[14px] text-ink-2">{s.name}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -105,6 +108,11 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
                 <Term k="sharia">
                   <Badge tone="good">{tx({ id: "Syariah", en: "Sharia" })}</Badge>
                 </Term>
+              )}
+              {s.tier === "basic" && (
+                <span title={tx({ id: "Harga, volume, dan dana asing dari ringkasan resmi BEI. Data broker harian, laporan keuangan, dan berita tersedia untuk 120 saham utama.", en: "Prices, volume and foreign flow from the official IDX summary. Daily brokers, statements and news are available for the 120 core stocks." })}>
+                  <Badge>{tx({ id: "Data dasar", en: "Basic data" })}</Badge>
+                </span>
               )}
               {s.suspended_recent && <Badge tone="warn">{tx({ id: "Pernah disuspensi 90h", en: "Suspended within 90d" })}</Badge>}
             </div>

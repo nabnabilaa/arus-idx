@@ -285,6 +285,8 @@ def main():
     rank["fin_n"] = rank["symbol"].map(lambda s: health.get(s, {}).get("n"))
     rank["fin_grade"] = rank["symbol"].map(lambda s: health.get(s, {}).get("grade"))
     rank["rev_cagr"] = rank["symbol"].map(lambda s: health.get(s, {}).get("rev_cagr"))
+    tiers = dict(conn.execute("SELECT symbol, COALESCE(tier, 'full') FROM companies WHERE history=1").fetchall())
+    rank["tier"] = rank["symbol"].map(lambda s: tiers.get(s, "full"))
     rank["suspended_recent"] = rank["symbol"].map(lambda s: s in susp)
     rank["broker_tone"] = rank["symbol"].map(lambda s: brokers.get(s, {}).get("tone"))
     rank["price"] = rank["symbol"].map(aux["close"].iloc[-1])

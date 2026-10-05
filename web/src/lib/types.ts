@@ -338,3 +338,46 @@ export type InsiderBook = {
   stocks: Record<string, { name: string | null; now: number | null }>;
   ksei: string;
 };
+
+export type AgendaType = "dividend" | "agm" | "right_issue" | "stock_split" | "warrant" | "bonus";
+
+export type AgendaItem = {
+  s: string;
+  name: string | null;
+  type: AgendaType;
+  date: string;
+  px: number | null;
+  amt?: number | null;
+  cum?: string | null;
+  pay?: string | null;
+  yield?: number | null;
+  time?: string | null;
+  place?: string | null;
+  price?: number | null;
+  old?: number | null;
+  new?: number | null;
+  trade_from?: string | null;
+  trade_to?: string | null;
+  dilution?: number | null;
+  discount?: number | null;
+  ratio?: string | null;
+  to?: string | null;
+};
+
+export type DividendStudy = {
+  n: number;
+  yield_med: number;
+  move_med: number;
+  drop_ratio_med: number;
+  n_window: number;
+  recovered_share: number | null;
+  recover_days_med: number | null;
+  within: number;
+};
+
+export type AgendaBook = {
+  as_of: string;
+  upcoming: AgendaItem[];
+  study: DividendStudy | Record<string, never>;
+  history: Record<string, { ex: string; amt: number; yield: number; move: number; recovered: number | null }[]>;
+};

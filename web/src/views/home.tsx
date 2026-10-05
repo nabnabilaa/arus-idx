@@ -14,19 +14,21 @@ import { dateLabel, idr, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/published";
 import { MarketBrief } from "@/components/brief";
+import { AgendaWeek } from "@/components/agenda";
 import { FIN_GRADE } from "@/components/perspectives";
 import { Pager } from "@/components/pager";
 import { usePrefs } from "@/lib/prefs";
-import type { Bundle, FeatureKey, Horizon, Stock } from "@/lib/types";
+import type { AgendaItem, Bundle, FeatureKey, Horizon, Stock } from "@/lib/types";
 import { get, HORIZON_LABEL, VERDICT, VERDICT_ORDER, verdictOf, type VerdictKey } from "@/lib/verdict";
 
-type Props = Pick<Bundle, "ranking" | "meta" | "market" | "models" | "sectors">;
+type Props = Pick<Bundle, "ranking" | "meta" | "market" | "models" | "sectors"> & { agenda: AgendaItem[] };
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-export function HomeView({ ranking, meta, market, models, sectors }: Props) {
+export function HomeView({ ranking, meta, market, models, sectors, agenda }: Props) {
   const { horizon } = usePrefs();
   const model = models[String(horizon) as "1" | "20"];
 
+  const ranked = useMemo(() => new Set(ranking.map((s) => s.symbol)), [ranking]);
   const scored = useMemo(
     () => ranking.map((s) => ({ s, g: get(s, horizon), v: verdictOf(get(s, horizon).q) })).sort((a, b) => b.g.conf - a.g.conf),
     [ranking, horizon],
@@ -36,6 +38,7 @@ export function HomeView({ ranking, meta, market, models, sectors }: Props) {
     <>
       <Hero ranking={ranking} meta={meta} />
       <MarketBrief ranking={ranking} market={market} sectors={sectors} asOf={meta.as_of} />
+      <AgendaWeek items={agenda} ranked={ranked} asOf={meta.as_of} />
       <HowToRead />
       <MarketToday ranking={ranking} market={market} horizon={horizon} model={model} />
       <Highlights scored={scored} />

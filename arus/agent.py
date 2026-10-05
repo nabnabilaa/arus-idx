@@ -168,6 +168,29 @@ def watch_alerts(bundle: dict, prev: dict | None, sym: str, lang: str = "id") ->
     return out
 
 
+AGENDA_WORD = {"dividend": ("ex-dividen", "ex-dividend"), "agm": ("RUPS", "AGM"), "right_issue": ("rights issue", "rights issue"),
+               "stock_split": ("stock split", "stock split"), "warrant": ("waran", "warrant"), "bonus": ("saham bonus", "bonus shares")}
+
+
+def agenda_soon(as_of: str, days: int = 5) -> list[dict]:
+    """Corporate actions in the next few calendar days, from the snapshot's agenda.json."""
+    path = SNAP / "agenda.json"
+    if not path.exists():
+        return []
+    end = (date.fromisoformat(as_of) + timedelta(days=days + 2)).isoformat()
+    items = json.loads(path.read_text(encoding="utf-8")).get("upcoming", [])
+    return [it for it in items if as_of < it["date"] <= end]
+
+
+def agenda_line(it: dict, lang: str = "id", symbol: bool = True) -> str:
+    word = AGENDA_WORD.get(it["type"], (it["type"], it["type"]))[0 if lang == "id" else 1]
+    extra = ""
+    if it["type"] == "dividend" and it.get("amt"):
+        amt = f"{it['amt']:,.0f}" if it["amt"] >= 10 else f"{it['amt']:g}"
+        extra = f" Rp{amt}" + (f" (yield {it['yield'] * 100:.1f}%)" if it.get("yield") else "")
+    return f"{it['s'] + ' ' if symbol else ''}{word} {it['date'][8:10]}/{it['date'][5:7]}{extra}"
+
+
 def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = None, lang: str = "id", prev: dict | None = None) -> str:
     V = VERDICT if lang == "id" else VERDICT_EN
     rk = bundle["ranking"]
@@ -219,7 +242,14 @@ def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = Non
                 what.append(("volume melonjak" if s["z_volume"] > 0 else "volume sepi") if lang == "id" else ("volume spike" if s["z_volume"] > 0 else "volume dried up"))
             L.append(f"• {s['symbol']}: {', '.join(what)}")
 
-    pings = [(sym, watch_alerts(bundle, prev, sym, lang)) for sym in (watch or [])]
+    soon = agenda_soon(d)
+    key = [it for it in soon if it["type"] != "agm"][:6]
+    if key:
+        L.append("")
+        L.append(("📅 <b>Agenda dekat</b>: " if lang == "id" else "📅 <b>Coming up</b>: ") + " · ".join(agenda_line(it, lang) for it in key))
+
+    pings = [(sym, watch_alerts(bundle, prev, sym, lang) + [agenda_line(it, lang, symbol=False) for it in soon if it["s"] == sym])
+             for sym in (watch or [])]
     pings = [(sym, a) for sym, a in pings if a]
     if pings:
         L.append("")

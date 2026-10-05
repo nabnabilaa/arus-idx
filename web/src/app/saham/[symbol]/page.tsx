@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { bundle, series } from "@/lib/data";
+import { agendaBook } from "@/lib/agenda";
 import { insiderBook } from "@/lib/insider";
 import { StockView } from "@/views/stock";
 
@@ -48,6 +49,7 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
       summary={bundle.brokerSummary?.[symbol] ?? null}
       news={bundle.news?.[symbol] ?? []}
       asOf={bundle.meta.as_of}
+      agenda={{ items: agendaBook.upcoming.filter((it) => it.s === symbol), history: agendaBook.history[symbol] ?? [] }}
       insider={{
         events: insiderBook.events.filter((e) => e.s === symbol),
         chains: insiderBook.chains.filter((c) => c.s === symbol),

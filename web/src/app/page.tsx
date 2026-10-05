@@ -1,3 +1,4 @@
+import { agendaBook } from "@/lib/agenda";
 import { bundle } from "@/lib/data";
 import type { Stock } from "@/lib/types";
 import { HomeView } from "@/views/home";
@@ -12,5 +13,15 @@ const KEEP = [
 export default function Page() {
   const ranking = bundle.ranking.map((s) => Object.fromEntries(KEEP.map((k) => [k, (s as unknown as Record<string, unknown>)[k] ?? null]))) as unknown as Stock[];
   const slim = (k: "1" | "20") => ({ coefficients: bundle.models[k].coefficients, metrics: bundle.models[k].metrics }) as unknown as (typeof bundle.models)["1"];
-  return <HomeView ranking={ranking} meta={bundle.meta} market={bundle.market} models={{ "1": slim("1"), "20": slim("20") }} sectors={bundle.sectors} />;
+  const week = agendaBook.upcoming.filter((it) => it.date <= new Date(new Date(bundle.meta.as_of).getTime() + 10 * 864e5).toISOString().slice(0, 10));
+  return (
+    <HomeView
+      ranking={ranking}
+      meta={bundle.meta}
+      market={bundle.market}
+      models={{ "1": slim("1"), "20": slim("20") }}
+      sectors={bundle.sectors}
+      agenda={week}
+    />
+  );
 }

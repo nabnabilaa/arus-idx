@@ -11,6 +11,8 @@ import { BrokerSummaryView } from "@/components/broker-summary";
 import { FinanceTab } from "@/components/finance";
 import { GlobalView } from "@/components/global";
 import { InsiderPanel } from "@/components/insider";
+import { StockAgenda } from "@/components/agenda";
+import { AGENDA_LABEL } from "@/lib/agenda";
 import { Perspectives } from "@/components/perspectives";
 import { Tabs } from "@/components/tabs";
 import { TradeSim } from "@/components/trade-sim";
@@ -20,7 +22,7 @@ import { SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, pct, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { BROKER_VERDICT, reasonMeaning, risks } from "@/lib/narrative";
-import type { Broker, BrokerProfile, BrokerSummary, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, InsiderChain, InsiderEvent, NewsItem, Stock } from "@/lib/types";
+import type { AgendaBook, AgendaItem, Broker, BrokerProfile, BrokerSummary, Bundle, Candles, FeatureKey, FinGrade, FinHealth, Horizon, InsiderChain, InsiderEvent, NewsItem, Stock } from "@/lib/types";
 import { get, verdictOf } from "@/lib/verdict";
 
 type BandarDaily = NonNullable<Bundle["bandar"]>[string];
@@ -44,6 +46,7 @@ type Props = {
   ihsg: { date: string; v: number | null }[];
   cone?: Record<Horizon, Cone> | null;
   coneCoverage?: Bundle["coneCoverage"] | null;
+  agenda?: { items: AgendaItem[]; history: AgendaBook["history"][string] } | null;
   insider?: { events: InsiderEvent[]; chains: InsiderChain[]; paths: Record<string, { d: string[]; c: number[] }>; ksei: string } | null;
 };
 
@@ -51,7 +54,7 @@ type Tab = "ringkasan" | "simulasi" | "bandar" | "orangdalam" | "keuangan" | "be
 const EASE = [0.23, 1, 0.32, 1] as const;
 
 
-export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total, profile, news, summary, insider }: Props) {
+export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total, profile, news, summary, insider, agenda }: Props) {
   const { tx, lang } = useLang();
   const horizon: Horizon = 1;
   const [tab, setTab] = useState<Tab>("ringkasan");
@@ -117,6 +120,11 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
                   <Badge>{tx({ id: "Data dasar", en: "Basic data" })}</Badge>
                 </span>
               )}
+              {agenda?.items.slice(0, 2).map((it) => (
+                <Badge key={`${it.type}-${it.date}`} tone="current">
+                  {tx(AGENDA_LABEL[it.type].label)} {dateLabel(it.date, lang, { year: undefined })}
+                </Badge>
+              ))}
               {s.suspended_recent && <Badge tone="warn">{tx({ id: "Pernah disuspensi 90h", en: "Suspended within 90d" })}</Badge>}
             </div>
           </div>
@@ -167,6 +175,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
             {tab === "ringkasan" && (
               <div className="space-y-10">
                 <SummaryTab s={s} broker={broker} weights={weights[1]} pctl={pctl} asOf={asOf} />
+                {agenda && <StockAgenda items={agenda.items} history={agenda.history} />}
                 {summary && (
                   <div>
                     <BrokerSummaryView data={summary} last={s.price} compact />

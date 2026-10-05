@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, ShieldAlert, ThumbsUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { WeekMap, type MapItem, type MapMode } from "@/components/charts/week-map";
@@ -24,19 +24,19 @@ function DayBars({ days, fmt }: { days: { d: string; v: number }[]; fmt: (v: num
   const { lang } = useLang();
   const max = Math.max(...days.map((x) => Math.abs(x.v)), 1e-9);
   return (
-    <div className="grid grid-cols-5 gap-2">
+    <div className="grid grid-cols-5 gap-1.5">
       {days.map((x, i) => {
-        const h = (Math.abs(x.v) / max) * 44;
+        const h = (Math.abs(x.v) / max) * 30;
         return (
           <div key={x.d} className="flex flex-col items-center">
-            <div className="relative h-24 w-full">
+            <div className="relative h-16 w-full">
               <div className="absolute inset-x-0 top-1/2 h-px bg-line-strong" />
               <motion.div
                 initial={{ height: 0 }}
                 whileInView={{ height: h }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.06, ease: EASE }}
-                className="absolute left-1/2 w-6 -translate-x-1/2 rounded-sm"
+                className="absolute left-1/2 w-[70%] max-w-14 -translate-x-1/2 rounded-sm"
                 style={{ background: x.v >= 0 ? C.up : C.down, ...(x.v >= 0 ? { bottom: "50%" } : { top: "50%" }) }}
               />
             </div>
@@ -113,6 +113,8 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
   const detail = useAgendaDetail();
   const isRanked = useMemo(() => new Set(ranked), [ranked]);
   const [mode, setMode] = useState<MapMode>("price");
+  // "sector" = 11 sector tiles; a sector name = that sector's stocks; "stocks" = the 60 busiest stocks
+  const [level, setLevel] = useState<string>("sector");
   const st = w.stats;
   const sec = (x: string) => (lang === "id" ? x : IDX_SECTOR_EN[x] ?? x);
   const pctS = (x: number | null | undefined, d = 1) => signed(x == null ? null : x * 100, d, "%");
@@ -128,16 +130,28 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
       ? tx({ id: "Pekan hijau", en: "A green week" })
       : tx({ id: "Pekan menguat tipis", en: "A modestly firm week" });
 
-  // the 220 most traded stocks: enough to show the market's shape, few enough to read the tiles
-  const items: MapItem[] = useMemo(
+  const all: MapItem[] = useMemo(
     () =>
       Object.entries(w.lookup ?? {})
         .map(([s, r]) => ({ s, name: w.names[s] ?? null, ret: r[0], fnet: r[1], val: r[2], sector: r[3] }))
         .filter((x) => x.val > 0)
-        .sort((a, b) => b.val - a.val)
-        .slice(0, 220),
+        .sort((a, b) => b.val - a.val),
     [w],
   );
+  // one tile per sector: value and foreign summed, coloured by the sector's median move
+  const sectorTiles: MapItem[] = useMemo(() => {
+    const by = new Map<string, MapItem[]>();
+    for (const it of all) if (it.sector) by.set(it.sector, [...(by.get(it.sector) ?? []), it]);
+    return [...by.entries()].map(([k, list]) => ({
+      s: k,
+      name: tx({ id: `${list.length} saham`, en: `${list.length} stocks` }),
+      ret: w.sector_med?.[k] ?? 0,
+      fnet: list.reduce((a, x) => a + x.fnet, 0),
+      val: list.reduce((a, x) => a + x.val, 0),
+      sector: null,
+    }));
+  }, [all, w, tx]);
+  const items = level === "sector" ? sectorTiles : level === "stocks" ? all.slice(0, 60) : all.filter((x) => x.sector === level).slice(0, 20);
   const movers = [...w.gainers.slice(0, 6).map((m) => ({ s: m.s, name: m.name, v: m.ret })), ...w.losers.slice(0, 6).reverse().map((m) => ({ s: m.s, name: m.name, v: m.ret }))];
   const flows = [...w.foreign.buy.slice(0, 6).map((m) => ({ s: m.s, name: m.name, v: m.net })), ...w.foreign.sell.slice(0, 6).reverse().map((m) => ({ s: m.s, name: m.name, v: m.net }))];
 
@@ -188,16 +202,41 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
       <section className="mt-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">{tx({ id: "Peta pasar sepekan", en: "The week's market map" })}</h2>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {level !== "sector" && level !== "stocks" ? (
+                <>
+                  <button onClick={() => setLevel("sector")} className="cursor-pointer text-muted hover:text-arus">
+                    {tx({ id: "Peta pasar", en: "Market map" })}
+                  </button>
+                  <span className="text-muted"> / </span>
+                  {sec(level)}
+                </>
+              ) : (
+                tx({ id: "Peta pasar sepekan", en: "The week's market map" })
+              )}
+            </h2>
             <p className="text-[12.5px] text-muted">
-              {tx({ id: `${items.length} saham paling ramai, dikelompokkan per sektor. Besar kotak = nilai transaksi sepekan.`, en: `The ${items.length} most traded stocks, grouped by sector. Tile size = value traded this week.` })}
+              {level === "sector"
+                ? tx({ id: "Besar kotak = nilai transaksi sepekan. Klik sektor untuk melihat sahamnya.", en: "Tile size = value traded this week. Click a sector to see its stocks." })
+                : level === "stocks"
+                  ? tx({ id: "60 saham paling ramai pekan ini. Klik untuk membuka halamannya.", en: "The 60 most traded stocks this week. Click to open one." })
+                  : tx({ id: `${items.length} saham teramai di sektor ini. Klik untuk membuka halamannya.`, en: `The ${items.length} most traded stocks in this sector. Click to open one.` })}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Segmented<string>
+              label={tx({ id: "Tingkat peta", en: "Map level" })}
+              value={level === "stocks" ? "stocks" : "sector"}
+              onChange={setLevel}
+              options={[
+                { value: "sector", label: tx({ id: "Per sektor", en: "By sector" }) },
+                { value: "stocks", label: tx({ id: "Per saham", en: "By stock" }) },
+              ]}
+            />
             <span className="hidden items-center gap-1.5 text-[11px] text-muted sm:flex">
-              {mode === "price" ? "−8%" : tx({ id: "jual", en: "sell" })}
+              {mode === "price" ? (level === "sector" ? "−5%" : "−10%") : tx({ id: "jual", en: "sell" })}
               <span className="h-2 w-28 rounded-full" style={{ background: "linear-gradient(90deg, rgba(230,103,103,0.94), rgba(148,163,184,0.15), rgba(57,135,229,0.94))" }} />
-              {mode === "price" ? "+8%" : tx({ id: "beli", en: "buy" })}
+              {mode === "price" ? (level === "sector" ? "+5%" : "+10%") : tx({ id: "beli", en: "buy" })}
             </span>
             <Segmented<MapMode>
               label={tx({ id: "Warna peta", en: "Map colour" })}
@@ -211,25 +250,28 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
           </div>
         </div>
         <div className="mt-3 rounded-2xl bg-surface p-2 ring-1 ring-line">
-          <div className="hidden md:block">
-            <WeekMap items={items} mode={mode} ranked={isRanked} height={580} />
-          </div>
-          <div className="md:hidden">
-            <WeekMap items={items.slice(0, 90)} mode={mode} ranked={isRanked} height={520} />
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div key={level} initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.25, ease: EASE }}>
+              {level === "sector" ? (
+                <WeekMap items={items} mode={mode} ranked={isRanked} height={360} flat onPick={setLevel} />
+              ) : (
+                <WeekMap items={items} mode={mode} ranked={isRanked} height={level === "stocks" ? 480 : 420} flat cap={0.1} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </section>
 
       {/* 3 · the week by day and by sector */}
-      <section className="mt-6 grid gap-4 lg:grid-cols-3">
-        <Panel title={tx({ id: "IHSG per hari", en: "IHSG by day" })}>
+      <section className="mt-6 grid gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
+        <Panel title={tx({ id: "Hari demi hari", en: "Day by day" })}>
+          <div className="text-[11.5px] text-muted">IHSG</div>
           <DayBars days={w.ihsg_days.map((x) => ({ d: x.d, v: x.chg }))} fmt={(v) => pctS(v)} />
-        </Panel>
-        <Panel title={tx({ id: "Dana asing per hari", en: "Foreign flow by day" })}>
+          <div className="mt-3 border-t border-line pt-3 text-[11.5px] text-muted">{tx({ id: "Dana asing bersih", en: "Foreign net" })}</div>
           <DayBars days={w.foreign.days.map((x) => ({ d: x.d, v: x.net }))} fmt={(v) => idr(v, lang)} />
         </Panel>
         <Panel title={tx({ id: "Sektor (median)", en: "Sectors (median)" })}>
-          <ul className="space-y-1.5">
+          <ul className="grid gap-x-8 gap-y-2 md:grid-cols-2">
             {w.sectors.map((x, i) => (
               <li key={x.sector} className="grid grid-cols-[minmax(0,8.5rem)_minmax(0,1fr)_3.2rem] items-center gap-2 text-[11.5px]">
                 <span className="truncate text-ink-2">{sec(x.sector)}</span>

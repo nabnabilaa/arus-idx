@@ -188,10 +188,14 @@ def build(conn: sqlite3.Connection, names: dict[str, str] | None = None, cache_d
 
 
 def per_stock(book: dict) -> pd.DataFrame:
-    """Per-symbol counts for the ranking table and risk flags."""
+    """Per-symbol counts of market trades (no repo, placements or two-way holders), for the ranking and risk flags."""
     ev = pd.DataFrame(book.get("events") or [])
+    cols = ["symbol", "insider_buys", "insider_sells", "insider_net_val", "last_filing"]
     if ev.empty:
-        return pd.DataFrame(columns=["symbol", "insider_buys", "insider_sells", "insider_net_val", "last_filing"])
+        return pd.DataFrame(columns=cols)
+    ev = ev[ev["market"] & ~ev["twoway"]]
+    if ev.empty:
+        return pd.DataFrame(columns=cols)
     ev["signed"] = np.where(ev["side"] == "buy", 1, -1) * ev["val"].fillna(0)
     g = ev.groupby("s")
     return pd.DataFrame({

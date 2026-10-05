@@ -16,6 +16,7 @@ import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/published";
 import { MarketBrief } from "@/components/brief";
 import { AgendaWeek } from "@/components/agenda";
 import { FIN_GRADE } from "@/components/perspectives";
+import { RISK, riskFlags } from "@/lib/risk";
 import { Pager } from "@/components/pager";
 import { usePrefs } from "@/lib/prefs";
 import type { AgendaItem, Bundle, FeatureKey, Horizon, Stock } from "@/lib/types";
@@ -493,7 +494,7 @@ function Screener({ scored }: { scored: Scored[] }) {
       if ((s.turnover_med_20 ?? 0) < f.liq) return false;
       if (f.sector !== "all" && s.sector !== f.sector) return false;
       if (f.foreignBuy && !((s.ff_net_20 ?? 0) > 0)) return false;
-      if (f.hideSusp && s.suspended_recent) return false;
+      if (f.hideSusp && (s.suspended_recent || riskFlags(s.risk_flags).length)) return false;
       if (f.health === "strong" && s.fin_grade !== "strong") return false;
       if (f.health === "fairUp" && !(s.fin_grade === "strong" || s.fin_grade === "fair")) return false;
       return true;
@@ -644,7 +645,7 @@ function Screener({ scored }: { scored: Scored[] }) {
                 </Field>
                 <div className="flex flex-col justify-end gap-1">
                   <Toggle checked={f.foreignBuy} onChange={(v) => set("foreignBuy", v)} label={tx({ id: "Hanya yang dibeli asing sebulan terakhir", en: "Only foreign-bought this month" })} />
-                  <Toggle checked={f.hideSusp} onChange={(v) => set("hideSusp", v)} label={tx({ id: "Sembunyikan yang baru disuspensi bursa", en: "Hide recently suspended" })} />
+                  <Toggle checked={f.hideSusp} onChange={(v) => set("hideSusp", v)} label={tx({ id: "Sembunyikan saham bertanda risiko", en: "Hide stocks with risk flags" })} />
                 </div>
                 {activeCount > 0 && (
                   <button onClick={() => setF({ ...DEFAULTS, tab: f.tab, q: f.q })} className="cursor-pointer justify-self-start text-[13px] text-arus hover:underline">
@@ -712,7 +713,7 @@ function Screener({ scored }: { scored: Scored[] }) {
                       <span className="flex items-center gap-2 font-semibold text-ink group-hover:text-arus">
                         {s.symbol}
                         {s.sharia && <Badge tone="good">{tx({ id: "Syariah", en: "Sharia" })}</Badge>}
-                        {s.suspended_recent && <Badge tone="warn">{tx({ id: "Suspensi", en: "Suspended" })}</Badge>}
+                        <RiskBadge s={s} />
                       </span>
                       <span className="block max-w-64 truncate text-xs text-muted">{s.name}</span>
                     </Link>
@@ -801,5 +802,17 @@ function Field({ label, help, children }: { label: React.ReactNode; help?: React
       {children}
       {help && <div className="mt-1.5 text-[11.5px] text-muted">{help}</div>}
     </div>
+  );
+}
+
+/** One warn badge per row: the flag itself, or "N risks" with the list on hover. */
+function RiskBadge({ s }: { s: Stock }) {
+  const { tx } = useLang();
+  const flags = riskFlags(s.risk_flags);
+  if (!flags.length) return s.suspended_recent ? <Badge tone="warn">{tx({ id: "Suspensi", en: "Suspended" })}</Badge> : null;
+  return (
+    <span title={flags.map((f) => tx(RISK[f].label)).join(" · ")}>
+      <Badge tone="warn">{flags.length > 1 ? tx({ id: `${flags.length} risiko`, en: `${flags.length} risks` }) : tx(RISK[flags[0]].label)}</Badge>
+    </span>
   );
 }

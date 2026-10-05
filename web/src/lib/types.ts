@@ -47,6 +47,7 @@ export type Stock = {
   z_volume: number | null;
   z_return: number | null;
   suspended_recent: boolean | null;
+  risk_flags?: string[] | null;
   broker_tone: "pos" | "neg" | "neu" | null;
   turnover_med_20: number | null;
   ff_net_20: number | null;

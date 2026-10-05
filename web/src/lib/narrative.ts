@@ -2,6 +2,7 @@ import { FEATURE } from "./features";
 import type { Bi } from "./i18n";
 import type { Broker, FeatureKey, Horizon, Stock } from "./types";
 import { get, HORIZON_LABEL, verdictOf } from "./verdict";
+import { RISK, riskFlags } from "./risk";
 
 /** One plain sentence on what the score means for this stock. */
 export function headline(s: Stock, h: Horizon): Bi {
@@ -49,11 +50,9 @@ export function risks(s: Stock, broker?: Broker | null): Bi[] {
       id: "Jejak broker menunjukkan institusi sedang keluar sementara ritel menampung. Pola ini sering mendahului penurunan.",
       en: "The broker footprint shows institutions exiting while retail absorbs. This pattern often precedes declines.",
     });
-  if (s.suspended_recent)
-    out.push({
-      id: "Saham ini pernah disuspensi bursa dalam 90 hari terakhir. Risiko likuiditas dan regulasinya lebih tinggi.",
-      en: "This stock was suspended by the exchange within 90 days. Liquidity and regulatory risk are higher.",
-    });
+  const flags = riskFlags(s.risk_flags);
+  for (const f of flags) out.push(RISK[f].why);
+  if (s.suspended_recent && !flags.some((f) => f === "suspended" || f === "cooling_down")) out.push(RISK.suspended.why);
   if ((s.volatility_20 ?? 0) > 0.85)
     out.push({
       id: "Pergerakannya termasuk paling liar (15% teratas). Naik-turun besar dalam sehari adalah hal biasa di sini.",
@@ -69,10 +68,10 @@ export function risks(s: Stock, broker?: Broker | null): Bi[] {
       id: "Harga di puncak setahun. Aksi ambil untung bisa memicu koreksi tajam.",
       en: "Price is at its one-year high. Profit-taking can trigger a sharp pullback.",
     });
-  if ((s.insider_sells ?? 0) > (s.insider_buys ?? 0))
+  if ((s.insider_sells ?? 0) > (s.insider_buys ?? 0) && !flags.includes("insider_selling"))
     out.push({
-      id: "Orang dalam perusahaan lebih banyak melapor menjual daripada membeli dalam 90 hari terakhir.",
-      en: "Company insiders reported more sales than purchases over the last 90 days.",
+      id: "Orang dalam perusahaan lebih banyak melapor menjual daripada membeli di pasar dalam 90 hari terakhir.",
+      en: "Company insiders reported more market sales than purchases over the last 90 days.",
     });
   if ((s.ff_net_5 ?? 0) < 0 && (s.ff_net_20 ?? 0) > 0)
     out.push({

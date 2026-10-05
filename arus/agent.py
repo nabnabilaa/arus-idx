@@ -160,6 +160,16 @@ def watch_alerts(bundle: dict, prev: dict | None, sym: str, lang: str = "id") ->
         out.append(f"jebol batas bawah 1 bln {s['support_20']:,.0f}" if id_ else f"broke the 1-mo floor {s['support_20']:,.0f}")
     if s.get("resistance_20") and px > s["resistance_20"]:
         out.append(f"menembus batas atas 1 bln {s['resistance_20']:,.0f}" if id_ else f"broke above the 1-mo ceiling {s['resistance_20']:,.0f}")
+    RISK_WORD = {"watch_board": ("masuk papan pemantauan khusus", "on the special watch board"),
+                 "cooling_down": ("di-cooling down bursa", "halted for cooling-down"),
+                 "suspended": ("disuspensi bursa", "suspended by the exchange"),
+                 "insider_selling": ("orang dalam menjual", "insiders selling"),
+                 "dilution": ("rights issue mengencerkan", "dilutive rights issue ahead"),
+                 "pump_like": ("pola mirip pompom", "pump-like broker days")}
+    old = set(next((x for x in (prev or {}).get("ranking", []) if x["symbol"] == sym), {}).get("risk_flags") or [])
+    for f in (s.get("risk_flags") or []):
+        if f not in old and f in RISK_WORD:
+            out.append(("tanda risiko baru: " if id_ else "new risk flag: ") + RISK_WORD[f][0 if id_ else 1])
     t0, t1 = _tilt(prev, sym), _tilt(bundle, sym)
     if t0 is not None and t1 is not None and abs(t1) > 0.15 and (t0 > 0.15) != (t1 > 0.15) and (t0 < -0.15) != (t1 < -0.15):
         a = ("akumulasi" if t0 > 0.15 else "distribusi" if t0 < -0.15 else "seimbang") if id_ else ("accumulation" if t0 > 0.15 else "distribution" if t0 < -0.15 else "balanced")

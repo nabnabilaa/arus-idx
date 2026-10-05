@@ -210,6 +210,40 @@ def family_auc(cal, X) -> list:
     return out
 
 
+RIGHTS_DILUTION = 0.2       # flag a rights issue that can dilute a non-subscriber by 20%+
+
+
+def risk_flags(conn, rank: pd.DataFrame, susp: dict, agenda_book: dict, profiles: dict) -> dict:
+    """
+    Plain risk markers per stock, from facts rather than the model: the exchange's watch board,
+    recent suspensions (and whether they were a cooling-down after a run-up), insiders selling
+    on the market, a dilutive rights issue ahead, and pump-like broker days.
+    """
+    boards = dict(conn.execute("SELECT symbol, board FROM idx_companies").fetchall())
+    rights = {}
+    for it in agenda_book.get("upcoming", []):
+        if it["type"] == "right_issue" and (it.get("dilution") or 0) >= RIGHTS_DILUTION:
+            rights[it["s"]] = it
+    out = {}
+    for r in rank.itertuples(index=False):
+        s = r.symbol
+        f = []
+        if boards.get(s) == "Pemantauan Khusus":
+            f.append("watch_board")
+        if s in susp:
+            f.append("cooling_down" if "kumulatif" in (susp[s][1] or "") else "suspended")
+        if (getattr(r, "insider_sells", 0) or 0) > (getattr(r, "insider_buys", 0) or 0) and (getattr(r, "insider_net_val", 0) or 0) < -1e9:
+            f.append("insider_selling")
+        if s in rights:
+            f.append("dilution")
+        if profiles.get(s, {}).get("pump_days"):
+            f.append("pump_like")
+        if boards.get(s) == "Akselerasi":
+            f.append("acceleration_board")
+        out[s] = f
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bandar", type=int, default=0, help="pull 14-day per-broker daily rows for N stocks (1 credit each)")
@@ -310,6 +344,8 @@ def main():
     tiers = dict(conn.execute("SELECT symbol, COALESCE(tier, 'full') FROM companies WHERE history=1").fetchall())
     rank["tier"] = rank["symbol"].map(lambda s: tiers.get(s, "full"))
     rank["suspended_recent"] = rank["symbol"].map(lambda s: s in susp)
+    agenda_book = agenda_mod.build(conn, str(aux["dates"][-1]), names)
+    rank["risk_flags"] = rank["symbol"].map(risk_flags(conn, rank, susp, agenda_book, profiles))
     rank["broker_tone"] = rank["symbol"].map(lambda s: brokers.get(s, {}).get("tone"))
     rank["price"] = rank["symbol"].map(aux["close"].iloc[-1])
     rank["turnover_med_20"] = rank["symbol"].map(aux["tv"].tail(20).median())
@@ -382,7 +418,6 @@ def main():
     for path in (snap / "brokers.json", web / "brokers.json"):
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(_clean(broker_index), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
-    agenda_book = agenda_mod.build(conn, meta["as_of"], names)
     for path in (snap / "agenda.json", web / "agenda.json"):
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(_clean(agenda_book), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))

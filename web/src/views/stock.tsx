@@ -13,6 +13,7 @@ import { GlobalView } from "@/components/global";
 import { InsiderPanel } from "@/components/insider";
 import { StockAgenda } from "@/components/agenda";
 import { AGENDA_LABEL } from "@/lib/agenda";
+import { RISK, riskFlags } from "@/lib/risk";
 import { Perspectives } from "@/components/perspectives";
 import { Tabs } from "@/components/tabs";
 import { TradeSim } from "@/components/trade-sim";
@@ -125,7 +126,12 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
                   {tx(AGENDA_LABEL[it.type].label)} {dateLabel(it.date, lang, { year: undefined })}
                 </Badge>
               ))}
-              {s.suspended_recent && <Badge tone="warn">{tx({ id: "Pernah disuspensi 90h", en: "Suspended within 90d" })}</Badge>}
+              {riskFlags(s.risk_flags).map((f) => (
+                <span key={f} title={tx(RISK[f].why)}>
+                  <Badge tone="warn">{tx(RISK[f].label)}</Badge>
+                </span>
+              ))}
+              {s.suspended_recent && !riskFlags(s.risk_flags).some((f) => f === "suspended" || f === "cooling_down") && <Badge tone="warn">{tx(RISK.suspended.label)}</Badge>}
             </div>
           </div>
           <div className="text-right">

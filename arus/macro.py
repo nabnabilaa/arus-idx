@@ -124,3 +124,36 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     for k, (n, last) in refresh().items():
         print(f"[macro] {k:6s} {n:4d} rows, last {last}")
+
+
+COMMODITIES = {"coal": "Coal", "nickel": "Nickel", "gold": "Gold", "copper": "Copper"}
+
+
+def pull_commodities(c, start_year: int, end_year: int):
+    """Monthly (bi-weekly for recent coal) USD prices from Sectors' mining data, 1 credit each."""
+    for name in COMMODITIES.values():
+        c.get(f"/v2/mining/commodities/{name}/price/", {"start_year": start_year, "end_year": end_year})
+
+
+def commodity_prices(cache_db=config.CACHE_DB) -> dict:
+    """Latest cached price series per commodity: last value, change vs the previous print, recent points."""
+    import json
+    out = {}
+    con = sqlite3.connect(cache_db)
+    for key, name in COMMODITIES.items():
+        rows = {}
+        for (body,) in con.execute("SELECT body FROM responses WHERE path = ? AND status = 200",
+                                   (f"/v2/mining/commodities/{name}/price/",)):
+            for r in json.loads(body) or []:
+                if r.get("date") and r.get("price_usd_per_ton") is not None:
+                    rows[r["date"]] = float(r["price_usd_per_ton"])
+        if len(rows) < 2:
+            continue
+        dates = sorted(rows)
+        last, prev = rows[dates[-1]], rows[dates[-2]]
+        year_ago = next((rows[d] for d in reversed(dates) if d <= f"{int(dates[-1][:4]) - 1}{dates[-1][4:]}"), None)
+        out[key] = {"last": last, "date": dates[-1], "prev_date": dates[-2], "chg": last / prev - 1,
+                    "chg_y": (last / year_ago - 1) if year_ago else None,
+                    "series": {"date": dates[-18:], "v": [rows[d] for d in dates[-18:]]}}
+    con.close()
+    return out

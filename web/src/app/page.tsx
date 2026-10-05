@@ -22,6 +22,11 @@ export default function Page() {
       models={{ "1": slim("1"), "20": slim("20") }}
       sectors={bundle.sectors}
       agenda={week}
+      macro={{
+        recent: bundle.macro.recent,
+        series: Object.fromEntries(Object.entries(bundle.macro.series).map(([k, v]) => [k, { date: v.date.slice(-40), v: v.v.slice(-40) }])) as typeof bundle.macro.series,
+        commodities: bundle.macro.commodities,
+      }}
     />
   );
 }

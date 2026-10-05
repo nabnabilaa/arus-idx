@@ -244,6 +244,7 @@ export type Bundle = {
   macro: {
     recent: Record<MacroKey, { last: number; date: string; d5?: number; d20?: number }>;
     series: Record<MacroKey, { date: string[]; v: number[] }>;
+    commodities?: Partial<Record<"coal" | "nickel" | "gold" | "copper", { last: number; date: string; prev_date: string; chg: number; chg_y: number | null; series: { date: string[]; v: number[] } }>>;
   };
   ranking: Stock[];
   sectors: Sector[];

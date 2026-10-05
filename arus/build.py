@@ -397,7 +397,8 @@ def main():
     macro_series = {k: {"date": [str(d) for d in macro_df[k].dropna().index[-260:]],
                         "v": [round(float(v), 4) for v in macro_df[k].dropna().values[-260:]]} for k in macro_df.columns}
     bundle = {"meta": meta, "models": {str(k): v for k, v in models.items()},
-              "macro": {"recent": macro_recent, "series": macro_series},
+              "macro": {"recent": macro_recent, "series": macro_series,
+                        "commodities": __import__("arus.macro", fromlist=["commodity_prices"]).commodity_prices()},
               "ranking": _records(rank), "sectors": _records(sectors),
               "sectorTs": _records(sector_ts), "market": _records(mkt), "brokers": brokers, "bandar": bandar,
               "cones": cones, "coneCoverage": cone_cov, "financials": health,

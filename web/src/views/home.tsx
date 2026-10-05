@@ -15,6 +15,7 @@ import { T, useLang, type Bi } from "@/lib/i18n";
 import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/published";
 import { MarketBrief } from "@/components/brief";
 import { AgendaWeek } from "@/components/agenda";
+import { MacroStrip } from "@/components/macro-strip";
 import { FIN_GRADE } from "@/components/perspectives";
 import { RISK, riskFlags } from "@/lib/risk";
 import { Pager } from "@/components/pager";
@@ -22,10 +23,10 @@ import { usePrefs } from "@/lib/prefs";
 import type { AgendaItem, Bundle, FeatureKey, Horizon, Stock } from "@/lib/types";
 import { get, HORIZON_LABEL, VERDICT, VERDICT_ORDER, verdictOf, type VerdictKey } from "@/lib/verdict";
 
-type Props = Pick<Bundle, "ranking" | "meta" | "market" | "models" | "sectors"> & { agenda: AgendaItem[] };
+type Props = Pick<Bundle, "ranking" | "meta" | "market" | "models" | "sectors" | "macro"> & { agenda: AgendaItem[] };
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-export function HomeView({ ranking, meta, market, models, sectors, agenda }: Props) {
+export function HomeView({ ranking, meta, market, models, sectors, agenda, macro }: Props) {
   const { horizon } = usePrefs();
   const model = models[String(horizon) as "1" | "20"];
 
@@ -38,6 +39,7 @@ export function HomeView({ ranking, meta, market, models, sectors, agenda }: Pro
   return (
     <>
       <Hero ranking={ranking} meta={meta} />
+      <MacroStrip market={market} macro={macro} asOf={meta.as_of} />
       <MarketBrief ranking={ranking} market={market} sectors={sectors} asOf={meta.as_of} />
       <AgendaWeek items={agenda} ranked={ranked} asOf={meta.as_of} />
       <HowToRead />

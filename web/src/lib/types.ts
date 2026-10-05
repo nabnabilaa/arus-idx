@@ -146,6 +146,7 @@ export type Model = {
   equity: { dates: string[]; top: number[]; bottom: number[]; all: number[]; top_net: number[]; cost: number };
   shape: string;
   groupWeights: Record<string, Record<FeatureKey, number>>;
+  bySize?: { size: "large" | "mid" | "small"; n_stocks: number; auc: number; top_hit: number | null; bottom_hit: number | null; top_excess: number | null; top_net: number | null }[];
 };
 
 export type FinGrade = "strong" | "fair" | "weak";

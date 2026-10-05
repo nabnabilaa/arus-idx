@@ -128,6 +128,25 @@ def equity_curve(oos: pd.DataFrame, horizon: int) -> dict:
             "cost": ROUND_TRIP_COST}
 
 
+def by_size(oos: pd.DataFrame, conn, horizon: int) -> list:
+    """The same out-of-sample test split by company size: does the edge survive in large caps, and after costs?"""
+    caps = dict(conn.execute("SELECT symbol, market_cap FROM companies WHERE history=1").fetchall())
+    o = oos.copy()
+    o["cap"] = o["symbol"].map(caps)
+    o = o.dropna(subset=["cap"])
+    q = o.drop_duplicates("symbol").set_index("symbol")["cap"].rank(pct=True)
+    o["size"] = o["symbol"].map(lambda s: "large" if q[s] > 2 / 3 else "mid" if q[s] > 1 / 3 else "small")
+    out = []
+    for size in ("large", "mid", "small"):
+        g = o[o["size"] == size]
+        top, bot = g[g["decile"] == 9], g[g["decile"] == 0]
+        out.append({"size": size, "n_stocks": int(g["symbol"].nunique()), "auc": auc(g["p_model"].to_numpy(), g["y"].to_numpy()),
+                    "top_hit": float(top["y"].mean()) if len(top) else None, "bottom_hit": float(bot["y"].mean()) if len(bot) else None,
+                    "top_excess": float(top["excess"].mean()) if len(top) else None,
+                    "top_net": float(top["excess"].mean() - ROUND_TRIP_COST / horizon) if len(top) else None})
+    return out
+
+
 CONE_STEPS = {1: [1, 2, 3, 4, 5], 20: [5, 10, 15, 20]}
 
 
@@ -243,6 +262,7 @@ def main():
             "familyAuc": family_auc(cal, X),
             "calibration": {"a": float(cal.platt[0]), "b": float(cal.platt[1])},
             "equity": equity_curve(cal.oos, H),
+            "bySize": by_size(cal.oos, conn, H),
             "shape": cal.shape,
             "groupWeights": cal.group_weights,
         }

@@ -110,7 +110,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
                 </Term>
               )}
               {s.tier === "basic" && (
-                <span title={tx({ id: "Harga, volume, dan dana asing dari ringkasan resmi BEI. Data broker harian, laporan keuangan, dan berita tersedia untuk 120 saham utama.", en: "Prices, volume and foreign flow from the official IDX summary. Daily brokers, statements and news are available for the 120 core stocks." })}>
+                <span title={tx({ id: "Harga, volume, dan dana asing dari ringkasan resmi BEI. Data broker harian dan berita tersedia untuk 120 saham utama.", en: "Prices, volume and foreign flow from the official IDX summary. Daily brokers and news are available for the 120 core stocks." })}>
                   <Badge>{tx({ id: "Data dasar", en: "Basic data" })}</Badge>
                 </span>
               )}

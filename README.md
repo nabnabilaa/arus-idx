@@ -14,7 +14,7 @@ Arus memantau **309 saham IDX** (semua saham dengan transaksi median ≥ Rp1 mil
 |---|---|---|---|
 | **Trader harian** | Bagaimana peluangnya besok? | Peringkat peluang hari bursa berikutnya, dengan alasan dalam bahasa biasa | ✅ walk-forward, 9 dari 10 periode di atas acak |
 | **Swing (1–4 minggu)** | Seberapa jauh harga wajar bergerak? | Rentang wajar 1 minggu & 1 bulan dari perilaku saham itu sendiri | ✅ memuat 81% hasil sebenarnya (target 80%) |
-| **Investor** | Seberapa sehat perusahaannya? | 9 pemeriksaan F-Score Piotroski + laporan keuangan 5 tahun dalam rupiah | deskriptif |
+| **Investor** | Seberapa sehat perusahaannya? | 9 pemeriksaan F-Score Piotroski + laporan keuangan 5 tahun dalam rupiah (±300 perusahaan) | deskriptif |
 
 Ditambah:
 
@@ -96,8 +96,8 @@ Situs membaca `web/src/data/`, jadi bisa dibuka **tanpa API key**.
 
 - Data harian (final setelah bursa tutup), bukan detik-ke-detik.
 - Histori ±15 bulan (Juli 2025 – Oktober 2026): satu-dua kondisi pasar saja. Model dilatih ulang setiap hari.
-- Sebagian kekuatan skor besok berasal dari saham yang lebih kecil, yang biaya transaksi & slippage-nya lebih besar.
-- Data broker harian 2–4 minggu dan hanya untuk 120 saham utama; berita beberapa hari terakhir. Laporan keuangan untuk 120 saham utama.
+- Keunggulan skor besok ada di semua ukuran saham, tapi di semua ukuran tetap kalah oleh biaya kalau dipakai beli-jual harian.
+- Data broker harian 2–4 minggu dan hanya untuk 120 saham utama; berita beberapa hari terakhir.
 - Universe = saham aktif hari ini (bias survivorship kecil).
 
 ## Disclaimer

@@ -307,6 +307,29 @@ FIN_FIELDS = ["revenue", "gross_profit", "earnings", "total_assets", "total_liab
 FIN_YEARS = [2021, 2022, 2023, 2024, 2025]
 
 
+def pull_financials_for(c: SectorsClient, conn, symbols: list[str], batch: int = 63):
+    """Same statements for an explicit list (e.g. stocks added from the IDX summary), in symbol batches
+    small enough to keep the request line under 4 KB; all fields and years in one call per batch."""
+    try:
+        conn.execute("ALTER TABLE companies ADD COLUMN financials TEXT")
+    except sqlite3.OperationalError:
+        pass
+    any_ = " or ".join(f"{f}[{y}] != 0" for f in FIN_FIELDS for y in FIN_YEARS)
+    got = 0
+    for i in range(0, len(symbols), batch):
+        part = symbols[i:i + batch]
+        listed = ",".join(f"'{s}.JK'" for s in part)
+        body = c.get("/v2/companies/", {"where": f"symbol in [{listed}] and ({any_})",
+                                        "limit": len(part), "include_query_values": "true"})
+        for r in (body or {}).get("results", []):
+            qv = r["query_values"]
+            fin = {f: {str(y): qv.get(f"{f}[{y}]") for y in FIN_YEARS} for f in FIN_FIELDS}
+            conn.execute("UPDATE companies SET financials=? WHERE symbol=?", (json.dumps(fin), _bare(r["symbol"])))
+            got += 1
+        conn.commit()
+    print(f"[ingest] financials for {got}/{len(symbols)} listed companies", flush=True)
+
+
 def pull_financials(c: SectorsClient, conn):
     """Five years of annual statements for the whole universe in two screener calls: every
     `field[year]` named in the where-clause comes back through include_query_values."""

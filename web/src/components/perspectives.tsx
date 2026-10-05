@@ -171,8 +171,8 @@ export function Perspectives({ s, candles, cone, fin, total }: { s: Stock; candl
         ) : (
           <p className="text-[13.5px] leading-relaxed text-ink-2">
             {tx({
-              id: "Laporan keuangan detail saat ini tersedia untuk 120 saham utama. Untuk saham ini, lihat valuasi dan dividen di tab Keuangan.",
-              en: "Detailed statements are currently available for the 120 core stocks. For this one, see valuation and dividends in the Financials tab.",
+              id: "Laporan keuangan tahunan belum tersedia untuk saham ini. Lihat valuasi dan dividen di tab Keuangan.",
+              en: "Annual statements aren't available for this stock yet. See valuation and dividends in the Financials tab.",
             })}
           </p>
         )}

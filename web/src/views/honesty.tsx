@@ -213,6 +213,55 @@ export function HonestyView({ meta, models, coneCoverage, anomalyHistory }: Pick
         ))}
       </div>
 
+      {M.bySize && horizon === 1 && (
+        <section className="mt-16">
+          <h2 className="text-xl font-semibold tracking-tight">
+            <T id="Apakah hanya bekerja di saham kecil?" en="Does it only work on small caps?" />
+          </h2>
+          <p className="mt-2 max-w-[75ch] text-[14px] leading-relaxed text-muted">
+            <T
+              id="Uji yang sama dipisah menurut ukuran perusahaan (sepertiga terbesar, tengah, terkecil). Kolom terakhir sudah dikurangi biaya jual-beli harian ±0,4%."
+              en="The same test split by company size (largest, middle and smallest third). The last column deducts the ~0.4% daily round-trip cost."
+            />
+          </p>
+          <div className="mt-4 overflow-x-auto rounded-2xl bg-surface ring-1 ring-line">
+            <table className="w-full min-w-[560px] border-separate border-spacing-0 text-[13.5px]">
+              <thead>
+                <tr className="text-right text-[12px] text-muted">
+                  <th className="px-4 py-3 text-left font-normal">{tx({ id: "Ukuran", en: "Size" })}</th>
+                  <th className="px-4 py-3 font-normal">AUC</th>
+                  <th className="px-4 py-3 font-normal">{tx({ id: "Teratas vs terbawah unggul", en: "Top vs bottom won" })}</th>
+                  <th className="px-4 py-3 font-normal">{tx({ id: "Kelompok teratas / hari", en: "Top group / day" })}</th>
+                  <th className="px-4 py-3 font-normal">{tx({ id: "Setelah biaya", en: "After costs" })}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {M.bySize.map((r) => (
+                  <tr key={r.size} className="num text-right">
+                    <td className="border-t border-line px-4 py-2.5 text-left text-ink">
+                      {tx(r.size === "large" ? { id: "Besar", en: "Large" } : r.size === "mid" ? { id: "Menengah", en: "Mid" } : { id: "Kecil", en: "Small" })}
+                      <span className="ml-2 text-[11.5px] text-muted">{r.n_stocks} {tx({ id: "saham", en: "stocks" })}</span>
+                    </td>
+                    <td className={`border-t border-line px-4 py-2.5 ${r.auc > 0.5 ? "text-up" : "text-down"}`}>{r.auc.toFixed(3)}</td>
+                    <td className="border-t border-line px-4 py-2.5 text-ink-2">
+                      {r.top_hit != null && r.bottom_hit != null ? `${Math.round(r.top_hit * 100)} vs ${Math.round(r.bottom_hit * 100)}` : "–"}
+                    </td>
+                    <td className="border-t border-line px-4 py-2.5 text-ink-2">{r.top_excess != null ? signed(r.top_excess * 100, 2, "%") : "–"}</td>
+                    <td className={`border-t border-line px-4 py-2.5 ${(r.top_net ?? 0) >= 0 ? "text-up" : "text-down"}`}>{r.top_net != null ? signed(r.top_net * 100, 2, "%") : "–"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 max-w-[75ch] text-[13px] leading-relaxed text-ink-2">
+            <T
+              id="Keunggulannya ada di semua ukuran, tidak hanya saham kecil. Tapi di semua ukuran, membeli kelompok teratas lalu menjualnya besok tetap kalah oleh biaya. Karena itu skor besok dipakai sebagai saringan, bukan strategi beli-jual harian."
+              en="The edge shows up in every size bucket, not just small caps. But in every bucket, buying the top group and selling next day still loses to costs. That is why the next-day score is a filter, not a daily trading strategy."
+            />
+          </p>
+        </section>
+      )}
+
       <section className="mt-16">
         <ChartTitle
           note={tx({
@@ -238,10 +287,6 @@ export function HonestyView({ meta, models, coneCoverage, anomalyHistory }: Pick
             {
               id: `Histori kami hanya ±${months} bulan (sejak ${dateLabel(meta.history_start, lang)}), dibatasi kuota data. Itu baru mencakup satu-dua kondisi pasar. Pola bisa berubah, dan sudah terbukti berubah. Karena itu model dilatih ulang setiap hari.`,
               en: `Our history spans only ~${months} months (since ${dateLabel(meta.history_start, lang)}), limited by data quota. That covers one or two market conditions. Patterns can change, and already have. That's why the model retrains every day.`,
-            },
-            {
-              id: "Sejak cakupan diperluas dari 120 ke ratusan saham, skor besok jadi lebih kuat. Sebagian kekuatan itu datang dari saham yang lebih kecil, yang biaya transaksi dan selisih harga belinya lebih besar.",
-              en: "Since coverage widened from 120 to hundreds of stocks, the next-day score got stronger. Part of that comes from smaller stocks, where trading costs and bid-ask spreads are larger.",
             },
             {
               id: "Saham yang diuji adalah yang aktif hari ini. Saham yang sudah tidak aktif tidak ikut diuji, dan itu bisa membuat hasil terlihat sedikit lebih baik.",

@@ -18,6 +18,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://arus-idx.vercel.app"),
+  openGraph: { siteName: "Arus", type: "website", locale: "id_ID" },
+  twitter: { card: "summary_large_image" },
   title: "Arus — calibrated market intelligence for IDX",
   description:
     "Ranks Indonesian stocks by a probability calibrated on history, and shows exactly which evidence built the number.",

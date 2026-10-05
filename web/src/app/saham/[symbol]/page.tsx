@@ -9,7 +9,10 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;
   const s = bundle.ranking.find((r) => r.symbol === symbol);
-  return { title: s ? `${s.symbol} · ${s.name ?? ""} · Arus` : "Arus" };
+  if (!s) return { title: "Arus" };
+  const title = `${s.symbol} · ${s.name ?? ""} · Arus`;
+  const description = `${s.symbol} ${s.price?.toLocaleString("id-ID")} (${(s.ret_1 ?? 0) >= 0 ? "+" : ""}${((s.ret_1 ?? 0) * 100).toFixed(2)}%). Bandar, kesehatan keuangan, rentang wajar, dan rencana trade di Arus.`;
+  return { title, description, openGraph: { title, description }, twitter: { title, description } };
 }
 
 export default async function Page({ params }: { params: Promise<{ symbol: string }> }) {

@@ -358,13 +358,14 @@ export function BrokerDetail({ b, names, prices, sectors, period }: { b: Detail;
                 <th className="py-2.5 pr-4 font-normal">{tx({ id: "Harga rata-rata", en: "Avg price" })}</th>
                 <th className="py-2.5 pr-4 font-normal">{tx({ id: "vs harga kini", en: "vs price now" })}</th>
                 <th className="py-2.5 pr-4 font-normal">{tx({ id: "Hari beli / jual", en: "Buy / sell days" })}</th>
-                <th className="py-2.5 pr-4 text-left font-normal">{tx({ id: "Gaya", en: "Style" })}</th>
-                <th className="py-2.5 font-normal">{tx({ id: "Peringkat di saham itu", en: "Rank in that stock" })}</th>
+                <th className="py-2.5 pr-4 font-normal">{tx({ id: "Peringkat", en: "Rank" })}</th>
+                <th className="py-2.5 pl-2 text-left font-normal">{tx({ id: "Gaya", en: "Style" })}</th>
               </tr>
             </thead>
             <tbody>
               {rows.slice(page * PER, page * PER + PER).map((x) => {
                 const g = gapOf(x);
+                const maxNet = Math.max(1, ...rows.map((r) => Math.abs(r.net)));
                 return (
                   <tr key={x.s} className="num text-right hover:bg-surface">
                     <td className="border-t border-line py-2 pr-4 text-left">
@@ -372,16 +373,24 @@ export function BrokerDetail({ b, names, prices, sectors, period }: { b: Detail;
                         {x.s}
                       </Link>
                     </td>
-                    <td className={`border-t border-line py-2 pr-4 ${x.net >= 0 ? "text-up" : "text-down"}`}>{idr(x.net, lang)}</td>
+                    <td className={`border-t border-line py-2 pr-4 ${x.net >= 0 ? "text-up" : "text-down"}`}>
+                      <span className="inline-flex items-center justify-end gap-2.5">
+                        <span className="relative hidden h-1.5 w-24 rounded-full bg-raised md:block" aria-hidden>
+                          <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
+                          <span className={`absolute inset-y-0 rounded-full ${x.net >= 0 ? "left-1/2 bg-up" : "right-1/2 bg-down"}`} style={{ width: `${Math.min(50, (Math.abs(x.net) / maxNet) * 50)}%` }} />
+                        </span>
+                        {idr(x.net, lang)}
+                      </span>
+                    </td>
                     <td className="border-t border-line py-2 pr-4 text-ink-2">{price(x.net >= 0 ? x.avg_buy : x.avg_sell, lang)}</td>
                     <td className={`border-t border-line py-2 pr-4 ${g == null ? "text-muted" : g >= 0 ? "text-up" : "text-down"}`}>{g == null ? "–" : signed(g * 100, 1, "%")}</td>
                     <td className="border-t border-line py-2 pr-4 text-ink-2">
                       {x.days_buy} / {x.days_sell}
                     </td>
-                    <td className="border-t border-line py-2 pr-4 text-left">
+                    <td className="border-t border-line py-2 pr-4 text-ink-2">#{x.rank}</td>
+                    <td className="border-t border-line py-2 pl-2 text-left">
                       <span className={`rounded-full px-2 py-0.5 text-[11px] ring-1 ${STYLE[x.style].tone}`}>{tx(STYLE[x.style].label)}</span>
                     </td>
-                    <td className="border-t border-line py-2 text-ink-2">#{x.rank}</td>
                   </tr>
                 );
               })}

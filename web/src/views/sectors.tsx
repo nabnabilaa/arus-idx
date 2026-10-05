@@ -37,6 +37,7 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
     { title: { id: "Paling diburu asing", en: "Most foreign-bought" }, list: byForeign.slice(0, 3), fmt: (s) => idr(s.foreign_net_20, lang), tone: "text-arus" },
   ];
 
+  const maxRs = Math.max(1e-9, ...byRs.map((x) => Math.abs(x.rs_20 ?? 0)));
   return (
     <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
@@ -160,10 +161,18 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
               const members = stocks.filter((x) => x.sub_sector === sec.sub_sector).sort((a, z) => (z.ret_20 ?? 0) - (a.ret_20 ?? 0));
               return (
                 <li key={sec.sub_sector} id={`sec-${sec.sub_sector}`} className="scroll-mt-28">
-                  <button onClick={() => setOpen(isOpen ? null : sec.sub_sector)} aria-expanded={isOpen} className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-4 py-3 text-left hover:bg-raised/40 sm:grid-cols-[minmax(0,1fr)_90px_110px_130px_auto] sm:px-5">
+                  <button onClick={() => setOpen(isOpen ? null : sec.sub_sector)} aria-expanded={isOpen} className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-4 py-2.5 text-left hover:bg-raised/40 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_90px_110px_130px_auto] sm:px-5">
                     <span className="min-w-0">
-                      <span className="block truncate text-[14.5px] font-medium text-ink">{label(sec.sub_sector)}</span>
+                      <span className="block truncate text-[14px] font-medium text-ink">{label(sec.sub_sector)}</span>
                       <span className="block text-[11.5px] text-muted">{sec.n} {tx({ id: "saham", en: "stocks" })}</span>
+                    </span>
+                    {/* strength vs IHSG over a month, on one scale for every row */}
+                    <span className="relative hidden h-2 rounded-full bg-raised sm:block" aria-hidden>
+                      <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
+                      <span
+                        className={`absolute inset-y-0 rounded-full ${(sec.rs_20 ?? 0) >= 0 ? "left-1/2 bg-up" : "right-1/2 bg-down"}`}
+                        style={{ width: `${Math.min(50, (Math.abs(sec.rs_20 ?? 0) / maxRs) * 50)}%` }}
+                      />
                     </span>
                     <span className={`num text-right text-[13px] ${(sec.rs_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>
                       {signed((sec.rs_20 ?? 0) * 100, 1, "%")}

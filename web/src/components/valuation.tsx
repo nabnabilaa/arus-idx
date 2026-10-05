@@ -65,8 +65,8 @@ function Scatter({ s, pts, line }: { s: { pb: number; roe: number }; pts: ValPee
       ))}
       <motion.circle cx={x(s.roe)} cy={y(Math.min(s.pb, y1))} r={6} fill={C.current} stroke="#070b14" strokeWidth={2}
         initial={{ scale: 0 }} whileInView={{ scale: 1 }} viewport={{ once: true }} transition={{ type: "spring", stiffness: 400, damping: 18, delay: 0.6 }} />
-      <text x={pad.l} y={pad.t + 8} fontSize={9} fill={C.muted}>PBV</text>
-      <text x={W - pad.r} y={H - 8} textAnchor="end" fontSize={9} fill={C.muted}>ROE</text>
+      <text x={pad.l + 6} y={pad.t + 20} fontSize={9} fill={C.muted}>PBV</text>
+      <text x={W - pad.r} y={H - pad.b - 6} textAnchor="end" fontSize={9} fill={C.muted}>ROE</text>
     </svg>
   );
 }
@@ -146,7 +146,7 @@ export function PbRoe({ s, peers, fin }: { s: Stock; peers: ValPeer[]; fin: FinH
           )}
         </div>
         {line && (
-          <div>
+          <div className="mx-auto w-full max-w-[460px]">
             <Scatter s={{ pb, roe }} pts={line.pts} line={line} />
             <p className="mt-1 text-[11.5px] text-muted">
               {tx({

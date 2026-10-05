@@ -207,8 +207,16 @@ export function SectorMap({
   const { tx } = useLang();
   const [hover, setHover] = useState<string | null>(null);
   const pad = { l: 52, r: 20, t: 20, b: 40 };
-  const ex = Math.max(...rows.map((r) => Math.abs(r.x)), 0.01) * 1.15;
-  const ey = Math.max(...rows.map((r) => Math.abs(r.y)), 0.001) * 1.2;
+  // scale to the bulk of sectors, not the one or two extremes; outliers sit on the edge instead
+  // of squeezing everyone else into the middle
+  const q90 = (xs: number[]) => {
+    const v = xs.map(Math.abs).sort((a, b) => a - b);
+    return v[Math.min(v.length - 1, Math.floor(v.length * 0.9))] ?? 0;
+  };
+  const ex = Math.max(q90(rows.map((r) => r.x)) * 1.35, 0.01);
+  const ey = Math.max(q90(rows.map((r) => r.y)) * 1.35, 0.001);
+  const cx = (v: number) => Math.max(-ex * 0.97, Math.min(ex * 0.97, v));
+  const cy = (v: number) => Math.max(-ey * 0.95, Math.min(ey * 0.95, v));
   const x = scaleLinear().domain([-ex, ex]).range([pad.l, w - pad.r]);
   const y = scaleLinear().domain([-ey, ey]).range([height - pad.b, pad.t]);
   const rad = scaleSqrt().domain([0, Math.max(...rows.map((r) => r.n))]).range([4, 22]);
@@ -220,6 +228,22 @@ export function SectorMap({
   ];
   const h = rows.find((r) => r.key === hover);
   const sorted = [...rows].sort((a, b) => b.n - a.n);
+  // label the most telling bubbles first and skip any label that would overlap one already placed
+  const labelled = new Set<string>();
+  if (w > 0) {
+    const boxes: [number, number, number, number][] = [];
+    const weight = (r: (typeof rows)[number]) => Math.abs(r.x) / ex + Math.abs(r.y) / ey + rad(r.n) / 22;
+    for (const r of [...rows].sort((a, b) => weight(b) - weight(a))) {
+      const lw = label(r.key).length * 6.1 + 6;
+      const lx = x(cx(r.x)) - lw / 2;
+      const ly = y(cy(r.y)) - rad(r.n) - 18;
+      const box: [number, number, number, number] = [lx, ly, lx + lw, ly + 14];
+      if (boxes.every((b) => box[2] < b[0] || box[0] > b[2] || box[3] < b[1] || box[1] > b[3])) {
+        boxes.push(box);
+        labelled.add(r.key);
+      }
+    }
+  }
   return (
     <div ref={ref} className="relative w-full" style={{ height }}>
       {w > 0 && (
@@ -249,8 +273,8 @@ export function SectorMap({
             return (
               <g key={r.key} onPointerEnter={() => setHover(r.key)} onPointerLeave={() => setHover(null)} onClick={() => onSelect?.(r.key)} style={{ cursor: onSelect ? "pointer" : "default" }}>
                 <motion.circle
-                  cx={x(r.x)}
-                  cy={y(r.y)}
+                  cx={x(cx(r.x))}
+                  cy={y(cy(r.y))}
                   fill={good ? C.current : C.up}
                   fillOpacity={hover == null || hover === r.key ? 0.55 : 0.18}
                   stroke={good ? C.current : C.up}
@@ -259,8 +283,8 @@ export function SectorMap({
                   animate={{ r: rad(r.n) }}
                   transition={{ duration: 0.6, delay: i * 0.03, ease: EASE }}
                 />
-                {(good || r.n >= 5 || hover === r.key) && (
-                  <text x={x(r.x)} y={y(r.y) - rad(r.n) - 6} fontSize={11} fill={C.ink2} textAnchor="middle">
+                {(labelled.has(r.key) || hover === r.key) && (
+                  <text x={x(cx(r.x))} y={y(cy(r.y)) - rad(r.n) - 6} fontSize={11} fill={hover === r.key ? C.ink : C.ink2} textAnchor="middle">
                     {label(r.key)}
                   </text>
                 )}
@@ -270,7 +294,7 @@ export function SectorMap({
         </svg>
       )}
       {h && (
-        <Tooltip x={x(h.x)} y={y(h.y) - rad(h.n)} show>
+        <Tooltip x={x(cx(h.x))} y={y(cy(h.y)) - rad(h.n)} show>
           <div className="font-medium text-ink">{label(h.key)}</div>
           <div>RS 20h <span className="num text-ink">{signed(h.x * 100, 1, "%")}</span></div>
           <div>{tx({ id: "Asing", en: "Foreign" })} <span className="num text-ink">{signed(h.y * 100, 2, "%")}</span></div>

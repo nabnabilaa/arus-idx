@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import { ArrowUpRight, ShieldAlert, ThumbsUp } from "lucide-react";
 import { useMemo } from "react";
 import { useAgendaDetail } from "@/components/agenda";
+import { ShareCard } from "@/components/share";
+import { WEEKLY_CARD } from "@/lib/cards";
 import { C } from "@/components/charts/kit";
 import { AGENDA_LABEL } from "@/lib/agenda";
 import { dateLabel, idr, price, signed } from "@/lib/format";
@@ -96,9 +98,12 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
   return (
     <div className="pt-10 sm:pt-12">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <p className="num text-[13px] font-medium text-arus">
-          {dateLabel(w.from, lang, { year: undefined })} – {dateLabel(w.to, lang)}
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="num text-[13px] font-medium text-arus">
+            {dateLabel(w.from, lang, { year: undefined })} – {dateLabel(w.to, lang)}
+          </p>
+          <ShareCard file={WEEKLY_CARD} />
+        </div>
         <h1 className="mt-2 text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
           <T id="Rekap pekan ini" en="This week in review" />
         </h1>

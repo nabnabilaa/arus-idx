@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { bundle, series } from "@/lib/data";
 import { agendaBook } from "@/lib/agenda";
+import { chainCard, N_CHAIN_CARDS } from "@/lib/cards";
 import { insiderBook } from "@/lib/insider";
 import { StockView } from "@/views/stock";
 
@@ -58,6 +59,7 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
         chains: insiderBook.chains.filter((c) => c.s === symbol),
         paths: insiderBook.paths[symbol] ? { [symbol]: insiderBook.paths[symbol] } : {},
         ksei: insiderBook.ksei,
+        cards: insiderBook.chains.slice(0, N_CHAIN_CARDS).filter((c) => c.s === symbol).map(chainCard),
       }}
     />
   );

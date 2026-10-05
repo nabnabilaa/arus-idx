@@ -4,9 +4,11 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowUpRight, FileText } from "lucide-react";
 import { C } from "@/components/charts/kit";
+import { ShareCard } from "@/components/share";
 import { Badge } from "@/components/ui";
 import { dateLabel, idr, pct, price, signed } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
+import { chainCard } from "@/lib/cards";
 import { filingDate, groupName, HOLDER_KIND, TAG_LABEL } from "@/lib/insider";
 import type { InsiderAfter, InsiderChain, InsiderEvent } from "@/lib/types";
 
@@ -64,7 +66,7 @@ export function ChainChart({ path, trades, side, height = 120 }: { path?: { d: s
   );
 }
 
-export function ChainCard({ c, path, ranked, i = 0 }: { c: InsiderChain; path?: { d: string[]; c: number[] }; ranked: boolean; i?: number }) {
+export function ChainCard({ c, path, ranked, i = 0, card }: { c: InsiderChain; path?: { d: string[]; c: number[] }; ranked: boolean; i?: number; card?: string | null }) {
   const { tx, lang } = useLang();
   const buy = c.side === "buy";
   const grp = groupName(c.grp);
@@ -97,6 +99,7 @@ export function ChainCard({ c, path, ranked, i = 0 }: { c: InsiderChain; path?: 
             {dateLabel(filingDate(c.first), lang, { year: undefined })} – {dateLabel(filingDate(c.last), lang)}
           </p>
         </div>
+        {card && <ShareCard file={card} className="shrink-0" />}
       </div>
       <div className="mt-3">
         <ChainChart path={path} trades={c.trades} side={c.side} />
@@ -212,7 +215,7 @@ export function AfterCard({ label, note, a, i = 0 }: { label: string; note: stri
   );
 }
 
-export function InsiderPanel({ events, chains, paths, ksei }: { events: InsiderEvent[]; chains: InsiderChain[]; paths: Record<string, { d: string[]; c: number[] }>; ksei: string }) {
+export function InsiderPanel({ events, chains, paths, ksei, cards = [] }: { events: InsiderEvent[]; chains: InsiderChain[]; paths: Record<string, { d: string[]; c: number[] }>; ksei: string; cards?: string[] }) {
   const { tx } = useLang();
   const market = events.filter((e) => e.market && !e.twoway);
   const buys = market.filter((e) => e.side === "buy");
@@ -235,7 +238,7 @@ export function InsiderPanel({ events, chains, paths, ksei }: { events: InsiderE
       {chains.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-2">
           {chains.slice(0, 4).map((c, i) => (
-            <ChainCard key={`${c.holder}-${c.side}`} c={c} path={paths[c.s]} ranked i={i} />
+            <ChainCard key={`${c.holder}-${c.side}`} c={c} path={paths[c.s]} ranked i={i} card={cards.includes(chainCard(c)) ? chainCard(c) : null} />
           ))}
         </div>
       )}

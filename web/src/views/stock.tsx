@@ -49,7 +49,7 @@ type Props = {
   coneCoverage?: Bundle["coneCoverage"] | null;
   agenda?: { items: AgendaItem[]; history: AgendaBook["history"][string] } | null;
   valPeers?: { symbol: string; pb: number; roe: number; sub: boolean }[];
-  insider?: { events: InsiderEvent[]; chains: InsiderChain[]; paths: Record<string, { d: string[]; c: number[] }>; ksei: string } | null;
+  insider?: { events: InsiderEvent[]; chains: InsiderChain[]; paths: Record<string, { d: string[]; c: number[] }>; ksei: string; cards: string[] } | null;
 };
 
 type Tab = "ringkasan" | "simulasi" | "bandar" | "orangdalam" | "keuangan" | "berita" | "global" | "harian";
@@ -209,7 +209,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
                 </p>
               </div>
             )}
-            {tab === "orangdalam" && insider && <InsiderPanel events={insider.events} chains={insider.chains} paths={insider.paths} ksei={insider.ksei} />}
+            {tab === "orangdalam" && insider && <InsiderPanel events={insider.events} chains={insider.chains} paths={insider.paths} ksei={insider.ksei} cards={insider.cards} />}
             {tab === "keuangan" && <FinanceTab s={s} fin={fin} peers={peers} valPeers={valPeers} />}
             {tab === "global" && <GlobalView s={s} candles={candles} macro={macro} ihsg={ihsg} />}
             {tab === "harian" && candles && <DailyTab candles={candles} />}

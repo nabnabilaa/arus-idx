@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AfterCard, ChainCard, FilingRow } from "@/components/insider";
+import { chainCard, N_CHAIN_CARDS } from "@/lib/cards";
 import { Segmented, Toggle } from "@/components/ui";
 import { dateLabel, idr } from "@/lib/format";
 import { T, useLang } from "@/lib/i18n";
@@ -113,7 +114,7 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {chains.slice(0, 9).map((c, i) => (
-            <ChainCard key={`${c.s}-${c.holder}-${c.side}`} c={c} path={book.paths[c.s]} ranked={isRanked.has(c.s)} i={i} />
+            <ChainCard key={`${c.s}-${c.holder}-${c.side}`} c={c} path={book.paths[c.s]} ranked={isRanked.has(c.s)} i={i} card={book.chains.indexOf(c) < N_CHAIN_CARDS ? chainCard(c) : null} />
           ))}
         </div>
       </section>

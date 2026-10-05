@@ -4,7 +4,9 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, ChevronDown, Globe, TrendingDown, TrendingUp, Waves } from "lucide-react";
 import { useState } from "react";
+import { ShareCard } from "@/components/share";
 import { Segmented } from "@/components/ui";
+import { ANOMALY_Z, anomalyCard } from "@/lib/cards";
 import { idr, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import type { Bundle, Stock } from "@/lib/types";
@@ -94,9 +96,12 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
                             );
                           })}
                         </ul>
-                        <Link href={`/saham/${s.symbol}/`} className="mt-3 inline-flex items-center gap-1 text-[13px] text-arus hover:underline">
-                          {tx({ id: `Buka halaman ${s.symbol}`, en: `Open ${s.symbol}` })} <ArrowUpRight size={14} />
-                        </Link>
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <Link href={`/saham/${s.symbol}/`} className="inline-flex items-center gap-1 text-[13px] text-arus hover:underline">
+                            {tx({ id: `Buka halaman ${s.symbol}`, en: `Open ${s.symbol}` })} <ArrowUpRight size={14} />
+                          </Link>
+                          {Math.max(Math.abs(s.z_foreign ?? 0), Math.abs(s.z_volume ?? 0), Math.abs(s.z_return ?? 0)) >= ANOMALY_Z && <ShareCard file={anomalyCard(s.symbol)} />}
+                        </div>
                       </div>
                     </motion.div>
                   )}

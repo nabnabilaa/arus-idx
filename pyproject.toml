@@ -1,0 +1,9 @@
+[project]
+name = "arus-bot"
+version = "1.0.0"
+description = "Arus Telegram webhook (Vercel serverless function)"
+requires-python = ">=3.11"
+dependencies = ["requests>=2.31"]
+
+[tool.vercel]
+entrypoint = "api.telegram:handler"

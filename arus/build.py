@@ -17,7 +17,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from arus import agenda as agenda_mod, config, context, financial, insider as insider_mod
+from arus import agenda as agenda_mod, config, context, financial, insider as insider_mod, weekly
 from arus.client import SectorsClient
 from arus.features import FEATURES, FEATURE_NAMES, build_features, load_panel
 from arus.ingest import pull_broker_daily, pull_broker_top
@@ -418,6 +418,10 @@ def main():
     for path in (snap / "brokers.json", web / "brokers.json"):
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(_clean(broker_index), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
+    week = weekly.build(conn, names, _clean(insider_book), _clean(agenda_book))
+    for path in (snap / "weekly.json", web / "weekly.json"):
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(_clean(week), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
     for path in (snap / "agenda.json", web / "agenda.json"):
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(_clean(agenda_book), fh, ensure_ascii=False, allow_nan=False, separators=(",", ":"))

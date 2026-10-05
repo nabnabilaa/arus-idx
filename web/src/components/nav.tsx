@@ -9,6 +9,7 @@ import { Logo } from "./logo";
 
 const LINKS: { href: string; label: Bi }[] = [
   { href: "/", label: { id: "Hari ini", en: "Today" } },
+  { href: "/rekap/", label: { id: "Rekap pekan", en: "Week" } },
   { href: "/sektor/", label: { id: "Sektor", en: "Sectors" } },
   { href: "/asing/", label: { id: "Asing & bandar", en: "Foreign & brokers" } },
   { href: "/broker/", label: { id: "Broker", en: "Brokers" } },

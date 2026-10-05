@@ -382,3 +382,33 @@ export type AgendaBook = {
   study: DividendStudy | Record<string, never>;
   history: Record<string, { ex: string; amt: number; yield: number; move: number; recovered: number | null }[]>;
 };
+
+export type WeeklyMover = { s: string; name: string | null; ret: number; close: number; val: number; board: string | null };
+export type WeeklyRecap = {
+  from: string;
+  to: string;
+  stats: {
+    ihsg: number | null;
+    big_med: number | null;
+    big_up: number;
+    big_n: number;
+    up: number;
+    down: number;
+    foreign: number;
+    best_sector: { sector: string; ret: number; n: number; up: number } | null;
+    worst_sector: { sector: string; ret: number; n: number; up: number } | null;
+    n_cooling: number;
+  };
+  ihsg_days: { d: string; v: number; chg: number }[];
+  gainers: WeeklyMover[];
+  losers: WeeklyMover[];
+  raw_top: WeeklyMover[];
+  foreign: { total: number; days: { d: string; net: number }[]; buy: { s: string; name: string | null; net: number; ret: number | null }[]; sell: { s: string; name: string | null; net: number; ret: number | null }[] };
+  sectors: { sector: string; ret: number; n: number; up: number }[];
+  spikes: { s: string; name: string | null; mult: number; day: string; ret: number | null }[];
+  insiders: { n: number; buy: number; sell: number; top: { s: string; holder: string; side: "buy" | "sell"; val: number | null; px: number | null; pa: number | null; ts: string }[] };
+  cooling: string[];
+  ahead: AgendaItem[];
+  n_agm: number;
+  reads: { pos: { id: string; en: string }[]; neg: { id: string; en: string }[] };
+};

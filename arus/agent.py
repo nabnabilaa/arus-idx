@@ -285,6 +285,36 @@ def digest_text(bundle: dict, graded: dict | None, watch: list[str] | None = Non
     return "\n".join(L)
 
 
+def weekly_text(lang: str = "id") -> str | None:
+    """The weekly recap as a Telegram message, from the snapshot's weekly.json."""
+    path = SNAP / "weekly.json"
+    if not path.exists():
+        return None
+    w = json.loads(path.read_text(encoding="utf-8"))
+    if not w:
+        return None
+    id_ = lang == "id"
+    st = w["stats"]
+    L = [f"📊 <b>{'Rekap pekan' if id_ else 'Week in review'} · {w['from']} – {w['to']}</b>"]
+    L.append(f"IHSG {_pct(st['ihsg'])} · {'naik' if id_ else 'up'} {st['up']} vs {'turun' if id_ else 'down'} {st['down']} · "
+             f"{'asing' if id_ else 'foreign'} {'+' if st['foreign'] >= 0 else '−'}Rp{abs(st['foreign']) / 1e12:.2f} T")
+    for key, title in (("pos", ("👍 Yang mendukung", "👍 What supports")), ("neg", ("⚠️ Yang perlu diwaspadai", "⚠️ What to be careful about"))):
+        if w["reads"][key]:
+            L.append("")
+            L.append(f"<b>{title[0 if id_ else 1]}</b>")
+            L.extend(f"• {r['id' if id_ else 'en']}" for r in w["reads"][key])
+    L.append("")
+    L.append(("🚀 Naik: " if id_ else "🚀 Up: ") + ", ".join(f"{m['s']} {_pct(m['ret'])}" for m in w["gainers"][:4]))
+    L.append(("🔻 Turun: " if id_ else "🔻 Down: ") + ", ".join(f"{m['s']} {_pct(m['ret'])}" for m in w["losers"][:4]))
+    L.append(("🌏 Diborong asing: " if id_ else "🌏 Foreign buying: ") + ", ".join(m["s"] for m in w["foreign"]["buy"][:4]))
+    if w.get("ahead"):
+        L.append(("📅 Pekan depan: " if id_ else "📅 Next week: ") + " · ".join(agenda_line(it, lang) for it in w["ahead"][:4]))
+    L.append("")
+    L.append("<i>Disusun otomatis dari data BEI dan Sectors. Informasi, bukan nasihat keuangan.</i>" if id_
+             else "<i>Built automatically from IDX and Sectors data. Information, not financial advice.</i>")
+    return "\n".join(L)
+
+
 def stock_text(bundle: dict, sym: str, lang: str = "id") -> str:
     V = VERDICT if lang == "id" else VERDICT_EN
     s = next((x for x in bundle["ranking"] if x["symbol"] == sym.upper()), None)
@@ -627,6 +657,9 @@ def main():
         return
     n = broadcast(lambda lang, watch: digest_text(bundle, graded, watch, lang, prev=before), token)
     print(f"[agent] digest sent to {n} chat(s) at {datetime.now():%H:%M}")
+    if date.fromisoformat(bundle["meta"]["as_of"]).weekday() == 4 and weekly_text():   # Friday close: the week's recap too
+        n = broadcast(lambda lang, watch: weekly_text(lang) or "", token)
+        print(f"[agent] weekly recap sent to {n} chat(s)")
 
 
 if __name__ == "__main__":

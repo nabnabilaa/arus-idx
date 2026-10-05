@@ -92,12 +92,12 @@ const ENDPOINTS: [string, Bi][] = [
 export function MethodView({ meta }: Pick<Bundle, "meta">) {
   const { tx, lang } = useLang();
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Cara Arus bekerja, dan kenapa begitu" en="How Arus works, and why" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Investor ritel kebanjiran data dan tips, tapi jarang tahu seberapa bisa dipercaya. Arus tidak menambah data. Ia menjawab satu pertanyaan, seberapa besar peluangnya, dengan angka yang bisa diperiksa dan berani bilang “tidak tahu”."
             en="Retail investors drown in data and tips but rarely know how far to trust them. Arus adds no more data. It answers one question, what are the odds, with a number you can audit that dares to say “I don't know”."
@@ -105,7 +105,7 @@ export function MethodView({ meta }: Pick<Bundle, "meta">) {
         </p>
       </motion.header>
 
-      <section id="ai" className="mt-14 scroll-mt-28 rounded-2xl bg-surface p-6 ring-1 ring-line sm:p-8">
+      <section id="ai" className="mt-11 scroll-mt-28 rounded-2xl bg-surface p-6 ring-1 ring-line sm:p-8">
         <h2 className="text-2xl font-semibold tracking-tight">
           <T id="Kenapa Arus disebut AI yang jujur?" en="Why call Arus an honest AI?" />
         </h2>
@@ -141,7 +141,7 @@ export function MethodView({ meta }: Pick<Bundle, "meta">) {
         </div>
       </section>
 
-      <section className="mt-14">
+      <section className="mt-11">
         <h2 className="text-2xl font-semibold tracking-tight">
           <T id="Alurnya" en="The flow" />
         </h2>

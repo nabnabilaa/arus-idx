@@ -12,6 +12,7 @@ import { FinanceTab } from "@/components/finance";
 import { GlobalView } from "@/components/global";
 import { InsiderPanel } from "@/components/insider";
 import { StockAgenda } from "@/components/agenda";
+import { StockBrief } from "@/components/stock-brief";
 import { AGENDA_LABEL } from "@/lib/agenda";
 import { RISK, riskFlags } from "@/lib/risk";
 import { Perspectives } from "@/components/perspectives";
@@ -49,6 +50,7 @@ type Props = {
   coneCoverage?: Bundle["coneCoverage"] | null;
   agenda?: { items: AgendaItem[]; history: AgendaBook["history"][string] } | null;
   valPeers?: { symbol: string; pb: number; roe: number; sub: boolean }[];
+  capRank?: number | null;
   insider?: { events: InsiderEvent[]; chains: InsiderChain[]; paths: Record<string, { d: string[]; c: number[] }>; ksei: string; cards: string[] } | null;
 };
 
@@ -56,7 +58,7 @@ type Tab = "ringkasan" | "simulasi" | "bandar" | "orangdalam" | "keuangan" | "be
 const EASE = [0.23, 1, 0.32, 1] as const;
 
 
-export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total, profile, news, summary, insider, agenda, valPeers }: Props) {
+export function StockView({ stock: s, candles, broker, bandar, macro, weights, peers, ihsg, cone, coneCoverage, fin, asOf, total, profile, news, summary, insider, agenda, valPeers, capRank }: Props) {
   const { tx, lang } = useLang();
   const horizon: Horizon = 1;
   const [tab, setTab] = useState<Tab>("ringkasan");
@@ -161,6 +163,8 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
         </dl>
       </motion.header>
 
+      <StockBrief s={s} agenda={agenda?.items ?? []} peers={peers.map((p) => p.symbol)} capRank={capRank ?? null} total={total} />
+
       <Perspectives s={s} candles={candles} cone={cone ?? null} fin={fin} total={total} />
 
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }} className="mt-6 min-w-0 rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
@@ -202,7 +206,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
               </div>
             )}
             {tab === "berita" && (
-              <div className="max-w-3xl">
+              <div>
                 <NewsList items={news} />
                 <p className="mt-4 text-[12px] text-muted">
                   <T id="Ringkasan berita dari Sectors (berbahasa Inggris), tautan menuju sumber aslinya." en="News summaries from Sectors, linking to the original source." />

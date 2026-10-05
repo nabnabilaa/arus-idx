@@ -58,12 +58,12 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
   );
 
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Apa yang dilakukan orang dalam dengan sahamnya sendiri" en="What insiders do with their own shares" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Direksi, komisaris, dan pemegang saham besar wajib melapor ke KSEI setiap kali membeli atau menjual. Arus membaca semua laporan itu: siapa yang terus menambah, di harga berapa, seberapa besar kepemilikannya sekarang, dan apa yang terjadi pada harga sesudahnya."
             en="Directors, commissioners and major shareholders must report to KSEI every time they buy or sell. Arus reads every filing: who keeps adding, at what price, how big their stake is now, and what the price did afterwards."
@@ -86,7 +86,7 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
       </section>
 
       {/* what followed */}
-      <section className="mt-12">
+      <section className="mt-10">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           <T id="Kalau orang dalam membeli, apakah sahamnya lalu unggul?" en="When insiders buy, does the stock then do better?" />
         </h2>
@@ -110,7 +110,7 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
       </section>
 
       {/* chains */}
-      <section id="rantai" className="mt-12 scroll-mt-24">
+      <section id="rantai" className="mt-10 scroll-mt-24">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -151,7 +151,7 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
       </section>
 
       {/* every filing */}
-      <section id="semua-laporan" className="mt-12 scroll-mt-24">
+      <section id="semua-laporan" className="mt-10 scroll-mt-24">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           <T id="Semua laporan" en="Every filing" /> · <span className="num text-ink-2">{rows.length}</span>
         </h2>

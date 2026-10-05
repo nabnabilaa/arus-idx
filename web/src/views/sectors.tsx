@@ -38,12 +38,12 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
   ];
 
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Sektor mana yang sedang kuat?" en="Which sectors are strong right now?" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Saham jarang melawan arus sektornya. Halaman ini menjawab dua pertanyaan untuk setiap kelompok industri: apakah harganya sedang naik lebih cepat dari IHSG, dan apakah investor asing sedang membeli."
             en="Stocks rarely swim against their sector. This page answers two questions for every industry group: is it rising faster than IHSG, and are foreign investors buying?"
@@ -70,7 +70,7 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
         ))}
       </section>
 
-      <section className="mt-14">
+      <section className="mt-11">
         <h2 className="text-2xl font-semibold tracking-tight">
           <T id="Empat kelompok sektor" en="Four sector groups" />
         </h2>
@@ -139,7 +139,7 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
         </div>
       </section>
 
-      <section id="semua-sektor" className="mt-14 scroll-mt-28">
+      <section id="semua-sektor" className="mt-11 scroll-mt-28">
         <h2 className="text-2xl font-semibold tracking-tight">
           <T id="Semua sektor" en="All sectors" />
         </h2>
@@ -223,7 +223,7 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
       </section>
 
       {dates.length > 0 && (
-        <section className="mt-14">
+        <section className="mt-11">
           <button onClick={() => setHistory((h) => !h)} aria-expanded={history} className="flex w-full cursor-pointer items-center justify-between gap-3 border-y border-line py-4 text-left">
             <span>
               <span className="block text-[16px] font-semibold">

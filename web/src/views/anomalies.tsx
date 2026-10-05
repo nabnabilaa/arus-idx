@@ -112,12 +112,12 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
   const visible = rows.slice(0, all ? rows.length : 10);
 
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Saham yang hari ini keluar dari kebiasaannya" en="Stocks breaking their own habits today" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Gunanya: tahu lebih awal saham mana yang sedang kedatangan sesuatu, entah dana besar, berita, atau institusi yang masuk-keluar. Setiap saham dibandingkan dengan kebiasaannya sendiri 3 bulan terakhir, jadi volume dua kali lipat di bank besar terdeteksi, sementara di saham kecil yang memang liar tidak."
             en="Why it matters: spot early which stocks have something going on, whether big money, news, or institutions moving. Each stock is compared with its own last 3 months, so double volume at a big bank gets flagged while it wouldn't at an always-wild small cap."
@@ -126,7 +126,7 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
       </motion.header>
 
       {/* what usually follows */}
-      <section className="mt-12">
+      <section className="mt-10">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           <T id="Biasanya apa yang terjadi sesudahnya?" en="What usually follows?" />
         </h2>
@@ -178,7 +178,7 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
       </section>
 
       {/* today */}
-      <section className="mt-12">
+      <section className="mt-10">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">

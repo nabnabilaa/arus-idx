@@ -52,12 +52,12 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
     .sort((a, b) => b[sortBy] - a[sortBy]);
 
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Siapa yang membeli, siapa yang menjual" en="Who is buying, who is selling" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Dua hal yang sering dipantau trader: ke mana uang investor asing mengalir, dan apakah yang membeli itu institusi besar atau investor ritel. Pola yang paling patut diwaspadai: institusi diam-diam menjual, sementara ritel justru membeli."
             en="Two things traders watch: where foreign money flows, and whether buyers are large institutions or retail. The pattern to watch most: institutions quietly selling while retail buys."
@@ -196,45 +196,61 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
           <span className="text-[12.5px] text-muted">{tx({ id: `${foot.length} saham`, en: `${foot.length} stocks` })}</span>
         </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13.5px]">
-            <thead>
-              <tr className="text-left text-xs text-muted">
-                <th className="py-3 pr-4 font-normal"><T id="Saham" en="Stock" /></th>
-                <th className="py-3 pr-4 font-normal"><T id="Arah broker" en="Broker tilt" /></th>
-                <th className="py-3 pr-4 font-normal"><T id="Pembeli utama" en="Top buyer" /></th>
-                <th className="py-3 pr-4 text-right font-normal"><T id="Institusi" en="Institutions" /></th>
-                <th className="py-3 pr-4 text-right font-normal"><T id="Ritel" en="Retail" /></th>
-                <th className="py-3 pr-2 text-right font-normal"><T id="Asing" en="Foreign" /></th>
-              </tr>
-            </thead>
-            <tbody>
-              {foot.slice(page * PER, page * PER + PER).map((r) => (
-                <tr key={r.sym} className="hover:bg-surface">
-                  <td className="border-t border-line py-2.5 pr-4">
-                    <Link href={`/saham/${r.sym}/`} className="font-semibold text-ink hover:text-arus">{r.sym}</Link>
-                    <div className="max-w-52 truncate text-[11.5px] text-muted">{r.name}</div>
-                  </td>
-                  <td className={`border-t border-line py-2.5 pr-4 ${r.tilt > 0.15 ? "text-up" : r.tilt < -0.15 ? "text-down" : "text-ink-2"}`}>
-                    {r.tilt > 0.15 ? tx({ id: "Akumulasi", en: "Accumulation" }) : r.tilt < -0.15 ? tx({ id: "Distribusi", en: "Distribution" }) : tx({ id: "Seimbang", en: "Balanced" })}
-                  </td>
-                  <td className="border-t border-line py-2.5 pr-4">
-                    {r.top ? (
-                      <Link href={`/broker/${r.top.code}/`} className="inline-flex items-center gap-1.5 font-medium text-ink hover:text-arus">
-                        {cohortDot(r.top.cohort, r.top.foreign)} {r.top.code}
-                      </Link>
-                    ) : (
-                      "–"
-                    )}
-                  </td>
-                  <td className={`num border-t border-line py-2.5 pr-4 text-right ${r.inst >= 0 ? "text-up" : "text-down"}`}>{idr(r.inst, lang)}</td>
-                  <td className={`num border-t border-line py-2.5 pr-4 text-right ${r.retail >= 0 ? "text-up" : "text-down"}`}>{idr(r.retail, lang)}</td>
-                  <td className={`num border-t border-line py-2.5 pr-2 text-right ${r.foreign >= 0 ? "text-up" : "text-down"}`}>{idr(r.foreign, lang)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="mt-4 grid gap-2.5 lg:grid-cols-2">
+          {foot.slice(page * PER, page * PER + PER).map((r) => {
+            const tilt = r.tilt > 0.15 ? "up" : r.tilt < -0.15 ? "down" : "flat";
+            // each card on its own scale: the bars show who dominates this stock's flow
+            const rowMax = Math.max(1, Math.abs(r.inst), Math.abs(r.retail), Math.abs(r.foreign));
+            return (
+              <li key={r.sym} className="rounded-xl bg-surface px-4 py-3 ring-1 ring-line transition-colors duration-150 hover:ring-line-strong">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link href={`/saham/${r.sym}/`} className="text-[15px] font-semibold text-ink hover:text-arus">{r.sym}</Link>
+                    <span className="ml-2 truncate text-[12px] text-muted">{(r.name ?? "").replace(/^PT\.? /, "").replace(/ Tbk\.?$/, "")}</span>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium ring-1 ${
+                      tilt === "up" ? "bg-up/10 text-[#9cc5f5] ring-up/30" : tilt === "down" ? "bg-down/10 text-[#f0a3a3] ring-down/30" : "text-ink-2 ring-line-strong"
+                    }`}
+                  >
+                    {tilt === "up" ? tx({ id: "Akumulasi", en: "Accumulation" }) : tilt === "down" ? tx({ id: "Distribusi", en: "Distribution" }) : tx({ id: "Seimbang", en: "Balanced" })}
+                  </span>
+                </div>
+                <div className="mt-2.5 grid grid-cols-3 gap-3">
+                  {(
+                    [
+                      [tx({ id: "Institusi", en: "Institutions" }), r.inst],
+                      [tx({ id: "Ritel", en: "Retail" }), r.retail],
+                      [tx({ id: "Asing", en: "Foreign" }), r.foreign],
+                    ] as [string, number][]
+                  ).map(([l, v]) => (
+                    <div key={l}>
+                      <div className="flex items-baseline justify-between gap-1">
+                        <span className="text-[11px] text-muted">{l}</span>
+                        <span className={`num text-[12.5px] ${v >= 0 ? "text-up" : "text-down"}`}>{idr(v, lang)}</span>
+                      </div>
+                      <div className="relative mt-1 h-2 rounded-full bg-raised">
+                        <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
+                        <span
+                          className={`absolute inset-y-0 rounded-full ${v >= 0 ? "left-1/2 bg-up" : "right-1/2 bg-down"}`}
+                          style={{ width: `${Math.min(50, (Math.abs(v) / rowMax) * 50)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {r.top && (
+                  <div className="mt-2.5 flex items-center gap-1.5 text-[12px] text-muted">
+                    {tx({ id: "Pembeli utama", en: "Top buyer" })}
+                    <Link href={`/broker/${r.top.code}/`} className="inline-flex items-center gap-1 font-medium text-ink hover:text-arus">
+                      {cohortDot(r.top.cohort, r.top.foreign)} {r.top.code}
+                    </Link>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
         {foot.length > PER && <Pager page={page} pages={Math.ceil(foot.length / PER)} total={foot.length} per={PER} onChange={setPage} />}
         {foot.length === 0 && (
           <p className="py-8 text-[14px] text-muted">

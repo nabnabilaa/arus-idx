@@ -138,38 +138,34 @@ function NewsItemRow({ n }: { n: NewsItem }) {
     host = new URL(n.url).hostname.replace(/^www\./, "");
   } catch {}
   return (
-    <li className="flex gap-4 py-4">
-      {n.thumb ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={n.thumb} alt="" loading="lazy" className="hidden h-20 w-28 shrink-0 rounded-lg object-cover ring-1 ring-line sm:block" />
-      ) : (
-        <div className="hidden h-20 w-28 shrink-0 rounded-lg bg-raised ring-1 ring-line sm:block" />
+    <li className="flex flex-col rounded-xl bg-surface p-4 ring-1 ring-line transition-colors duration-150 hover:ring-line-strong">
+      <div className="flex flex-wrap items-center gap-x-2 text-[11.5px] text-muted">
+        <span className="num">{dateLabel(n.ts.slice(0, 10), lang)}</span>
+        {host && (
+          <>
+            <span>·</span>
+            <span className="truncate">{host}</span>
+          </>
+        )}
+      </div>
+      <a href={n.url} target="_blank" rel="noreferrer" className="group mt-1.5 block">
+        <span className="text-[14.5px] font-semibold leading-snug text-ink group-hover:text-arus">{n.title}</span>
+      </a>
+      {n.body && (
+        <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="mt-1.5 cursor-pointer text-left">
+          <span className={`block text-[13px] leading-relaxed text-ink-2 ${open ? "" : "line-clamp-2"}`}>{n.body}</span>
+          <span className="mt-0.5 block text-[12px] text-arus hover:underline">{open ? tx({ id: "Ringkas", en: "Less" }) : tx({ id: "Selengkapnya", en: "More" })}</span>
+        </button>
       )}
-      <div className="min-w-0 flex-1">
-        <a href={n.url} target="_blank" rel="noreferrer" className="group block">
-          <span className="text-[15px] font-semibold leading-snug text-ink group-hover:text-arus">{n.title}</span>
-        </a>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
-          <span>{dateLabel(n.ts.slice(0, 10), lang)}</span>
-          {host && (
-            <>
-              <span>·</span>
-              <span>{host}</span>
-            </>
-          )}
+      {n.symbols.length > 0 && (
+        <div className="mt-auto flex flex-wrap gap-1.5 pt-3">
           {n.symbols.slice(0, 6).map((sym) => (
-            <Link key={sym} href={`/saham/${sym}/`} className="rounded bg-raised px-1.5 py-0.5 font-medium text-ink-2 ring-1 ring-line hover:text-arus">
+            <Link key={sym} href={`/saham/${sym}/`} className="rounded bg-raised px-1.5 py-0.5 text-[11.5px] font-medium text-ink-2 ring-1 ring-line hover:text-arus">
               {sym}
             </Link>
           ))}
         </div>
-        {n.body && (
-          <button onClick={() => setOpen((o) => !o)} aria-expanded={open} className="mt-1.5 cursor-pointer text-[12.5px] text-arus hover:underline">
-            {open ? tx({ id: "Tutup ringkasan", en: "Hide summary" }) : tx({ id: "Baca ringkasan", en: "Read summary" })}
-          </button>
-        )}
-        {open && <p className="mt-1.5 max-w-[75ch] text-[13.5px] leading-relaxed text-ink-2">{n.body}</p>}
-      </div>
+      )}
     </li>
   );
 }
@@ -184,7 +180,7 @@ export function NewsList({ items, searchable = false }: { items: NewsItem[]; sea
     ? items.filter((n) => n.title.toLowerCase().includes(t) || (n.body ?? "").toLowerCase().includes(t) || n.symbols.some((s) => s.toLowerCase() === t) || n.tags.some((g) => g.toLowerCase().includes(t)))
     : items;
   return (
-    <div className="max-w-4xl">
+    <div>
       {searchable && (
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-lg bg-surface px-3 ring-1 ring-line focus-within:ring-arus/60 sm:max-w-96">
@@ -194,7 +190,7 @@ export function NewsList({ items, searchable = false }: { items: NewsItem[]; sea
           <span className="text-[12.5px] text-muted">{tx({ id: `${shown.length} berita`, en: `${shown.length} articles` })}</span>
         </div>
       )}
-      <ul className="divide-y divide-line border-y border-line">
+      <ul className="grid gap-3 md:grid-cols-2">
         {shown.map((n) => (
           <NewsItemRow key={n.url} n={n} />
         ))}

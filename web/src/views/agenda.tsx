@@ -388,12 +388,12 @@ export function AgendaView({ book, ranked }: { book: AgendaBook; ranked: string[
   const rights = up.filter((it) => it.type === "right_issue");
 
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Tanggal-tanggal yang menggerakkan harga" en="The dates that move prices" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Dividen, RUPS, rights issue, dan stock split dalam satu kalender: kapan terakhir beli, berapa yield-nya dari harga sekarang, seberapa besar kepemilikanmu terencerkan, dan apa yang biasanya terjadi pada harga."
             en="Dividends, AGMs, rights issues and splits in one calendar: the last day to buy, the yield at today's price, how much your stake gets diluted, and what usually happens to the price."
@@ -416,7 +416,7 @@ export function AgendaView({ book, ranked }: { book: AgendaBook; ranked: string[
         </div>
       </motion.header>
 
-      <section className="mt-12">
+      <section className="mt-10">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           <T id="Paling dekat" en="Coming up first" />
         </h2>
@@ -426,7 +426,7 @@ export function AgendaView({ book, ranked }: { book: AgendaBook; ranked: string[
       </section>
 
       {divs.length > 0 && (
-        <section className="mt-14">
+        <section className="mt-11">
           <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
             <T id="Dividen, dari yield tertinggi" en="Dividends, highest yield first" />
           </h2>
@@ -440,7 +440,7 @@ export function AgendaView({ book, ranked }: { book: AgendaBook; ranked: string[
       )}
 
       {st && (
-        <section className="mt-14 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-center">
+        <section className="mt-11 grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-center">
           <div className="rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
             <ExDividendChart st={st} />
           </div>
@@ -471,7 +471,7 @@ export function AgendaView({ book, ranked }: { book: AgendaBook; ranked: string[
         </section>
       )}
 
-      <section className="mt-14">
+      <section className="mt-11">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           <T id="Kalender" en="Calendar" />
         </h2>
@@ -484,7 +484,7 @@ export function AgendaView({ book, ranked }: { book: AgendaBook; ranked: string[
       </section>
 
       {rights.length > 0 && (
-        <section className="mt-14">
+        <section className="mt-11">
           <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
             <T id="Rights issue: seberapa besar porsimu terencerkan" en="Rights issues: how much your stake gets diluted" />
           </h2>
@@ -494,7 +494,7 @@ export function AgendaView({ book, ranked }: { book: AgendaBook; ranked: string[
         </section>
       )}
 
-      <p className="mt-12 max-w-[75ch] text-[13px] leading-relaxed text-muted">
+      <p className="mt-10 max-w-[75ch] text-[13px] leading-relaxed text-muted">
         <T
           id="Kalender aksi korporasi dari Sectors. Yield dihitung dari harga penutupan terakhir. Jadwal bisa berubah; cek keterbukaan informasi emiten sebelum bertransaksi. Informasi, bukan nasihat keuangan."
           en="Corporate-action calendar from Sectors. Yield uses the latest close. Schedules can change; check the company's disclosure before trading. Information, not financial advice."

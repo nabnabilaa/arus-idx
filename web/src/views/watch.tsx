@@ -34,12 +34,12 @@ export function WatchView({ stocks, asOf, total }: { stocks: CompactStock[]; asO
   const withAlerts = mine.filter((s) => alertsFor(s).length > 0);
 
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Pantauanku" en="My watchlist" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           {tx({
             id: `Saham yang kamu beri bintang, dengan kondisi per ${dateLabel(asOf, "id")} dan peringatan kalau ada yang perlu dilihat ulang. Daftar ini tersimpan di browser ini saja. Untuk notifikasi otomatis, pantau juga lewat bot Telegram (/pantau KODE).`,
             en: `The stocks you starred, as of ${dateLabel(asOf, "en")}, with alerts when something deserves a second look. This list lives in this browser only. For automatic pings, also watch them in the Telegram bot (/pantau CODE).`,

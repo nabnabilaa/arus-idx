@@ -9,7 +9,7 @@ import { FlowField } from "@/components/flow-field";
 import { MarketMap } from "@/components/charts/treemap";
 import { Term } from "@/components/term";
 import { Badge, HorizonToggle, Reason, ScoreBar, Segmented, StarButton, Toggle } from "@/components/ui";
-import { FEATURE, SECTOR_ID } from "@/lib/features";
+import { FEATURE, SECTOR_ID, SUBSECTOR_ID } from "@/lib/features";
 import { dateLabel, idr, price, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
 import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/published";
@@ -682,25 +682,31 @@ function Screener({ scored }: { scored: Scored[] }) {
         <table className="w-full border-separate border-spacing-0 text-[13.5px]">
           <thead>
             <tr className="text-left text-xs text-muted">
-              <th className="w-10 py-3 font-normal" />
-              <th className="py-3 pr-4 font-normal">
+              <th className="w-10 py-2.5 font-normal" />
+              <th className="w-[24%] py-2 pr-4 font-normal">
                 <T id="Saham" en="Stock" />
               </th>
-              <th className="py-3 pr-4 text-right font-normal">
+              <th className="py-2 pr-4 font-normal">
+                <T id="Subsektor" en="Sub-sector" />
+              </th>
+              <th className="py-2 pr-4 text-right font-normal">
                 <T id="Harga" en="Price" />
               </th>
-              <th className="py-3 pr-4 text-right font-normal">
+              <th className="py-2 pr-4 text-right font-normal">
                 <T id="Hari ini" en="Today" />
               </th>
-              <th className="py-3 pr-4 font-normal">
+              <th className="py-2 pr-4 text-right font-normal">
+                <T id="1 bulan" en="1 month" />
+              </th>
+              <th className="py-2 pr-4 font-normal">
                 <Term k="score">
                   <T id="Skor besok" en="Next-day score" />
                 </Term>
               </th>
-              <th className="py-3 pr-4 font-normal">
+              <th className="py-2 pr-4 font-normal">
                 <T id="Keuangan" en="Financials" />
               </th>
-              <th className="py-3 pr-2 text-right font-normal">
+              <th className="py-2 pr-2 text-right font-normal">
                 <T id="Asing 1 bln" en="Foreign 1 mo" />
               </th>
             </tr>
@@ -709,28 +715,30 @@ function Screener({ scored }: { scored: Scored[] }) {
             {rows.slice(page * PER, page * PER + PER).map(({ s, g, v }) => {
               return (
                 <tr key={s.symbol} className="group transition-colors duration-150 hover:bg-surface">
-                  <td className="border-t border-line py-2">
+                  <td className="border-t border-line py-1.5">
                     <StarButton symbol={s.symbol} />
                   </td>
-                  <td className="border-t border-line py-2.5 pr-4">
+                  <td className="border-t border-line py-2 pr-4">
                     <Link href={`/saham/${s.symbol}/`} className="block">
                       <span className="flex items-center gap-2 font-semibold text-ink group-hover:text-arus">
                         {s.symbol}
                         {s.sharia && <Badge tone="good">{tx({ id: "Syariah", en: "Sharia" })}</Badge>}
                         <RiskBadge s={s} />
                       </span>
-                      <span className="block max-w-64 truncate text-xs text-muted">{s.name}</span>
+                      <span className="block max-w-60 truncate text-[11.5px] text-muted">{(s.name ?? "").replace(/^PT\.? /, "").replace(/ Tbk\.?$/, "")}</span>
                     </Link>
                   </td>
-                  <td className="num border-t border-line py-2.5 pr-4 text-right text-ink-2">{price(s.price, lang)}</td>
-                  <td className={`num border-t border-line py-2.5 pr-4 text-right ${(s.ret_1 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</td>
-                  <td className="border-t border-line py-2.5 pr-4">
+                  <td className="max-w-44 truncate border-t border-line py-2 pr-4 text-[12.5px] text-muted">{s.sub_sector ? (lang === "id" ? SUBSECTOR_ID[s.sub_sector] ?? s.sub_sector : s.sub_sector) : "–"}</td>
+                  <td className="num border-t border-line py-2 pr-4 text-right text-ink-2">{price(s.price, lang)}</td>
+                  <td className={`num border-t border-line py-2 pr-4 text-right ${(s.ret_1 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</td>
+                  <td className={`num border-t border-line py-2 pr-4 text-right ${(s.ret_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((s.ret_20 ?? 0) * 100, 1, "%")}</td>
+                  <td className="border-t border-line py-2 pr-4">
                     <div className="flex items-center gap-2.5">
                       <span className="num w-7 text-[15px] font-semibold" style={{ color: VERDICT[v].color }}>{Math.round(g.conf * 100)}</span>
                       <span className="text-[12px] text-muted">{tx(VERDICT[v].label)}</span>
                     </div>
                   </td>
-                  <td className="border-t border-line py-2.5 pr-4">
+                  <td className="border-t border-line py-2 pr-4">
                     {s.fin_grade ? (
                       <span className={FIN_GRADE[s.fin_grade].tone}>
                         {tx(FIN_GRADE[s.fin_grade].label)} <span className="num text-[12px] text-muted">{s.fin_score}/{s.fin_n}</span>
@@ -739,7 +747,7 @@ function Screener({ scored }: { scored: Scored[] }) {
                       <span className="text-muted">–</span>
                     )}
                   </td>
-                  <td className={`num border-t border-line py-2.5 pr-2 text-right ${(s.ff_net_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{idr(s.ff_net_20, lang)}</td>
+                  <td className={`num border-t border-line py-2 pr-2 text-right ${(s.ff_net_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{idr(s.ff_net_20, lang)}</td>
                 </tr>
               );
             })}

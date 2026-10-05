@@ -76,12 +76,12 @@ export function AgentView({ digest, track }: { digest: { as_of: string; id: stri
   const strong = t.strong;
   const caution = t.caution;
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Arus tetap bekerja saat Anda tidak membuka web" en="Arus keeps working when you're not looking" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Sebuah agen otomatis menjalankan seluruh proses setiap hari bursa: mengambil data, belajar ulang, menilai dirinya sendiri, lalu mengirim ringkasan ke Telegram. Anda cukup membaca dan memutuskan."
             en="An automated agent runs the whole process every trading day: fetch data, re-learn, grade itself, then send a digest to Telegram. You just read and decide."
@@ -89,7 +89,7 @@ export function AgentView({ digest, track }: { digest: { as_of: string; id: stri
         </p>
       </motion.header>
 
-      <ol className="mt-12 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
+      <ol className="mt-10 grid gap-8 md:grid-cols-2 xl:grid-cols-4">
         {STEPS.map((s, i) => (
           <motion.li key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 + i * 0.07, ease: EASE }} className="border-t border-line pt-5">
             <div className="flex items-center justify-between">
@@ -156,7 +156,7 @@ export function AgentView({ digest, track }: { digest: { as_of: string; id: stri
             </>
           )}
 
-          <h2 className="mt-14 text-2xl font-semibold tracking-tight">
+          <h2 className="mt-11 text-2xl font-semibold tracking-tight">
             <T id="Perintah bot Telegram" en="Telegram bot commands" />
           </h2>
           <ul className="mt-5 divide-y divide-line border-y border-line">

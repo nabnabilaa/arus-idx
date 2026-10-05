@@ -97,7 +97,7 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
   const maxSec = Math.max(...w.sectors.map((x) => Math.abs(x.ret)), 1e-9);
 
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
         <div className="flex flex-wrap items-center gap-3">
           <p className="num text-[13px] font-medium text-arus">
@@ -105,10 +105,10 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
           </p>
           <ShareCard file={WEEKLY_CARD} />
         </div>
-        <h1 className="mt-2 text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="mt-2 text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Rekap pekan ini" en="This week in review" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Sepekan bursa dalam satu halaman, dihitung otomatis dari data resmi BEI dan Sectors: arah pasar, siapa yang bergerak, ke mana dana asing mengalir, apa yang dilakukan orang dalam, dan agenda pekan depan."
             en="A week of trading on one page, computed from official IDX and Sectors data: market direction, the movers, where foreign money went, what insiders did, and next week's agenda."
@@ -135,7 +135,7 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
       <WeekLookup w={w} ranked={isRanked} />
 
       {/* the read */}
-      <section className="mt-12 grid gap-4 lg:grid-cols-2">
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl bg-aqua/5 p-5 ring-1 ring-aqua/25">
           <h2 className="flex items-center gap-2 text-[16px] font-semibold text-[#7fd4a8]">
             <ThumbsUp size={17} /> <T id="Yang mendukung" en="What supports" />
@@ -161,7 +161,7 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
       </section>
 
       {/* movers */}
-      <section className="mt-12 grid gap-4 lg:grid-cols-2">
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
         <Panel title={tx({ id: "Naik paling tinggi", en: "Top gainers" })} note={tx({ id: "Hanya saham dengan transaksi ≥ Rp1 miliar/hari.", en: "Only stocks trading ≥ IDR 1B a day." })}>
           <ul>{w.gainers.map((m) => <StockLine key={m.s} s={m.s} name={m.name} ranked={isRanked.has(m.s)} right={<span className="text-up">{pctS(m.ret)}</span>} sub={price(m.close, lang)} />)}</ul>
         </Panel>
@@ -178,7 +178,7 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
         </p>
       )}
 
-      <section className="mt-12 grid gap-4 lg:grid-cols-2">
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
         <Panel title={tx({ id: "Paling diborong asing", en: "Most bought by foreigners" })}>
           <ul>{w.foreign.buy.map((m) => <StockLine key={m.s} s={m.s} name={m.name} ranked={isRanked.has(m.s)} right={<span className="text-up">{idr(m.net, lang)}</span>} sub={pctS(m.ret)} />)}</ul>
         </Panel>
@@ -187,7 +187,7 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
         </Panel>
       </section>
 
-      <section className="mt-12 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <section className="mt-10 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <Panel title={tx({ id: "Sektor sepekan", en: "Sectors this week" })} note={tx({ id: "Median perubahan harga saham di tiap sektor.", en: "Median price change of the stocks in each sector." })}>
           <ul className="space-y-2">
             {w.sectors.map((x, i) => (
@@ -225,7 +225,7 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
         </Panel>
       </section>
 
-      <section className="mt-12 grid gap-4 lg:grid-cols-2">
+      <section className="mt-10 grid gap-4 lg:grid-cols-2">
         <Panel
           title={tx({ id: "Orang dalam pekan ini", en: "Insiders this week" })}
           note={tx({ id: `${w.insiders.n} laporan transaksi pasar · beli ${idr(w.insiders.buy, "id")} · jual ${idr(w.insiders.sell, "id")}`, en: `${w.insiders.n} market-trade filings · bought ${idr(w.insiders.buy, "en")} · sold ${idr(w.insiders.sell, "en")}` })}

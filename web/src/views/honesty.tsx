@@ -134,12 +134,12 @@ export function HonestyView({ meta, models, coneCoverage, anomalyHistory }: Pick
   ];
 
   return (
-    <div className="pt-10 sm:pt-12">
+    <div className="pt-7 sm:pt-9">
       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} className="max-w-3xl">
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-[-0.03em] text-balance sm:text-5xl">
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-[-0.025em] text-balance sm:text-[2.4rem]">
           <T id="Seberapa bisa dipercaya angka-angka Arus?" en="How far can you trust Arus' numbers?" />
         </h1>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink-2 sm:text-[17px]">
+        <p className="mt-3 max-w-[68ch] text-[15px] leading-relaxed text-ink-2 sm:text-[15.5px]">
           <T
             id="Setiap angka di Arus punya rapor di sini: apa yang diklaim, bagaimana diuji, dan hasilnya. Pengujiannya seperti dipakai sungguhan: model hanya belajar dari masa lalu, lalu dinilai pada bulan-bulan sesudahnya yang belum pernah ia lihat."
             en="Every number in Arus has a report card here: what it claims, how it was tested, and the result. Testing mimics real use: the model learns only from the past, then is graded on later months it has never seen."
@@ -153,7 +153,7 @@ export function HonestyView({ meta, models, coneCoverage, anomalyHistory }: Pick
         </div>
       </motion.header>
 
-      <section className="mt-12">
+      <section className="mt-10">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           <T id="Rapor Arus" en="Arus report card" />
         </h2>
@@ -203,7 +203,7 @@ export function HonestyView({ meta, models, coneCoverage, anomalyHistory }: Pick
         </div>
       </section>
 
-      <div className="mt-12 grid gap-x-12 gap-y-10 md:grid-cols-2">
+      <div className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-2">
         {answers.map((x, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 + i * 0.07, ease: EASE }} className="border-t border-line pt-6">
             <h2 className="text-[16px] font-semibold leading-snug text-ink">{tx(x.q)}</h2>

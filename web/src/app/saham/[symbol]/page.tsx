@@ -43,6 +43,7 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
       coneCoverage={bundle.coneCoverage ?? null}
       peers={bundle.ranking
         .filter((r) => r.sub_sector === stock.sub_sector && r.symbol !== symbol)
+        .sort((a, b) => (b.market_cap ?? 0) - (a.market_cap ?? 0))
         .slice(0, 8)
         .map((r) => ({ symbol: r.symbol, name: r.name, fin_grade: r.fin_grade, fin_score: r.fin_score, fin_n: r.fin_n, pct_value: r.pct_value, rev_cagr: r.rev_cagr }))}
       fin={bundle.financials?.[symbol] ?? null}
@@ -50,6 +51,7 @@ export default async function Page({ params }: { params: Promise<{ symbol: strin
       summary={bundle.brokerSummary?.[symbol] ?? null}
       news={bundle.news?.[symbol] ?? []}
       asOf={bundle.meta.as_of}
+      capRank={[...bundle.ranking].sort((a, b) => (b.market_cap ?? 0) - (a.market_cap ?? 0)).findIndex((r) => r.symbol === symbol) + 1 || null}
       valPeers={bundle.ranking
         .filter((r) => r.sector === stock.sector && r.symbol !== symbol && r.pb_mrq != null && r.pb_mrq > 0 && r.roe_ttm != null)
         .map((r) => ({ symbol: r.symbol, pb: r.pb_mrq as number, roe: r.roe_ttm as number, sub: r.sub_sector === stock.sub_sector }))}

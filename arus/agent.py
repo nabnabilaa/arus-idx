@@ -453,6 +453,11 @@ def handle(text: str, chat_id: int, st) -> str:
     V = VERDICT if lang == "id" else VERDICT_EN
     if cmd == "/start":
         st.set(chat_id)
+        # deep link from a stock page: t.me/<bot>?start=pantau_BBCA
+        if arg.startswith("PANTAU_") and any(x["symbol"] == arg[7:] for x in b["ranking"]):
+            st.add_watch(chat_id, arg[7:])
+            return (f"⭐ {arg[7:]} ditambahkan ke pantauan. Kamu akan dapat peringatan saat ada yang tidak biasa.\n\n" + HELP_ID) if lang == "id" \
+                else (f"⭐ {arg[7:]} added to your watchlist. You'll be alerted when something unusual happens.\n\n" + HELP_EN)
         return ("Halo! Saya Arus. Setiap sore hari bursa saya kirim ringkasan peluang saham IDX.\n\n" + HELP_ID) if lang == "id" else ("Hi! I'm Arus. Every trading-day evening I send an IDX odds digest.\n\n" + HELP_EN)
     if cmd in ("/help", "/bantuan"):
         return HELP_ID if lang == "id" else HELP_EN

@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/telegram.py": {
+      "includeFiles": "{arus/**,snapshot/arus.json,snapshot/track.json}",
+      "maxDuration": 30
+    }
+  }
+}

@@ -68,7 +68,7 @@ Sectors API ──► client.py (cache permanen + meteran kredit)      BEI ─�
 
 ```bash
 # 1. Pipeline data (Python 3.11+)
-pip install -r requirements.txt
+pip install -r requirements-pipeline.txt
 cp .env.example .env              # isi SECTORS_API_KEY (dan TELEGRAM_BOT_TOKEN untuk bot)
 python -m arus.ingest --dry-run   # estimasi kredit
 python -m arus.ingest             # histori, fundamental, konteks (ter-cache, bisa dilanjutkan)
@@ -87,6 +87,21 @@ python -m arus.agent bot         # bot menjawab perintah & pertanyaan
 ```
 
 Situs membaca `web/src/data/`, jadi bisa dibuka **tanpa API key**.
+
+## Deploy (semua di Vercel)
+
+| Proyek Vercel | Root directory | Isi |
+|---|---|---|
+| Situs | `web` | Next.js ekspor statis, tanpa pengaturan tambahan |
+| Bot | `.` (akar repo) | Fungsi `api/telegram.py` (webhook Telegram), penyimpanan pantauan di Upstash Redis |
+
+Bot: tambahkan integrasi **Upstash for Redis** di Vercel (mengisi `KV_REST_API_URL`/`KV_REST_API_TOKEN`), isi `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_WEBHOOK_SECRET`, lalu arahkan Telegram ke webhook:
+
+```bash
+python -m arus.agent set-webhook --url https://<proyek-bot>.vercel.app/api/telegram
+```
+
+Agen harian (`scripts/daily.ps1`) memperbarui data, lalu commit & push; Vercel membangun ulang situs dan bot otomatis.
 
 ## Bot Telegram
 

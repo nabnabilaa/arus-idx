@@ -1,0 +1,8 @@
+web
+data
+docs
+tests
+scripts
+snapshot/series.json
+snapshot/brokers.json
+snapshot/history

@@ -17,7 +17,7 @@ subscribed to the daily digest.
 
 import argparse
 import json
-import sqlite3
+import os
 import sys
 import time
 from datetime import date, datetime, timedelta
@@ -26,6 +26,7 @@ import requests
 
 from arus import config
 from arus.client import SectorsClient
+from arus.store import open_store
 
 SNAP = config.SNAPSHOT_DIR
 HIST = SNAP / "history"
@@ -43,7 +44,8 @@ def verdict_of(q: float | None) -> str:
 
 
 def env() -> dict:
-    out = {}
+    """Settings from the process environment (Vercel) overlaid with the local .env file."""
+    out = {k: v for k, v in os.environ.items() if k.startswith(("TELEGRAM_", "KV_", "UPSTASH_", "ARUS_", "SECTORS_"))}
     p = config.ROOT / ".env"
     if p.exists():
         for line in p.read_text(encoding="utf-8").splitlines():
@@ -278,24 +280,8 @@ def tg(method: str, token: str, **params):
     return r.json()
 
 
-def bot_db():
-    config.DATA_DIR.mkdir(exist_ok=True)
-    c = sqlite3.connect(BOT_DB)
-    c.executescript("""CREATE TABLE IF NOT EXISTS chats (chat_id INTEGER PRIMARY KEY, lang TEXT DEFAULT 'id');
-                       CREATE TABLE IF NOT EXISTS watch (chat_id INTEGER, symbol TEXT, PRIMARY KEY (chat_id, symbol));""")
-    for col in ("sharia INTEGER DEFAULT 0", "max_price REAL", "horizon INTEGER DEFAULT 20"):
-        try:
-            c.execute(f"ALTER TABLE chats ADD COLUMN {col}")
-        except sqlite3.OperationalError:
-            pass
-    return c
-
-
-def prefs(db, chat_id: int) -> dict:
-    row = db.execute("SELECT lang, sharia, max_price, horizon FROM chats WHERE chat_id=?", (chat_id,)).fetchone()
-    if not row:
-        return {"lang": "id", "sharia": False, "max_price": None, "horizon": 20}
-    return {"lang": row[0] or "id", "sharia": bool(row[1]), "max_price": row[2], "horizon": row[3] or 20}
+def store():
+    return open_store(env(), BOT_DB)
 
 
 def apply_prefs(stocks: list[dict], p: dict) -> list[dict]:
@@ -305,12 +291,6 @@ def apply_prefs(stocks: list[dict], p: dict) -> list[dict]:
     if p.get("max_price"):
         out = [s for s in out if (s.get("price") or 0) <= p["max_price"]]
     return out
-
-
-def set_pref(db, chat_id: int, col: str, val):
-    db.execute("INSERT OR IGNORE INTO chats (chat_id) VALUES (?)", (chat_id,))
-    db.execute(f"UPDATE chats SET {col}=? WHERE chat_id=?", (val, chat_id))
-    db.commit()
 
 
 ASK_RULES = (
@@ -368,14 +348,14 @@ def ask(question: str, bundle: dict, p: dict) -> str:
 
 
 def broadcast(text_for, token: str):
-    db = bot_db()
-    chats = db.execute("SELECT chat_id, lang FROM chats").fetchall()
+    st = store()
+    chats = st.chats()
     extra = env().get("TELEGRAM_CHAT_ID")
-    if extra and int(extra) not in {c for c, _ in chats}:
-        chats.append((int(extra), "id"))
-    for chat_id, lang in chats:
-        watch = [r[0] for r in db.execute("SELECT symbol FROM watch WHERE chat_id=?", (chat_id,))]
-        tg("sendMessage", token, chat_id=chat_id, text=text_for(lang, watch), parse_mode="HTML", disable_web_page_preview=True)
+    if extra and int(extra) not in chats:
+        chats.append(int(extra))
+    for chat_id in chats:
+        lang = st.prefs(chat_id)["lang"]
+        tg("sendMessage", token, chat_id=chat_id, text=text_for(lang, st.watch(chat_id)), parse_mode="HTML", disable_web_page_preview=True)
     return len(chats)
 
 
@@ -391,32 +371,28 @@ HELP_EN = ("Arus commands:\n/hari_ini – today's digest\n/saham CODE – score 
            "/pengaturan – your filters\n/bahasa id – ganti ke Bahasa Indonesia\n\nOr just ask, e.g.: is BBRI still worth watching?")
 
 
-def handle(text: str, chat_id: int, db) -> str:
-    row = db.execute("SELECT lang FROM chats WHERE chat_id=?", (chat_id,)).fetchone()
-    lang = row[0] if row else "id"
+def handle(text: str, chat_id: int, st) -> str:
+    p = st.prefs(chat_id)
+    lang = p["lang"]
     parts = text.strip().split()
     cmd = parts[0].split("@")[0].lower() if parts else ""
     arg = parts[1].upper() if len(parts) > 1 else ""
     b = load_bundle()
     V = VERDICT if lang == "id" else VERDICT_EN
     if cmd == "/start":
-        db.execute("INSERT OR IGNORE INTO chats (chat_id) VALUES (?)", (chat_id,))
-        db.commit()
+        st.set(chat_id)
         return ("Halo! Saya Arus. Setiap sore hari bursa saya kirim ringkasan peluang saham IDX.\n\n" + HELP_ID) if lang == "id" else ("Hi! I'm Arus. Every trading-day evening I send an IDX odds digest.\n\n" + HELP_EN)
     if cmd in ("/help", "/bantuan"):
         return HELP_ID if lang == "id" else HELP_EN
     if cmd == "/bahasa" and arg.lower() in ("id", "en"):
-        db.execute("INSERT INTO chats (chat_id, lang) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET lang=excluded.lang", (chat_id, arg.lower()))
-        db.commit()
+        st.set(chat_id, lang=arg.lower())
         return "Bahasa diubah ke Indonesia." if arg.lower() == "id" else "Language set to English."
     if cmd == "/hari_ini":
-        watch = [r[0] for r in db.execute("SELECT symbol FROM watch WHERE chat_id=?", (chat_id,))]
-        return digest_text(b, None, watch, lang)
+        return digest_text(b, None, st.watch(chat_id), lang)
     if cmd == "/saham" and arg:
         return stock_text(b, arg, lang)
-    p = prefs(db, chat_id)
     if cmd in ("/unggul", "/waspada"):
-        h = 20
+        h = published(b)[0]
         pool = apply_prefs(b["ranking"], p)
         rk = sorted(pool, key=lambda s: (s.get(f"conf_{h}") or 0), reverse=cmd == "/unggul")[:10]
         title = V["strong"] if cmd == "/unggul" else V["caution"]
@@ -425,18 +401,19 @@ def handle(text: str, chat_id: int, db) -> str:
             note.append("syariah" if lang == "id" else "sharia")
         if p["max_price"]:
             note.append(f"≤ {p['max_price']:,.0f}")
-        head = f"<b>{title} · 1 {'bulan' if lang == 'id' else 'month'}</b>" + (f" ({', '.join(note)})" if note else "")
+        span = ("besok" if lang == "id" else "next day") if h == 1 else ("1 bulan" if lang == "id" else "1 month")
+        head = f"<b>{title} · {span}</b>" + (f" ({', '.join(note)})" if note else "")
         return head + "\n" + "\n".join(f"{i + 1}. {s['symbol']} {round((s.get(f'conf_{h}') or .5) * 100)}/100 · {s.get('price'):,.0f}" for i, s in enumerate(rk))
     if cmd == "/syariah" and arg.lower() in ("on", "off"):
-        set_pref(db, chat_id, "sharia", 1 if arg.lower() == "on" else 0)
+        st.set(chat_id, sharia=arg.lower() == "on")
         return ("Filter syariah aktif (anggota JII70)." if arg.lower() == "on" else "Filter syariah dimatikan.") if lang == "id" else ("Sharia filter on (JII70 members)." if arg.lower() == "on" else "Sharia filter off.")
     if cmd == "/harga" and arg:
         if arg.lower() in ("SEMUA".lower(), "all"):
-            set_pref(db, chat_id, "max_price", None)
+            st.set(chat_id, max_price=None)
             return "Batas harga dihapus." if lang == "id" else "Price limit cleared."
         try:
             v = float(arg.replace(".", "").replace(",", ""))
-            set_pref(db, chat_id, "max_price", v)
+            st.set(chat_id, max_price=v)
             return f"Hanya menampilkan saham berharga ≤ {v:,.0f}." if lang == "id" else f"Showing stocks priced ≤ {v:,.0f} only."
         except ValueError:
             return "Contoh: /harga 1000" if lang == "id" else "Example: /harga 1000"
@@ -444,16 +421,15 @@ def handle(text: str, chat_id: int, db) -> str:
         return (f"Bahasa: {p['lang']}\nSyariah saja: {'ya' if p['sharia'] else 'tidak'}\nHarga maks: {p['max_price'] or 'semua'}"
                 if lang == "id" else f"Language: {p['lang']}\nSharia only: {'yes' if p['sharia'] else 'no'}\nMax price: {p['max_price'] or 'any'}")
     if cmd == "/pantau" and arg:
-        db.execute("INSERT OR IGNORE INTO chats (chat_id) VALUES (?)", (chat_id,))
-        db.execute("INSERT OR IGNORE INTO watch VALUES (?, ?)", (chat_id, arg))
-        db.commit()
+        if not any(x["symbol"] == arg for x in b["ranking"]):
+            return f"{arg} {'tidak ada di saham yang dipantau Arus.' if lang == 'id' else 'is not in the Arus universe.'}"
+        st.add_watch(chat_id, arg)
         return f"⭐ {arg} {'ditambahkan ke pantauan.' if lang == 'id' else 'added to your watchlist.'}"
     if cmd == "/hapus" and arg:
-        db.execute("DELETE FROM watch WHERE chat_id=? AND symbol=?", (chat_id, arg))
-        db.commit()
+        st.remove_watch(chat_id, arg)
         return f"{arg} {'dihapus.' if lang == 'id' else 'removed.'}"
     if cmd == "/pantauan":
-        syms = [r[0] for r in db.execute("SELECT symbol FROM watch WHERE chat_id=?", (chat_id,))]
+        syms = st.watch(chat_id)
         if not syms:
             return "Pantauan kosong. Tambah dengan /pantau KODE" if lang == "id" else "Empty. Add with /pantau CODE"
         return "\n\n".join(stock_text(b, s, lang) for s in syms[:8])
@@ -502,7 +478,7 @@ def setup_bot(token: str):
 
 
 def run_bot(token: str):
-    db = bot_db()
+    st = store()
     offset = None
     print("[bot] listening… (Ctrl+C to stop)", flush=True)
     while True:
@@ -515,14 +491,29 @@ def run_bot(token: str):
             offset = u["update_id"] + 1
             msg = u.get("message") or {}
             if "text" in msg:
-                reply = handle(msg["text"], msg["chat"]["id"], db)
+                reply = handle(msg["text"], msg["chat"]["id"], st)
                 tg("sendMessage", token, chat_id=msg["chat"]["id"], text=reply, parse_mode="HTML", disable_web_page_preview=True)
+
+
+def handle_update(update: dict, token: str):
+    """One Telegram update, as delivered to the Vercel webhook (api/telegram.py)."""
+    msg = update.get("message") or {}
+    if "text" in msg:
+        reply = handle(msg["text"], msg["chat"]["id"], store())
+        tg("sendMessage", token, chat_id=msg["chat"]["id"], text=reply, parse_mode="HTML", disable_web_page_preview=True)
+
+
+def set_webhook(token: str, url: str, secret: str | None):
+    """Point Telegram at the deployed webhook (and stop long polling)."""
+    r = tg("setWebhook", token, url=url, **({"secret_token": secret} if secret else {}), drop_pending_updates=True)
+    print(f"[webhook] {url}: {'ok' if r.get('ok') else r.get('description')}")
 
 
 # ---------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["daily", "digest", "bot", "grade", "setup-bot"])
+    ap.add_argument("cmd", choices=["daily", "digest", "bot", "grade", "setup-bot", "set-webhook"])
+    ap.add_argument("--url", default=None, help="webhook URL for set-webhook, e.g. https://<bot>.vercel.app/api/telegram")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--cap", type=float, default=200, help="max credits for the refresh (--source sectors only)")
     ap.add_argument("--source", choices=["idx", "sectors"], default="idx",
@@ -531,12 +522,17 @@ def main():
     args = ap.parse_args()
     token = env().get("TELEGRAM_BOT_TOKEN")
 
-    if args.cmd in ("bot", "setup-bot"):
+    if args.cmd in ("bot", "setup-bot", "set-webhook"):
         if not token:
             sys.exit("TELEGRAM_BOT_TOKEN missing in .env")
-        if args.cmd == "setup-bot":
+        if args.cmd == "set-webhook":
+            if not args.url:
+                sys.exit("--url is required")
+            set_webhook(token, args.url, env().get("TELEGRAM_WEBHOOK_SECRET"))
+        elif args.cmd == "setup-bot":
             setup_bot(token)
         else:
+            tg("deleteWebhook", token)            # long polling and a webhook can't run together
             run_bot(token)
         return
 

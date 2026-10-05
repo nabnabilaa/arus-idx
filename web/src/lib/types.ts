@@ -308,6 +308,7 @@ export type InsiderEvent = {
   ex20: number | null;
   twoway: boolean;
   market: boolean;
+  bad?: boolean;
 };
 
 export type InsiderChain = {

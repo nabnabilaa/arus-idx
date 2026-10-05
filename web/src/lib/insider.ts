@@ -20,6 +20,7 @@ export const TAG_LABEL: Record<string, Bi> = {
   takeover: { id: "Ambil alih", en: "Takeover" },
   mesop: { id: "Opsi saham karyawan", en: "Employee options" },
   bullish: { id: "Menambah", en: "Adding" },
+  transfer: { id: "Pengalihan blok", en: "Block transfer" },
 };
 
 /** "Saratoga Group" from "saratoga-group". */

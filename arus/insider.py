@@ -25,6 +25,7 @@ KSEI = "https://www.idx.co.id/StaticData/NewsAndAnnouncement/ANNOUNCEMENTSTOCK/F
 CLOSE_HOUR = 16
 # filings that move shares without a market decision to buy or sell: repo pledges, private
 # placements, option plans, restructurings, takeovers and forced free-float sales
+BLOCK_POINTS = 5.0
 NON_MARKET = {"repurchase-agreement", "placement", "capital-restructuring", "mesop", "takeover", "free_float_compliance"}
 
 
@@ -91,6 +92,10 @@ def build(conn: sqlite3.Connection, names: dict[str, str] | None = None, cache_d
     for r in df.itertuples(index=False):
         i = _entry_index(dates, r.ts)
         has_px = r.s in close.columns
+        # a filing price far from where the stock traded is a source error (e.g. a total value
+        # in the price field): keep the filing, drop its price and value from every sum
+        ref = close[r.s].loc[:r.ts[:10]].dropna() if has_px else pd.Series(dtype=float)
+        bad = bool(len(ref) and r.px and not (0.2 < r.px / ref.iloc[-1] < 5))
         entry = float(close[r.s].iloc[i]) if has_px and i is not None and np.isfinite(close[r.s].iloc[i]) else None
         now = float(last[r.s]) if has_px and np.isfinite(last[r.s]) else None
         ex = {}
@@ -100,7 +105,7 @@ def build(conn: sqlite3.Connection, names: dict[str, str] | None = None, cache_d
         events.append({
             "s": r.s, "name": names.get(r.s), "ts": r.ts, "d": dates[i] if i is not None else None,
             "holder": r.holder, "kind": r.kind, "side": r.side,
-            "sh": r.sh, "px": r.px, "val": r.val, "pb": r.pb, "pa": r.pa,
+            "sh": r.sh, "px": None if bad else r.px, "val": None if bad else r.val, "pb": r.pb, "pa": r.pa, "bad": bad,
             "tags": [t for t in r.tags if t != "investment"], "grp": r.grp if isinstance(r.grp, str) else None, "url": r.url,
             "entry": entry, "now": now, "since": (now / entry - 1) if entry and now else None, **ex,
         })
@@ -111,10 +116,24 @@ def build(conn: sqlite3.Connection, names: dict[str, str] | None = None, cache_d
     sides = ev.groupby(["s", "holder"])["side"].nunique()
     twoway = set(sides[sides > 1].index)
     ev["twoway"] = [(s_, h) in twoway for s_, h in zip(ev["s"], ev["holder"])]
-    ev["market"] = [not (set(t) & NON_MARKET) for t in ev["tags"]]
-    for e, tw, mk in zip(events, ev["twoway"], ev["market"]):
+    # a buy matched by a sell of the same block in the same stock within a few days is a transfer
+    # between holders (restructuring, family or group moves), not a market decision
+    transfer = set()
+    for (s_, sh), g in ev[ev["sh"].fillna(0) > 0].groupby(["s", "sh"]):
+        if g["side"].nunique() == 2:
+            days = pd.to_datetime(g["ts"].str[:10])
+            if (days.max() - days.min()).days <= 5:
+                transfer.update(g.index)
+    # one filing that moves 5+ percentage points of the company is a block deal (restructuring,
+    # takeover, placement), however it is tagged at the source
+    block = (ev["pa"] - ev["pb"]).abs() >= BLOCK_POINTS
+    ev["transfer"] = ev.index.isin(list(transfer)) | block.fillna(False)
+    ev["market"] = [not (set(t) & NON_MARKET) and not b and not tr for t, b, tr in zip(ev["tags"], ev["bad"], ev["transfer"])]
+    for e, tw, mk, tr in zip(events, ev["twoway"], ev["market"], ev["transfer"]):
         e["twoway"] = bool(tw)
         e["market"] = bool(mk)
+        if tr:
+            e["tags"] = [*e["tags"], "transfer"]
 
     # chains: the same holder filing on the same side of the same stock more than once
     chains = []

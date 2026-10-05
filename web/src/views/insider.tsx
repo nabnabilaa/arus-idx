@@ -177,8 +177,8 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
       <p className="mt-10 max-w-[75ch] text-[13px] leading-relaxed text-muted">
         {book.window && tx({ id: `Laporan ${dateLabel(book.window.from, "id")} – ${dateLabel(book.window.to, "id")} dari KSEI lewat Sectors. `, en: `Filings ${dateLabel(book.window.from, "en")} – ${dateLabel(book.window.to, "en")} from KSEI via Sectors. ` })}
         <T
-          id="“Transaksi pasar” mengecualikan repo (gadai), private placement, opsi saham karyawan, restrukturisasi modal, ambil alih, pemenuhan free float, dan pemegang yang melapor dua arah (biasanya perantara). Ini informasi, bukan nasihat keuangan."
-          en="“Market trades” leave out repo pledges, private placements, employee options, capital restructurings, takeovers, free-float sales, and holders filing both ways (usually intermediaries). Information, not financial advice."
+          id="“Transaksi pasar” mengecualikan repo (gadai), private placement, opsi saham karyawan, restrukturisasi modal, ambil alih, pemenuhan free float, pengalihan blok (satu laporan yang memindahkan 5 poin persen atau lebih, atau jual-beli blok yang sama antarpemegang), pemegang yang melapor dua arah (biasanya perantara), dan laporan yang harganya tidak wajar dibanding harga pasar hari itu (kesalahan data sumber). Ini informasi, bukan nasihat keuangan."
+          en="“Market trades” leave out repo pledges, private placements, employee options, capital restructurings, takeovers, free-float sales, block transfers (a single filing moving 5+ percentage points, or the same block sold by one holder and bought by another), holders filing both ways (usually intermediaries), and filings whose price is far from that day's market price (source errors). Information, not financial advice."
         />
       </p>
     </div>

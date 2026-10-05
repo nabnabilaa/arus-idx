@@ -125,7 +125,7 @@ export function CandleChart({
   const cx = (i: number) => x(i)! + x.bandwidth() / 2;
 
   // volume profile: traded volume per price bucket over the visible window
-  const vp = useMemo(() => {
+  const vp = (() => {
     if (!on.vp) return null;
     const bins = 24;
     const [a, b] = yP.domain();
@@ -139,7 +139,7 @@ export function CandleChart({
     const max = Math.max(...acc, 1);
     const poc = acc.indexOf(max);
     return { acc, step, a, max, poc };
-  }, [on.vp, rows, yP]);
+  })();
 
   const cur = hover != null && hover < rows.length ? rows[hover] : rows[rows.length - 1];
   const curIdx = hover != null && hover < rows.length ? hover : rows.length - 1;

@@ -2,13 +2,20 @@ import type { Lang } from "./i18n";
 
 const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
 
+/** Decimal mark for percentages and ratios: comma in Indonesian, point in English. Set by LangProvider. */
+let comma = true;
+export function setNumberLang(lang: Lang) {
+  comma = lang === "id";
+}
+const dec = (s: string) => (comma ? s.replace(".", ",") : s);
+
 export function pct(x: number | null | undefined, digits = 0) {
-  return isNum(x) ? `${(x * 100).toFixed(digits)}%` : "–";
+  return isNum(x) ? `${dec((x * 100).toFixed(digits))}%` : "–";
 }
 
 export function signed(x: number | null | undefined, digits = 1, suffix = "") {
   if (!isNum(x)) return "–";
-  const s = x.toFixed(digits);
+  const s = dec(x.toFixed(digits));
   return `${x > 0 ? "+" : ""}${s}${suffix}`;
 }
 

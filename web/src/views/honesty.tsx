@@ -240,6 +240,10 @@ export function HonestyView({ meta, models, coneCoverage, anomalyHistory }: Pick
               en: `Our history spans only ~${months} months (since ${dateLabel(meta.history_start, lang)}), limited by data quota. That covers one or two market conditions. Patterns can change, and already have. That's why the model retrains every day.`,
             },
             {
+              id: "Sejak cakupan diperluas dari 120 ke ratusan saham, skor besok jadi lebih kuat. Sebagian kekuatan itu datang dari saham yang lebih kecil, yang biaya transaksi dan selisih harga belinya lebih besar.",
+              en: "Since coverage widened from 120 to hundreds of stocks, the next-day score got stronger. Part of that comes from smaller stocks, where trading costs and bid-ask spreads are larger.",
+            },
+            {
               id: "Saham yang diuji adalah yang aktif hari ini. Saham yang sudah tidak aktif tidak ikut diuji, dan itu bisa membuat hasil terlihat sedikit lebih baik.",
               en: "Tested stocks are the ones active today. Stocks that went quiet aren't included, which can flatter results slightly.",
             },

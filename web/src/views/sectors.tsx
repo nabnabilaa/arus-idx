@@ -9,7 +9,6 @@ import { Term } from "@/components/term";
 import { SUBSECTOR_ID } from "@/lib/features";
 import { idr, signed } from "@/lib/format";
 import { T, useLang, type Bi } from "@/lib/i18n";
-import { usePrefs } from "@/lib/prefs";
 import type { Bundle, FinGrade, Sector } from "@/lib/types";
 import { FIN_GRADE } from "@/components/perspectives";
 import { price } from "@/lib/format";
@@ -20,7 +19,6 @@ const EASE = [0.23, 1, 0.32, 1] as const;
 
 export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors" | "sectorTs"> & { stocks: SectorStock[] }) {
   const { tx, lang } = useLang();
-  const { horizon } = usePrefs();
   const [history, setHistory] = useState(false);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
@@ -32,7 +30,6 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
   const subs = byRs.map((s) => s.sub_sector);
   const lookup = new Map(sectorTs.map((d) => [`${d.sub_sector}|${d.date}`, d.rs_20]));
   const values = subs.map((s) => dates.map((d) => lookup.get(`${s}|${d}`) ?? null));
-  const avg = (s: Sector) => (horizon === 1 ? s.avg_conf_1 : s.avg_conf_20);
 
   const summary: { title: Bi; list: Sector[]; fmt: (s: Sector) => string; tone: string }[] = [
     { title: { id: "Paling kuat sebulan ini", en: "Strongest this month" }, list: byRs.slice(0, 3), fmt: (s) => `${signed((s.rs_20 ?? 0) * 100, 1, "%")} vs IHSG`, tone: "text-[#9cc5f5]" },

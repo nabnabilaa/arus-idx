@@ -1,5 +1,6 @@
 "use client";
 
+import { setNumberLang } from "./format";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 export type Lang = "id" | "en";
@@ -13,10 +14,13 @@ const KEY = "arus.lang";
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("id");
+  setNumberLang(lang);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(KEY);
+      // the site is static: the saved language can only be read after mount
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved === "en" || saved === "id") setLangState(saved);
     } catch {}
   }, []);

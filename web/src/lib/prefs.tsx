@@ -41,6 +41,8 @@ export function PrefsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const h = read<number>("arus.horizon", DEFAULT_HORIZON);
+    // saved preferences live in localStorage, readable only after mount on a static site
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setH(PUBLISHED.includes(h as Horizon) ? (h as Horizon) : DEFAULT_HORIZON);
     setW(read<string[]>("arus.watchlist", []));
   }, []);

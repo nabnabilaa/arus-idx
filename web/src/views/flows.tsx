@@ -14,7 +14,6 @@ import { Term } from "@/components/term";
 import { VerdictBadge } from "@/components/ui";
 import { idr } from "@/lib/format";
 import { T, useLang } from "@/lib/i18n";
-import { BROKER_VERDICT } from "@/lib/narrative";
 import { usePrefs } from "@/lib/prefs";
 import type { Bundle } from "@/lib/types";
 import { get, verdictOf } from "@/lib/verdict";
@@ -35,7 +34,6 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
   const conflictDown = negative.filter((r) => r.b.tone === "pos");
   const byForeign = [...ranking].filter((r) => r.ff_net_20 != null).sort((a, b) => (b.ff_net_20 ?? 0) - (a.ff_net_20 ?? 0));
   const ff20 = market.slice(-20).reduce((a, m) => a + (m.foreign_net ?? 0), 0);
-  const tone = (t: string) => (t === "pos" ? "text-[#9cc5f5]" : t === "neg" ? "text-[#f0a3a3]" : "text-ink-2");
   const [q, setQ] = useState("");
   const [tab, setTab] = useState<"asing" | "bandar" | "berita">("asing");
   const [page, setPage] = useState(0);

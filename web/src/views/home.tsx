@@ -37,7 +37,7 @@ export function HomeView({ ranking, meta, market, models }: Props) {
       <HowToRead />
       <MarketToday ranking={ranking} market={market} horizon={horizon} model={model} />
       <Highlights scored={scored} />
-      <Screener scored={scored} horizon={horizon} />
+      <Screener scored={scored} />
     </>
   );
 }
@@ -406,7 +406,7 @@ function Highlights({ scored }: { scored: Scored[] }) {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: ci * 0.06, ease: EASE }}
-            className="rounded-2xl bg-surface p-5 ring-1 ring-line"
+            className="min-w-0 rounded-2xl bg-surface p-5 ring-1 ring-line"
           >
             <div className="flex items-baseline justify-between gap-3">
               <h3 className="text-[15px] font-semibold">{tx(col.title)}</h3>
@@ -455,7 +455,7 @@ const DEFAULTS: Filters = { q: "", tab: "all", verdicts: [], price: "all", cap: 
 const LIQ = [1e9, 5e9, 1e10, 5e10, 1e11];
 type SortKey = "score" | "health" | "move" | "foreign" | "price";
 
-function Screener({ scored, horizon }: { scored: Scored[]; horizon: Horizon }) {
+function Screener({ scored }: { scored: Scored[] }) {
   const { tx, lang } = useLang();
   const { watchlist } = usePrefs();
   const [f, setF] = useState<Filters>(DEFAULTS);

@@ -1,118 +1,111 @@
-# 🌊 Arus — skor peluang saham IDX yang jujur
+# 🌊 Arus — intelijen pasar saham IDX yang jujur
 
-> **Untuk investor ritel IDX yang kebanjiran data tapi kekurangan keyakinan, Arus memberi setiap saham satu skor peluang yang divalidasi ke data historis, menjelaskan alasannya dalam bahasa biasa, dan hanya mempublikasikan model yang lolos uji.**
+> **Untuk investor ritel IDX yang kebanjiran data tapi kekurangan keyakinan, Arus menunjukkan apa yang sebenarnya terjadi di balik sebuah saham — siapa yang membeli, seberapa sehat perusahaannya, seberapa jauh harganya wajar bergerak — dan hanya mempublikasikan prediksi yang lolos uji.**
 
-Sectors Hackathon 2026 · Track 03 — Market Intelligence · Data: [Sectors API](https://sectors.app)
+Sectors Hackathon 2026 · Track 03 — Market Intelligence · Data inti: [Sectors API](https://sectors.app)
 
 ---
 
 ## Apa yang dilakukan Arus
 
-Setiap hari bursa Arus menilai 120 saham paling aktif di BEI dan menjawab satu pertanyaan:
+Arus memantau **309 saham IDX** (semua saham dengan transaksi median ≥ Rp1 miliar/hari) dan menjawab satu saham dari tiga sudut pandang:
 
-**“Dari 100 kondisi di masa lalu yang mirip saham ini hari ini, berapa yang berakhir lebih baik daripada separuh saham lain?”**
-
-- **Skor X/100** dengan 50 = lempar koin, untuk hari bursa berikutnya. Model 1 bulan juga dilatih setiap hari, tapi baru dipublikasikan kalau lolos validasi.
-- **Lima tingkat yang mudah dibaca:** Sangat diunggulkan · Diunggulkan · Netral · Kurang diunggulkan · Waspada.
-- **Alasan dalam bahasa biasa** untuk setiap skor (mis. “Pergerakan tenang — di data uji, saham yang tenang lebih sering unggul”).
-- **Level penting harian:** gerak normal harian, batas bawah/atas 1 bulan, batas sinyal batal.
-- **Bukti tambahan yang sengaja tidak dicampur ke skor:** jejak bandar (broker institusi vs ritel), fundamental vs rekan sektor, transaksi orang dalam, kejadian tak biasa.
-- **Agen harian + bot Telegram** yang mengambil data baru, belajar ulang, **menilai dirinya sendiri**, lalu mengirim ringkasan.
-
-## Kenapa berbeda
-
-Banyak laporan saham menulis “Confidence 78%” tanpa pernah menguji dari mana angka itu. Arus melakukan sebaliknya:
-
-| | Skor biasa | Arus |
-|---|---|---|
-| Asal angka | Bobot buatan manusia | Dipelajari dari data ±15 bulan |
-| Diuji? | Jarang | Walk-forward seperti dipakai sungguhan, dengan jeda anti-bocor |
-| Arti “56” | Tidak jelas | 56 dari 100 kejadian serupa memang unggul (dikalibrasi) |
-| Saat bukti lemah | Tetap terdengar yakin | Skor dekat 50, label “Netral” |
-| Periode gagal | Disembunyikan | Ditampilkan di halaman Bukti |
-| Model yang gagal uji | Tetap ditampilkan | Otomatis tidak dipublikasikan sampai lolos lagi |
-
-## Hasil uji (jujur, out-of-sample)
-
-| Jangka waktu | Periode di atas acak | “Sangat diunggulkan” unggul | “Waspada” unggul |
+| Sudut pandang | Pertanyaan | Alat Arus | Diuji? |
 |---|---|---|---|
-| Besok (Des 2025 – Okt 2026) | **7 dari 10** | 52 dari 100 | 47 dari 100 |
-| 1 bulan (Jan – Sep 2026) | 4 dari 8 | 50 dari 100 | 59 dari 100 — **terbalik** |
+| **Trader harian** | Bagaimana peluangnya besok? | Peringkat peluang hari bursa berikutnya, dengan alasan dalam bahasa biasa | ✅ walk-forward, 9 dari 10 periode di atas acak |
+| **Swing (1–4 minggu)** | Seberapa jauh harga wajar bergerak? | Rentang wajar 1 minggu & 1 bulan dari perilaku saham itu sendiri | ✅ memuat 81% hasil sebenarnya (target 80%) |
+| **Investor** | Seberapa sehat perusahaannya? | 9 pemeriksaan F-Score Piotroski + laporan keuangan 5 tahun dalam rupiah | deskriptif |
 
-**Skor besok:** sinyalnya nyata tapi tipis (AUC 0,513), konsisten di hampir semua bulan. Arus paling bisa diandalkan sebagai **saringan pertama**: 53 dari 100 saham bertanda Waspada memang berakhir di separuh bawah keesokan harinya. Keunggulan sekecil ini habis dimakan biaya kalau dipakai beli-jual setiap hari (simulasi: −29% terhadap IHSG setelah biaya), jadi gunakan sebagai penyaring, bukan strategi.
+Ditambah:
 
-**Model 1 bulan: dalam evaluasi, tidak dipublikasikan.** Versi awal hanya diuji April–September 2026 dan tampak +11% di atas IHSG. Setelah histori diperpanjang ke Juli 2025, Januari–Maret 2026 ternyata terbalik (AUC 0,32–0,45) dan keunggulannya hilang (AUC total 0,479). Dugaan “hanya gagal saat reli lebar” kami uji dengan aturan breadth yang ditetapkan sebelum melihat hasil, dan tidak terbukti. Kalibrasinya dibuat monoton, dan situs serta bot hanya menampilkan horizon yang lolos validasi (`metrics.proven`). Model 1 bulan tetap dilatih dan diuji setiap hari; begitu lolos, ia muncul kembali dengan sendirinya. Hasil ujinya tetap dibuka di bagian Tata kelola model pada halaman Bukti.
+- **Bandar.** Ringkasan broker ala aplikasi sekuritas (1/5/semua hari: pembeli & penjual, lot, harga rata-rata) **plus yang tidak ada di tempat lain: gaya beli tiap broker** (ikut saat ramai, menampung saat turun, beli rutin, jual saat naik), apa yang terjadi 3 hari setelah ia membeli, deteksi pola mirip "pompom", direktori 88 broker dengan halaman masing-masing.
+- **Kejadian tak biasa.** Setiap saham dibandingkan dengan kebiasaannya sendiri (asing borong/jual besar, volume melonjak, harga bergerak tajam), dalam rupiah dan kelipatan, plus **apa yang biasanya terjadi sesudahnya** di histori Arus.
+- **Rencana trade.** Perencana CL/TP per saham: harga dibulatkan ke fraksi BEI, lot & risiko rupiah, lalu seberapa sering TP vs CL tersentuh duluan di saham itu, dibanding angka impas rasio untung:rugi — termasuk kondisi "setelah naik kencang (euforia)".
+- **Pengaruh global.** Sensitivitas tiap saham terhadap rupiah, minyak, S&P 500, VIX, dolar, dan bunga AS (FRED & ECB), serta keterkaitannya dengan IHSG.
+- **Berita** dari Sectors, sektor yang bisa dijelajah, pantauan, perbandingan 2–4 saham, pencarian Ctrl+K, ID/EN.
+- **Agen harian + bot Telegram** (@nab_arus_bot) yang mengambil data baru, belajar ulang, menilai dirinya sendiri, dan mengirim ringkasan + **peringatan untuk saham pantauan**.
 
-Detail lengkap (AUC, kalibrasi, stabilitas per periode) ada di halaman **Bukti**.
+## Kenapa berbeda: rapor yang jujur
+
+Banyak laporan saham menulis “Confidence 78%” tanpa pernah menguji angkanya. Arus menguji semuanya seperti dipakai sungguhan (model hanya belajar dari masa lalu, dinilai pada bulan-bulan sesudahnya) dan memuat rapornya di halaman **Bukti**:
+
+| Model | Uji out-of-sample | Hasil | Status |
+|---|---|---|---|
+| Skor besok | 10 periode, Des 2025 – Okt 2026 | AUC 0,540 · di atas acak 9/10 periode · kelompok teratas unggul 54/100 vs terbawah 44/100 | **dipublikasikan** |
+| Rentang wajar | seluruh histori | 1 minggu 81% · 1 bulan 81% (target 80%) | **dipublikasikan** |
+| Skor 1 bulan | 8 periode, Jan – Sep 2026 | di atas acak hanya 4/8 periode | **tidak dipublikasikan** |
+
+Skor 1 bulan sempat tampak +11% di atas IHSG pada histori pendek; setelah histori diperpanjang, keunggulannya hilang — jadi model itu ditarik otomatis, dan alasannya dibuka. Skor besok juga **rugi setelah biaya kalau dipakai beli-jual setiap hari**, dan itu ditampilkan: gunanya sebagai saringan, bukan strategi.
+
+## Data
+
+**Sectors (inti)** — semua yang membuat Arus lebih dari sekadar grafik harga:
+
+`/v2/daily/{symbol}` · `/v2/foreign-flow/{symbol}` · `/v2/index-daily/ihsg` · `/v2/companies` (screener: fundamental 200 emiten + **laporan keuangan 5 tahun lewat `field[year]` + `include_query_values`**, JII70) · `/v2/broker-summary/{symbol}` (broker harian 120 saham) · `/v2/brokers` · `/v2/news` · `/v2/filings` · `/v2/suspensions` · `/v2/corporate-actions`
+
+Hemat kredit: jendela 90 hari per panggilan, screener multi-tahun (laporan keuangan 120 perusahaan × 5 tahun × 13 pos = 4 kredit), cache permanen. Total ±1.540 kredit untuk seluruh proyek.
+
+**Pelengkap gratis:** ringkasan perdagangan resmi BEI (harga, volume, dana asing semua saham — memperluas cakupan dari 120 ke 309 saham dan menjadi pembaruan harian tanpa kredit; dicocokkan dengan Sectors: OHLCV identik), FRED (S&P 500, VIX, Brent, dolar, bunga AS), kurs referensi ECB (USD/IDR).
 
 ## Arsitektur
 
 ```
-Sectors API ──► client.py (cache permanen + meteran kredit + throttle)
-                    │
-                    ▼
-               ingest.py  ──► SQLite (data/warehouse.db, tidak di-commit)
-                    │
-                    ▼
-   features.py (14 kondisi kausal, persentil harian per saham)
-                    │
-                    ▼
-   model.py (regresi logistik L2 · walk-forward ber-jeda · kalibrasi Platt) × 2 horizon
-                    │
-                    ▼
-   build.py ──► snapshot/ + web/src/data/  (hasil turunan saja, tanpa API key)
-                    │                   │
-                    ▼                   ▼
-   agent.py (harian: refresh,      web/ (Next.js statis, ID/EN, responsif)
-   belajar ulang, rapor, Telegram)
+Sectors API ──► client.py (cache permanen + meteran kredit)      BEI ──► idx.py / universe.py (gratis)
+                    │                                                     │
+                    ▼                                                     ▼
+               ingest.py ───────────────────► SQLite (data/*.db, tidak di-commit) ◄── macro.py (FRED, ECB)
+                                                    │
+        features.py (sinyal kausal, persentil harian) · financial.py (F-Score) · context.py (broker, anomali, berita)
+                                                    │
+        model.py (regresi logistik L2 · walk-forward ber-jeda · kalibrasi Platt monoton · flag `proven`)
+                                                    │
+        build.py ──► snapshot/ + web/src/data/  (hasil turunan saja, tanpa API key)
+                                                    │
+        agent.py (harian 17.45: BEI → latih ulang → rapor → Telegram + peringatan pantauan)   web/ (Next.js statis, ID/EN)
 ```
-
-## Data Sectors yang dipakai
-
-`/v2/daily/{symbol}` · `/v2/foreign-flow/{symbol}` · `/v2/foreign-flow/` · `/v2/index-daily/ihsg` · `/v2/companies` (screener + JII70) · `/v2/broker-summary/{symbol}/top` · `/v2/brokers` · `/v2/filings` · `/v2/suspensions` · `/v2/corporate-actions`
-
-Hemat kredit: endpoint per-saham menerima jendela 90 hari di masa lalu seharga 1 kredit, jadi histori ±15 bulan cukup 5 panggilan per saham; screener dengan `include_query_values` memberi 200 emiten × 12 data fundamental dalam 2 panggilan; setiap respons di-cache permanen. Total kredit terpakai ≈ 1.400. Kuota inilah yang membatasi panjang histori.
 
 ## Menjalankan
 
 ```bash
 # 1. Pipeline data (Python 3.11+)
 pip install -r requirements.txt
-cp .env.example .env            # isi SECTORS_API_KEY
-python -m arus.ingest --dry-run # estimasi kredit
-python -m arus.ingest           # tarik data (ter-cache, bisa dilanjutkan)
-python -m arus.build --brokers 30
+cp .env.example .env              # isi SECTORS_API_KEY (dan TELEGRAM_BOT_TOKEN untuk bot)
+python -m arus.ingest --dry-run   # estimasi kredit
+python -m arus.ingest             # histori, fundamental, konteks (ter-cache, bisa dilanjutkan)
+python -m arus.ingest --step financials
+python -m arus.universe all       # profil & histori BEI semua saham, perluas universe (gratis)
+python -m arus.build              # fitur, model, validasi, snapshot
 
 # 2. Situs
-cd web && npm install && npm run dev      # http://localhost:3000
-npm run build                              # ekspor statis ke web/out
+cd web && npm install && npm run dev   # pengembangan
+npm run build                          # ekspor statis ke web/out
 
 # 3. Agen & Telegram (opsional)
-python -m arus.agent setup-bot   # beri bot nama, deskripsi, menu perintah
-python -m arus.agent daily       # refresh + belajar ulang + rapor + kirim ringkasan
+python -m arus.agent setup-bot   # nama, deskripsi, menu perintah bot
+python -m arus.agent daily       # BEI → latih ulang → rapor → ringkasan + peringatan pantauan
 python -m arus.agent bot         # bot menjawab perintah & pertanyaan
 ```
 
-Situs membaca `web/src/data/`, jadi bisa dibuka **tanpa API key**. Pipeline tetap 100% bersumber dari Sectors.
+Situs membaca `web/src/data/`, jadi bisa dibuka **tanpa API key**.
 
 ## Bot Telegram
 
-`/hari_ini` · `/saham BBRI` · `/unggul` · `/waspada` · `/pantau KODE` · `/pantauan` · `/syariah on` · `/harga 1000` · `/rapor` · `/bahasa en` · atau tanya bebas (“BBRI masih layak dipantau?”). Bot membaca snapshot, jadi bertanya tidak menghabiskan kredit API. Tanya bebas opsional: isi `ARUS_ASK_CMD` di `.env` dengan perintah CLI model bahasa yang menerima pertanyaan lewat stdin.
+`/hari_ini` · `/saham BBRI` · `/unggul` · `/waspada` · `/pantau KODE` · `/pantauan` · `/syariah on` · `/harga 1000` · `/rapor` · `/bahasa en` · atau tanya bebas. Saham pantauan otomatis mendapat peringatan saat asing borong/jual besar, volume melonjak, harga menembus batas, atau arah broker berbalik.
 
 ## Keterbatasan
 
 - Data harian (final setelah bursa tutup), bukan detik-ke-detik.
-- Hanya ±15 bulan data (Juli 2025 – Oktober 2026), dibatasi kuota kredit; itu baru satu-dua kondisi pasar. Model dilatih ulang setiap hari.
+- Histori ±15 bulan (Juli 2025 – Oktober 2026): satu-dua kondisi pasar saja. Model dilatih ulang setiap hari.
+- Sebagian kekuatan skor besok berasal dari saham yang lebih kecil, yang biaya transaksi & slippage-nya lebih besar.
+- Data broker harian 2–4 minggu dan hanya untuk 120 saham utama; berita beberapa hari terakhir. Laporan keuangan untuk 120 saham utama.
 - Universe = saham aktif hari ini (bias survivorship kecil).
-- Angka hit rate belum termasuk biaya; kurva backtest menampilkan versi setelah biaya ±0,4% per putaran. Slippage tidak dihitung.
-- Jejak bandar & fundamental hanya snapshot, karena itu tidak diskor.
 
 ## Disclaimer
 
-Arus adalah alat informasi dan analisis, **bukan nasihat keuangan** dan bukan ajakan membeli atau menjual efek. Tidak ada eksekusi order otomatis. Skor adalah frekuensi historis, bukan jaminan hasil. Keputusan dan risikonya sepenuhnya milik pengguna.
+Arus adalah alat informasi dan analisis, **bukan nasihat keuangan** dan bukan ajakan membeli atau menjual efek. Tidak ada eksekusi order otomatis. Angka historis bukan jaminan hasil. Keputusan dan risikonya sepenuhnya milik pengguna.
 
 ---
 
 ### English summary
 
-Arus gives every one of the 120 most active IDX stocks a daily **score out of 100** — of 100 past situations that looked like this stock today, how many ended better than half of all other stocks — for the next trading day. A 1-month model is retrained daily too but only published when it passes validation; it currently doesn't, and its results are disclosed under Model governance. The model learns from ~15 months of Sectors data, is validated with purged walk-forward testing, calibrated so its numbers mean what they say, explains every score in plain language, shows the evidence that disagrees, and runs as a daily agent that grades itself and reports to Telegram. Information, not financial advice.
+Arus covers 309 IDX stocks (every stock trading at least IDR 1B a day) and reads each one from three angles: a next-day odds rank for day traders (walk-forward AUC 0.540, beat chance in 9 of 10 periods), a tested typical price range for swing traders (holds 81% of outcomes vs an 80% target), and Piotroski-style financial health from five years of statements for investors. On top: a broker-summary view plus each broker's buying style and what followed, unusual-activity flags with historical follow-through, a per-stock stop/target planner, global-factor sensitivity, news, a watchlist with Telegram alerts, comparison and search. Sectors API is the core source; the official IDX trading summary widens coverage and powers free daily updates. A 1-month model that failed validation is withheld and disclosed. Information, not financial advice.

@@ -16,6 +16,7 @@ import { DEFAULT_HORIZON, PUBLISHED } from "@/lib/published";
 import { MarketBrief } from "@/components/brief";
 import { AgendaWeek } from "@/components/agenda";
 import { MacroStrip } from "@/components/macro-strip";
+import { Explore, type ExploreStats } from "@/components/explore";
 import { FIN_GRADE } from "@/components/perspectives";
 import { RISK, riskFlags } from "@/lib/risk";
 import { Pager } from "@/components/pager";
@@ -23,10 +24,10 @@ import { usePrefs } from "@/lib/prefs";
 import type { AgendaItem, Bundle, FeatureKey, Horizon, Stock } from "@/lib/types";
 import { get, HORIZON_LABEL, VERDICT, VERDICT_ORDER, verdictOf, type VerdictKey } from "@/lib/verdict";
 
-type Props = Pick<Bundle, "ranking" | "meta" | "market" | "models" | "sectors" | "macro"> & { agenda: AgendaItem[] };
+type Props = Pick<Bundle, "ranking" | "meta" | "market" | "models" | "sectors" | "macro"> & { agenda: AgendaItem[]; explore: ExploreStats };
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-export function HomeView({ ranking, meta, market, models, sectors, agenda, macro }: Props) {
+export function HomeView({ ranking, meta, market, models, sectors, agenda, macro, explore }: Props) {
   const { horizon } = usePrefs();
   const model = models[String(horizon) as "1" | "20"];
 
@@ -40,6 +41,7 @@ export function HomeView({ ranking, meta, market, models, sectors, agenda, macro
     <>
       <Hero ranking={ranking} meta={meta} />
       <MacroStrip market={market} macro={macro} asOf={meta.as_of} />
+      <Explore st={explore} />
       <MarketBrief ranking={ranking} market={market} sectors={sectors} asOf={meta.as_of} />
       <AgendaWeek items={agenda} ranked={ranked} asOf={meta.as_of} />
       <HowToRead />
@@ -70,12 +72,12 @@ function Hero({ ranking, meta }: { ranking: Stock[]; meta: Bundle["meta"] }) {
           <T id="Data bursa per" en="Market data as of" /> {dateLabel(meta.as_of, lang, { weekday: "long" })}
         </p>
         <h1 className="text-[2.1rem] font-semibold leading-[1.1] tracking-[-0.03em] text-balance sm:text-5xl lg:text-[3.4rem]">
-          <T id="Saham mana yang peluangnya paling baik hari ini?" en="Which stocks have the best odds today?" />
+          <T id="Lihat apa yang terjadi di balik setiap saham." en="See what is happening behind every stock." />
         </h1>
         <p className="mt-5 max-w-2xl text-[16px] leading-relaxed text-ink-2 text-pretty sm:text-[17px]">
           <T
-            id={`Setiap hari Arus menilai ${meta.n_ranked} saham paling aktif di BEI memakai data Sectors, lalu memberi skor peluang yang divalidasi ke data historis, lengkap dengan alasannya.`}
-            en={`Every day Arus scores the ${meta.n_ranked} most active IDX stocks using Sectors data, giving each one odds validated on historical data, with the reasons behind them.`}
+            id={`Siapa yang membeli, apa yang dilakukan orang dalam, seberapa sehat perusahaannya, dan apa yang biasanya terjadi sesudahnya. Untuk ${meta.n_ranked} saham paling aktif di BEI, dari data Sectors dan BEI, diperbarui setiap hari bursa. Setiap angka punya rapornya.`}
+            en={`Who is buying, what insiders are doing, how healthy the company is, and what usually happens next. For the ${meta.n_ranked} most active IDX stocks, from Sectors and IDX data, refreshed every trading day. Every number comes with its report card.`}
           />
         </p>
       </motion.div>
@@ -129,7 +131,7 @@ function Hero({ ranking, meta }: { ranking: Stock[]; meta: Bundle["meta"] }) {
 /* ------------------------------------------------------------------ how to read */
 function HowToRead() {
   const { tx } = useLang();
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const steps = [
     PUBLISHED.length > 1
       ? {

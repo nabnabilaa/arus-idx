@@ -135,7 +135,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
               {s.suspended_recent && !riskFlags(s.risk_flags).some((f) => f === "suspended" || f === "cooling_down") && <Badge tone="warn">{tx(RISK.suspended.label)}</Badge>}
             </div>
           </div>
-          <div className="text-right">
+          <div className="w-full sm:w-auto sm:text-right">
             <div className="num text-3xl font-semibold sm:text-4xl">{price(s.price, lang)}</div>
             <div className={`num mt-0.5 inline-flex items-center gap-1 text-[14px] ${up ? "text-up" : "text-down"}`}>
               {up ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}

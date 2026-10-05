@@ -60,7 +60,7 @@ export function MacroStrip({ market, macro, asOf }: { market: Bundle["market"]; 
 
   return (
     <section className="mb-8">
-      <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:grid-cols-8">
+      <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-4 sm:overflow-visible sm:px-0 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none">
         {tiles.map((t, i) => {
           const up = t.key === "ff" ? (ff ?? 0) >= 0 : (t.chg ?? 0) >= 0;
           const good = t.goodUp === undefined ? null : t.goodUp === up;

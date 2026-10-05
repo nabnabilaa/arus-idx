@@ -1,4 +1,6 @@
 import { agendaBook } from "@/lib/agenda";
+import { insiderBook } from "@/lib/insider";
+import { weeklyRecap } from "@/lib/weekly";
 import { bundle } from "@/lib/data";
 import type { Stock } from "@/lib/types";
 import { HomeView } from "@/views/home";
@@ -22,6 +24,15 @@ export default function Page() {
       models={{ "1": slim("1"), "20": slim("20") }}
       sectors={bundle.sectors}
       agenda={week}
+      explore={{
+        unusual: bundle.ranking.filter((s) => Math.max(Math.abs(s.z_foreign ?? 0), Math.abs(s.z_volume ?? 0), Math.abs(s.z_return ?? 0)) >= 3).length,
+        chains: insiderBook.chains.length,
+        agendaWeek: week.length,
+        ihsgWeek: weeklyRecap.stats?.ihsg ?? null,
+        foreignWeek: weeklyRecap.stats?.foreign ?? null,
+        proofFolds: `${bundle.models["1"].metrics.folds_beating_chance}/${bundle.models["1"].metrics.n_folds}`,
+        stocks: bundle.ranking.length,
+      }}
       macro={{
         recent: bundle.macro.recent,
         series: Object.fromEntries(Object.entries(bundle.macro.series).map(([k, v]) => [k, { date: v.date.slice(-40), v: v.v.slice(-40) }])) as typeof bundle.macro.series,

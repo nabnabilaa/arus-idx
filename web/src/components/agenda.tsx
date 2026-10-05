@@ -10,14 +10,18 @@ import type { AgendaBook, AgendaItem, DividendStudy } from "@/lib/types";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
+/** Dividend per share: whole rupiah from Rp10 up, two decimals below (Rp0,27 is not Rp0). */
+export const amount = (x: number | null | undefined, lang: "id" | "en") =>
+  x == null ? "–" : x.toLocaleString(lang === "id" ? "id-ID" : "en-US", { maximumFractionDigits: x >= 10 ? 0 : 2 });
+
 /** One line of detail per action, in the units a trader reads. */
 export function useAgendaDetail() {
   const { tx, lang } = useLang();
   return (it: AgendaItem): string => {
     if (it.type === "dividend")
       return tx({
-        id: `Rp${price(it.amt, lang)}/saham${it.yield != null ? ` · yield ${pct(it.yield, 1)}` : ""}`,
-        en: `IDR ${price(it.amt, lang)}/share${it.yield != null ? ` · yield ${pct(it.yield, 1)}` : ""}`,
+        id: `Rp${amount(it.amt, lang)}/saham${it.yield != null ? ` · yield ${pct(it.yield, 1)}` : ""}`,
+        en: `IDR ${amount(it.amt, lang)}/share${it.yield != null ? ` · yield ${pct(it.yield, 1)}` : ""}`,
       });
     if (it.type === "agm") return it.time ? tx({ id: `Pukul ${it.time}`, en: `At ${it.time}` }) : "";
     if (it.type === "right_issue")

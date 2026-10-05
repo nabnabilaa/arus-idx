@@ -4,7 +4,9 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowUpRight, FileText } from "lucide-react";
 import { C } from "@/components/charts/kit";
+import { Pager } from "@/components/pager";
 import { ShareCard } from "@/components/share";
+import { useState } from "react";
 import { Badge } from "@/components/ui";
 import { dateLabel, idr, pct, price, signed } from "@/lib/format";
 import { useLang } from "@/lib/i18n";
@@ -217,6 +219,8 @@ export function AfterCard({ label, note, a, i = 0 }: { label: string; note: stri
 
 export function InsiderPanel({ events, chains, paths, ksei, cards = [] }: { events: InsiderEvent[]; chains: InsiderChain[]; paths: Record<string, { d: string[]; c: number[] }>; ksei: string; cards?: string[] }) {
   const { tx } = useLang();
+  const [page, setPage] = useState(0);
+  const PER = 15;
   const market = events.filter((e) => e.market && !e.twoway);
   const buys = market.filter((e) => e.side === "buy");
   const sells = market.filter((e) => e.side === "sell");
@@ -243,10 +247,11 @@ export function InsiderPanel({ events, chains, paths, ksei, cards = [] }: { even
         </div>
       )}
       <ul className="flex flex-col gap-2">
-        {events.slice(0, 20).map((e, i) => (
+        {events.slice(page * PER, page * PER + PER).map((e, i) => (
           <FilingRow key={`${e.ts}-${e.holder}-${i}`} e={e} ranked ksei={ksei} showSymbol={false} />
         ))}
       </ul>
+      {events.length > PER && <Pager page={page} pages={Math.ceil(events.length / PER)} total={events.length} per={PER} onChange={setPage} noun={{ id: "laporan", en: "filings" }} />}
       <p className="max-w-[75ch] text-[12px] leading-relaxed text-muted">
         {tx({
           id: "Laporan kepemilikan dari KSEI lewat Sectors, 90 hari terakhir. “Bersih” hanya menghitung transaksi pasar: repo (gadai), private placement, opsi saham karyawan, restrukturisasi, ambil alih, dan pemenuhan free float tidak dihitung. Kolom kanan: harga sekarang dibanding hari pertama laporan bisa diperdagangkan.",

@@ -376,6 +376,7 @@ export type DividendStudy = {
   recovered_share: number | null;
   recover_days_med: number | null;
   within: number;
+  path?: { k: number[]; med: number[]; p25: number[]; p75: number[]; n: number };
 };
 
 export type AgendaBook = {

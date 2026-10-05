@@ -5,12 +5,15 @@ import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AfterCard, ChainCard, FilingRow } from "@/components/insider";
 import { chainCard, N_CHAIN_CARDS } from "@/lib/cards";
+import { Pager } from "@/components/pager";
 import { Segmented, Toggle } from "@/components/ui";
 import { dateLabel, idr } from "@/lib/format";
 import { T, useLang } from "@/lib/i18n";
 import type { InsiderBook } from "@/lib/types";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
+const PER = 25;
+const PER_CHAIN = 9;
 
 type Side = "all" | "buy" | "sell";
 type Size = 0 | 1e9 | 1e10;
@@ -18,12 +21,27 @@ type Size = 0 | 1e9 | 1e10;
 export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: string[] }) {
   const { tx, lang } = useLang();
   const isRanked = useMemo(() => new Set(ranked), [ranked]);
-  const [chainSide, setChainSide] = useState<"buy" | "sell">("buy");
-  const [side, setSide] = useState<Side>("all");
-  const [size, setSize] = useState<Size>(0);
-  const [marketOnly, setMarketOnly] = useState(true);
-  const [q, setQ] = useState("");
-  const [shown, setShown] = useState(30);
+  const [chainSide, setChainSideRaw] = useState<"buy" | "sell">("buy");
+  const [chainPage, setChainPage] = useState(0);
+  const [side, setSideRaw] = useState<Side>("all");
+  const [size, setSizeRaw] = useState<Size>(0);
+  const [marketOnly, setMarketOnlyRaw] = useState(true);
+  const [q, setQRaw] = useState("");
+  const [page, setPage] = useState(0);
+  // any filter change starts the list again from page one
+  const reset = <T,>(set: (v: T) => void) => (v: T) => {
+    set(v);
+    setPage(0);
+  };
+  const setSide = reset(setSideRaw);
+  const setSize = reset(setSizeRaw);
+  const setMarketOnly = reset(setMarketOnlyRaw);
+  const setQ = reset(setQRaw);
+  const setChainSide = (v: "buy" | "sell") => {
+    setChainSideRaw(v);
+    setChainPage(0);
+  };
+  const jump = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const market = book.events.filter((e) => e.market && !e.twoway);
   const buyVal = market.filter((e) => e.side === "buy").reduce((a, e) => a + (e.val ?? 0), 0);
@@ -92,7 +110,7 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
       </section>
 
       {/* chains */}
-      <section className="mt-12">
+      <section id="rantai" className="mt-12 scroll-mt-24">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -113,14 +131,27 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
           />
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {chains.slice(0, 9).map((c, i) => (
+          {chains.slice(chainPage * PER_CHAIN, chainPage * PER_CHAIN + PER_CHAIN).map((c, i) => (
             <ChainCard key={`${c.s}-${c.holder}-${c.side}`} c={c} path={book.paths[c.s]} ranked={isRanked.has(c.s)} i={i} card={book.chains.indexOf(c) < N_CHAIN_CARDS ? chainCard(c) : null} />
           ))}
         </div>
+        {chains.length > PER_CHAIN && (
+          <Pager
+            page={chainPage}
+            pages={Math.ceil(chains.length / PER_CHAIN)}
+            total={chains.length}
+            per={PER_CHAIN}
+            onChange={(p) => {
+              setChainPage(p);
+              jump("rantai");
+            }}
+            noun={{ id: "rantai", en: "chains" }}
+          />
+        )}
       </section>
 
       {/* every filing */}
-      <section className="mt-12">
+      <section id="semua-laporan" className="mt-12 scroll-mt-24">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           <T id="Semua laporan" en="Every filing" /> · <span className="num text-ink-2">{rows.length}</span>
         </h2>
@@ -158,14 +189,22 @@ export function InsiderView({ book, ranked }: { book: InsiderBook; ranked: strin
           <Toggle checked={marketOnly} onChange={setMarketOnly} label={tx({ id: "Hanya transaksi pasar", en: "Market trades only" })} />
         </div>
         <ul className="mt-4 flex flex-col gap-2">
-          {rows.slice(0, shown).map((e, i) => (
+          {rows.slice(page * PER, page * PER + PER).map((e, i) => (
             <FilingRow key={`${e.ts}-${e.s}-${e.holder}-${i}`} e={e} name={book.stocks[e.s]?.name} ranked={isRanked.has(e.s)} ksei={book.ksei} />
           ))}
         </ul>
-        {rows.length > shown && (
-          <button onClick={() => setShown((n) => n + 40)} className="mt-3 cursor-pointer text-[13px] text-arus hover:underline">
-            {tx({ id: `Tampilkan lebih banyak (${rows.length - shown} lagi)`, en: `Show more (${rows.length - shown} left)` })}
-          </button>
+        {rows.length > PER && (
+          <Pager
+            page={page}
+            pages={Math.ceil(rows.length / PER)}
+            total={rows.length}
+            per={PER}
+            onChange={(p) => {
+              setPage(p);
+              jump("semua-laporan");
+            }}
+            noun={{ id: "laporan", en: "filings" }}
+          />
         )}
         {rows.length === 0 && (
           <p className="py-14 text-center text-[14px] text-muted">

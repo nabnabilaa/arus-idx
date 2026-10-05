@@ -19,6 +19,7 @@ TYPES = ("upcoming_dividend", "dividend", "agm", "right_issue", "stock_split", "
 KEY_DATE = {"upcoming_dividend": "ex_date", "dividend": "ex_date", "right_issue": "ex_date", "bonus": "ex_date",
             "stock_split": "date", "warrant": "trading_period_start", "agm": "agm_date"}
 RECOVER_WITHIN = 20
+PATH_BEFORE, PATH_AFTER = 5, 20
 
 
 def _bare(sym: str) -> str:
@@ -54,7 +55,7 @@ def ex_dividend_study(divs: pd.DataFrame, close: pd.DataFrame) -> tuple[dict, di
     price got back to its cum-date close within 20 sessions.
     """
     dates = list(close.index)
-    out = []
+    out, paths = [], []
     for r in divs.itertuples(index=False):
         amt = r.raw.get("dividend_amount")
         if r.s not in close.columns or not amt:
@@ -71,6 +72,11 @@ def ex_dividend_study(divs: pd.DataFrame, close: pd.DataFrame) -> tuple[dict, di
         after = close[r.s].iloc[i:i + RECOVER_WITHIN + 1]
         rec = next((k for k, v in enumerate(after.values) if np.isfinite(v) and v >= cum_px), None)
         complete = len(after) > RECOVER_WITHIN
+        # price path from 5 sessions before to 20 after the ex-date, as a multiple of the cum close
+        if i - PATH_BEFORE >= 0 and i + PATH_AFTER < len(dates):
+            seg = close[r.s].iloc[i - PATH_BEFORE:i + PATH_AFTER + 1].to_numpy() / cum_px
+            if np.isfinite(seg).all():
+                paths.append(seg)
         out.append({"s": r.s, "ex": ex, "amt": amt, "yield": y, "move": move,
                     "drop_ratio": (-move / y) if y > 0 else np.nan,
                     "recovered": rec, "complete": complete})
@@ -87,6 +93,12 @@ def ex_dividend_study(divs: pd.DataFrame, close: pd.DataFrame) -> tuple[dict, di
         "recovered_share": float(full["recovered"].notna().mean()) if len(full) else None,
         "recover_days_med": float(full["recovered"].dropna().median()) if full["recovered"].notna().any() else None,
         "within": RECOVER_WITHIN,
+        # median path around the ex-date (day 0), cum close = 1; only events with the full window
+        "path": {"k": list(range(-PATH_BEFORE, PATH_AFTER + 1)),
+                 "med": [round(float(v), 5) for v in np.median(paths, axis=0)] if paths else [],
+                 "p25": [round(float(v), 5) for v in np.percentile(paths, 25, axis=0)] if paths else [],
+                 "p75": [round(float(v), 5) for v in np.percentile(paths, 75, axis=0)] if paths else [],
+                 "n": len(paths)},
     }
     by_stock = {}
     for r in st.to_dict("records"):

@@ -34,7 +34,8 @@ const MORE: Item[] = [
 
 function isActive(path: string, href: string) {
   if (href === "/") return path === "/" || path.startsWith("/saham");
-  return path.startsWith(href.replace(/\/$/, ""));
+  // whole path segments only: "/agen/" must not light up on "/agenda/"
+  return (path.endsWith("/") ? path : `${path}/`).startsWith(href);
 }
 
 function LangSwitch() {

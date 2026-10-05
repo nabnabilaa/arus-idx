@@ -42,8 +42,12 @@ Dokumen ini menjelaskan bagaimana data mengalir dari Sectors sampai ke layar, da
 | `arus/model.py` | Regresi logistik L2 dengan bentuk global/per-sektor, validasi walk-forward ber-jeda, kalibrasi Platt monoton, metrik out-of-sample, flag `proven`. |
 | `arus/financial.py` | Sembilan pemeriksaan F-Score dengan angka bukti sebelum/sesudah; pemeriksaan yang tak berlaku untuk bank dilewati. |
 | `arus/context.py` | Ringkasan broker 1/5/semua hari, gaya beli tiap broker dan hasil 3 hari sesudahnya, pola mirip pompom, kejadian tak biasa dan statistik sesudahnya, berita. |
+| `arus/insider.py` | Laporan KSEI dari cache Sectors: memisahkan transaksi pasar dari repo, placement, opsi karyawan, pengalihan blok, perantara dua arah, dan harga yang tidak wajar; rantai per pemegang; hasil 5/20 sesi sesudahnya vs saham median. |
+| `arus/agenda.py` | Kalender aksi korporasi (satu panggilan per jenis), yield dan pengenceran dari harga terakhir, studi gerak harga di hari ex-dividen dan pemulihannya. |
+| `arus/weekly.py` | Rekap pekan dari ringkasan BEI (semua saham): indeks, breadth, movers likuid, asing dinilai di harga rata-rata harian, sektor, lonjakan volume, dan bacaan berbasis aturan. |
 | `arus/build.py` | Menjalankan semuanya dan menulis snapshot turunan (tanpa data mentah, tanpa kunci). |
 | `arus/agent.py` | Agen harian, penilaian diri (rekam jejak live), digest & peringatan pantauan Telegram, bot perintah. |
+| `web/src/app/kartu/[file]/route.tsx` | Kartu PNG untuk dibagikan, dirender saat build lewat `next/og`. |
 | `web/` | Next.js App Router, ekspor statis. Halaman server memilih potongan data; komponen klien tidak pernah mengimpor bundel data penuh. |
 
 ## Keputusan desain
@@ -60,8 +64,10 @@ Dokumen ini menjelaskan bagaimana data mengalir dari Sectors sampai ke layar, da
 
 **Hemat kredit.** Jendela 90 hari per panggilan; screener `field[year]` + `include_query_values` mengambil laporan keuangan ratusan perusahaan dalam beberapa panggilan; cache permanen; batas kredit keras di setiap penarikan. Data yang tersedia gratis dan resmi (BEI) dipakai untuk memperluas cakupan, sehingga kredit Sectors dipakai untuk data yang hanya ada di Sectors (broker harian, laporan keuangan, berita).
 
+**Data sumber tidak dipercaya mentah-mentah.** Setiap laporan orang dalam dicek terhadap harga pasar hari itu: satu laporan OKAS menaruh nilai total di kolom harga (Rp73,5 miliar per lembar) dan sempat membuat "nilai beli" menjadi Rp81 juta triliun. Laporan seperti itu tetap ditampilkan, tapi harga dan nilainya tidak dijumlahkan. Restrukturisasi grup (satu laporan yang memindahkan 5 poin persen atau lebih) juga tidak dihitung sebagai keyakinan pasar. Data komoditas yang terakhir dicetak lebih dari 60 hari lalu tidak ditampilkan sebagai kondisi hari ini.
+
 **Statis dan aman.** Situs adalah ekspor statis: tidak ada server, tidak ada API key di browser. Pembaruan terjadi lewat build ulang dari agen harian.
 
 ## Uji
 
-`python -m unittest discover tests` memeriksa F-Score, kalibrasi monoton, AUC, dan aturan peringatan pantauan. CI (`.github/workflows/ci.yml`) menjalankan tes Python, lint, typecheck, dan build statis di setiap push.
+`python -m unittest discover tests` (20 tes) memeriksa F-Score, kalibrasi monoton, AUC, aturan peringatan pantauan, pemilahan laporan orang dalam (harga rusak, repo, pengalihan blok, perantara dua arah, rantai dan harga rata-rata), studi ex-dividen, pengenceran rights issue, dan kalimat rekap pekan. CI (`.github/workflows/ci.yml`) menjalankan tes Python, lint, typecheck, dan build statis di setiap push.

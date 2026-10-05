@@ -1,6 +1,8 @@
 {
   "headers": [
+    { "source": "/opengraph-image/", "headers": [{ "key": "Content-Type", "value": "image/png" }] },
     { "source": "/opengraph-image", "headers": [{ "key": "Content-Type", "value": "image/png" }] },
+    { "source": "/saham/:symbol/opengraph-image/", "headers": [{ "key": "Content-Type", "value": "image/png" }] },
     { "source": "/saham/:symbol/opengraph-image", "headers": [{ "key": "Content-Type", "value": "image/png" }] }
   ]
 }

@@ -12,6 +12,6 @@ if ($LASTEXITCODE -ne 0) {
     git commit -m "data: daily refresh $(Get-Date -Format 'yyyy-MM-dd')" *>> data\daily.log
     if (git remote) { git push *>> data\daily.log }          # the bot project redeploys from GitHub
     Push-Location web
-    npx --yes vercel deploy --prod --yes *>> ..\data\daily.log  # the site is deployed from this machine
+    npx --yes vercel deploy --prod --yes --archive=tgz *>> ..\data\daily.log  # the site is deployed from this machine
     Pop-Location
 }

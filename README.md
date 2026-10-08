@@ -111,7 +111,7 @@ Agen harian (`scripts/daily.ps1`) memperbarui data, lalu commit & push; Vercel m
 
 ## Bot Telegram
 
-`/hari_ini` · `/saham BBRI` · `/unggul` · `/waspada` · `/pantau KODE` · `/pantauan` · `/syariah on` · `/harga 1000` · `/rapor` · `/bahasa en` · atau tanya bebas. Saham pantauan otomatis mendapat peringatan saat asing borong/jual besar, volume melonjak, harga menembus batas, atau arah broker berbalik.
+`/hari_ini` · `/saham BBRI` · `/unggul` · `/waspada` · `/pantau KODE` · `/pantauan` · `/syariah on` · `/harga 1000` · `/rapor` · `/bahasa en` · atau ketik kode saham saja. Saham pantauan otomatis mendapat peringatan saat asing borong/jual besar, volume melonjak, harga menembus batas, atau arah broker berbalik.
 
 ## Keterbatasan
 

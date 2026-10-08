@@ -382,8 +382,13 @@ def ask(question: str, bundle: dict, p: dict) -> str:
     cmd = env().get("ARUS_ASK_CMD", "").strip()
     lang = p.get("lang", "id")
     if not cmd:
-        return ("Untuk bertanya bebas, isi ARUS_ASK_CMD di .env dengan perintah CLI model bahasa yang menerima pertanyaan lewat stdin. Sementara itu coba /saham KODE atau /hari_ini."
-                if lang == "id" else "Free-form questions need ARUS_ASK_CMD in .env: a language-model CLI that reads the prompt from stdin. Meanwhile try /saham CODE or /hari_ini.")
+        # no answer engine: a message that names a stock still gets that stock's card
+        by = {s["symbol"]: s for s in bundle["ranking"]}
+        named = [w.upper() for w in re.findall(r"\b[A-Za-z]{4}\b", question) if w.upper() in by]
+        if named:
+            return stock_text(bundle, named[0], lang)
+        return ("Ketik kode saham untuk melihat skor dan level pentingnya, misal: BBRI. Atau coba /hari_ini dan /unggul."
+                if lang == "id" else "Type a stock code to see its score and key levels, e.g. BBRI. Or try /hari_ini and /unggul.")
     parts = cmd.split()
     exe = shutil.which(parts[0]) or shutil.which(parts[0] + ".cmd")
     if not exe:
@@ -436,11 +441,11 @@ HELP_ID = ("Perintah Arus:\n/hari_ini – ringkasan hari ini\n/saham KODE – sk
            "/hapus KODE – hapus dari pantauan\n/pantauan – lihat pantauanmu\n/rapor – rekam jejak Arus\n"
            "/syariah on|off – hanya saham syariah\n/harga 1000 – batas harga maks (/harga semua untuk hapus)\n"
            "/pengaturan – lihat filter Anda\n/bahasa en – switch to English\n\n"
-           "Atau ketik pertanyaan bebas, misal: BBRI masih layak dipantau?")
+           "Atau ketik kode saham saja, misal: BBRI")
 HELP_EN = ("Arus commands:\n/hari_ini – today's digest\n/saham CODE – score & key levels for a stock\n/unggul – top 10 strong edge\n"
            "/waspada – 10 caution flags\n/pantau CODE – add to watchlist\n/hapus CODE – remove\n/pantauan – your watchlist\n"
            "/rapor – Arus' track record\n/syariah on|off – sharia stocks only\n/harga 1000 – max price (/harga semua to clear)\n"
-           "/pengaturan – your filters\n/bahasa id – ganti ke Bahasa Indonesia\n\nOr just ask, e.g.: is BBRI still worth watching?")
+           "/pengaturan – your filters\n/bahasa id – ganti ke Bahasa Indonesia\n\nOr just type a stock code, e.g. BBRI")
 
 
 def handle(text: str, chat_id: int, st) -> str:

@@ -66,7 +66,7 @@ const COMMANDS: [string, Bi][] = [
   ["/rapor", { id: "Rekam jejak live Arus sejak agen berjalan", en: "Arus' live track record since the agent started" }],
   ["/syariah on", { id: "Hanya tampilkan saham syariah di semua daftar dan ringkasan", en: "Show only sharia stocks in every list and digest" }],
   ["/harga 1000", { id: "Hanya saham berharga di bawah batas ini (/harga semua untuk hapus)", en: "Only stocks priced below this (/harga semua to clear)" }],
-  [`"BBRI layak dipantau?"`, { id: "Tanya bebas dalam kalimat biasa; dijawab berdasarkan data Arus, lengkap dengan risiko", en: "Ask anything in plain words; answered from Arus data, risks included" }],
+  [`"BBRI layak dipantau?"`, { id: "Sebut kode saham dalam kalimat biasa; dibalas kartu saham itu", en: "Name a stock in plain words; you get that stock's card" }],
   ["/bahasa en", { id: "Ganti bahasa", en: "Switch language" }],
 ];
 

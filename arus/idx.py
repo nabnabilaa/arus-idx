@@ -27,9 +27,12 @@ PAGE = BASE + "/id/data-pasar/ringkasan-perdagangan/ringkasan-saham/"
 
 
 def session() -> requests.Session:
-    # the site sits behind Cloudflare; this browser fingerprint is accepted, plain clients get 403
-    s = requests.Session(impersonate="chrome124")
-    s.get(PAGE, timeout=30)
+    # the site sits behind Cloudflare, which accepts some browser fingerprints and 403s others;
+    # which ones changes over time, so take the first that gets through
+    for fp in ("safari18_0", "chrome124", "chrome", "safari"):
+        s = requests.Session(impersonate=fp)
+        if s.get(PAGE, timeout=30).status_code == 200:
+            return s
     return s
 
 

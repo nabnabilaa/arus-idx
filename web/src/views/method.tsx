@@ -148,7 +148,7 @@ export function MethodView({ meta }: Pick<Bundle, "meta">) {
         <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {STEPS.map((s, i) => (
             <motion.li key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: i * 0.06, ease: EASE }} className="rounded-xl bg-surface p-4 ring-1 ring-line">
-              <div className="num text-[11px] text-arus">{i + 1}</div>
+              <div className="num text-[12px] text-arus">{i + 1}</div>
               <div className="mt-1.5 text-[14px] font-medium text-ink">{tx(s.title)}</div>
               <div className="mt-1 text-[12.5px] leading-snug text-muted">{tx(s.body)}</div>
             </motion.li>

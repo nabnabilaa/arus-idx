@@ -38,7 +38,7 @@ export function BrokerSummaryView({ data, last, compact = false }: { data: Recor
   const table = (rows: BrokerSummary["buyers"], buy: boolean) => (
     <table className="w-full border-separate border-spacing-0 text-[12.5px]">
       <thead>
-        <tr className="text-right text-[11px] text-muted">
+        <tr className="text-right text-[12px] text-muted">
           <th className="py-1.5 text-left font-normal">{buy ? tx({ id: "Pembeli", en: "Buyer" }) : tx({ id: "Penjual", en: "Seller" })}</th>
           <th className="py-1.5 font-normal">{tx({ id: "Nilai", en: "Value" })}</th>
           <th className="hidden py-1.5 font-normal sm:table-cell">Lot</th>
@@ -104,20 +104,20 @@ export function BrokerSummaryView({ data, last, compact = false }: { data: Recor
 
       <div className="mt-4 grid grid-cols-3 gap-2 text-center">
         <div className="rounded-lg bg-ground/60 p-2.5 ring-1 ring-line">
-          <div className="text-[11.5px] text-muted">{tx({ id: "Arah 5 broker teratas", en: "Top-5 broker tilt" })}</div>
+          <div className="text-[12px] text-muted">{tx({ id: "Arah 5 broker teratas", en: "Top-5 broker tilt" })}</div>
           <div className={`text-[16px] font-semibold ${verdict.c}`}>{tx(verdict.l)}</div>
         </div>
         <div className="rounded-lg bg-ground/60 p-2.5 ring-1 ring-line">
-          <div className="text-[11.5px] text-muted">{tx({ id: "Beli vs jual (top 5)", en: "Buy vs sell (top 5)" })}</div>
+          <div className="text-[12px] text-muted">{tx({ id: "Beli vs jual (top 5)", en: "Buy vs sell (top 5)" })}</div>
           <div className="num text-[14px] text-ink">
             <span className="text-up">{idr(d.top5_buy, lang)}</span> / <span className="text-down">{idr(d.top5_sell, lang)}</span>
           </div>
         </div>
         <div className="rounded-lg bg-ground/60 p-2.5 ring-1 ring-line">
-          <div className="text-[11.5px] text-muted">{tx({ id: "Rata-rata 3 pembeli utama", en: "Top-3 buyers' avg" })}</div>
+          <div className="text-[12px] text-muted">{tx({ id: "Rata-rata 3 pembeli utama", en: "Top-3 buyers' avg" })}</div>
           <div className="num text-[15px] text-ink">
             {price(bandarAvg, lang)}
-            {gap != null && <span className={`ml-1 text-[11.5px] ${gap >= 0 ? "text-up" : "text-down"}`}>({gap >= 0 ? "+" : ""}{(gap * 100).toFixed(1)}%)</span>}
+            {gap != null && <span className={`ml-1 text-[12px] ${gap >= 0 ? "text-up" : "text-down"}`}>({gap >= 0 ? "+" : ""}{(gap * 100).toFixed(1)}%)</span>}
           </div>
         </div>
       </div>
@@ -127,7 +127,7 @@ export function BrokerSummaryView({ data, last, compact = false }: { data: Recor
         {table(d.sellers, false)}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-muted">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-muted">
         <span className="inline-flex items-center gap-1.5">{cohortDot("institutional", false)} {tx(COHORT.institutional)}</span>
         <span className="inline-flex items-center gap-1.5">{cohortDot("retail", false)} {tx(COHORT.retail)}</span>
         <span className="inline-flex items-center gap-1.5">{cohortDot(null, true)} {tx({ id: "Asing", en: "Foreign" })}</span>

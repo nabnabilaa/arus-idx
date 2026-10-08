@@ -57,7 +57,7 @@ function Bars({ years, rows }: { years: string[]; rows: { key: string; label: st
                 );
               })}
             </div>
-            <div className="num mt-1.5 text-[11.5px] text-muted">{y}</div>
+            <div className="num mt-1.5 text-[12px] text-muted">{y}</div>
           </div>
         ))}
       </div>
@@ -116,7 +116,7 @@ function Statement({ fin }: { fin: FinHealth }) {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[640px] border-separate border-spacing-0 text-[13px]">
           <thead>
-            <tr className="text-right text-[11.5px] text-muted">
+            <tr className="text-right text-[12px] text-muted">
               <th className="py-2 pr-4 text-left font-normal" />
               {fin.years.map((y) => (
                 <th key={y} className="num py-2 pr-4 font-normal">
@@ -202,7 +202,7 @@ export function FinanceTab({ s, fin, peers, valPeers = [] }: { s: Stock; fin: Fi
                 [{ id: "Tahun bayar dividen", en: "Dividend years" }, `${fin.dividend_years}/${fin.years.length}`, true],
               ].map(([l, v, ok]) => (
                 <div key={(l as Bi).en} className="rounded-lg bg-ground/60 px-3 py-2.5 ring-1 ring-line">
-                  <dt className="text-[11.5px] text-muted">{tx(l as Bi)}</dt>
+                  <dt className="text-[12px] text-muted">{tx(l as Bi)}</dt>
                   <dd className={`num text-[17px] font-semibold ${ok ? "text-ink" : "text-[#f0a3a3]"}`}>{v as string}</dd>
                 </div>
               ))}
@@ -229,7 +229,7 @@ export function FinanceTab({ s, fin, peers, valPeers = [] }: { s: Stock; fin: Fi
                           : `${fmt(c.a, c.u, lang)} → ${fmt(c.b, c.u, lang)}`}
                       </div>
                     )}
-                    <div className="mt-0.5 text-[11.5px] leading-snug text-muted">{tx(CHECK[c.k].why)}</div>
+                    <div className="mt-0.5 text-[12px] leading-snug text-muted">{tx(CHECK[c.k].why)}</div>
                   </div>
                 </motion.li>
               ))}
@@ -277,7 +277,7 @@ export function FinanceTab({ s, fin, peers, valPeers = [] }: { s: Stock; fin: Fi
         <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {stats.map(([l, val]) => (
             <div key={l.en} className="rounded-lg bg-ground/60 px-3 py-2.5 ring-1 ring-line">
-              <dt className="text-[11.5px] text-muted">{tx(l)}</dt>
+              <dt className="text-[12px] text-muted">{tx(l)}</dt>
               <dd className="num text-[16px] text-ink">{val}</dd>
             </div>
           ))}
@@ -292,7 +292,7 @@ export function FinanceTab({ s, fin, peers, valPeers = [] }: { s: Stock; fin: Fi
               <div className="mt-1.5 h-2 rounded-full bg-raised">
                 {val != null && <motion.div className="h-2 rounded-full bg-arus" initial={{ width: 0 }} animate={{ width: `${Math.max(3, val * 100)}%` }} transition={{ duration: 0.7, ease: EASE }} />}
               </div>
-              <div className="mt-1 text-[11px] text-muted">{tx({ id: "lebih baik dari sekian persen sesama sektor", en: "better than this share of sector peers" })}</div>
+              <div className="mt-1 text-[12px] text-muted">{tx({ id: "lebih baik dari sekian persen sesama sektor", en: "better than this share of sector peers" })}</div>
             </div>
           ))}
         </div>
@@ -309,7 +309,7 @@ export function FinanceTab({ s, fin, peers, valPeers = [] }: { s: Stock; fin: Fi
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[520px] border-separate border-spacing-0 text-[13px]">
               <thead>
-                <tr className="text-right text-[11.5px] text-muted">
+                <tr className="text-right text-[12px] text-muted">
                   <th className="py-2 pr-4 text-left font-normal">{tx({ id: "Saham", en: "Stock" })}</th>
                   <th className="py-2 pr-4 font-normal">{tx({ id: "Pendapatan / tahun", en: "Revenue / yr" })}</th>
                   <th className="py-2 pr-4 font-normal">{tx({ id: "Seberapa murah", en: "How cheap" })}</th>

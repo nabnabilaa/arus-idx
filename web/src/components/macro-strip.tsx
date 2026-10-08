@@ -73,9 +73,9 @@ export function MacroStrip({ market, macro, asOf }: { market: Bundle["market"]; 
               title={t.date ? tx({ id: `Data ${dateLabel(t.date, "id")}`, en: `As of ${dateLabel(t.date, "en")}` }) : undefined}
               className="w-36 shrink-0 snap-start rounded-xl bg-surface px-3 py-2.5 ring-1 ring-line sm:w-auto"
             >
-              <div className="truncate text-[11.5px] text-muted">{tx(t.label)}</div>
+              <div className="truncate text-[12px] text-muted">{tx(t.label)}</div>
               <div className={`num mt-0.5 text-[15px] font-semibold ${t.key === "ff" ? (up ? "text-up" : "text-down") : "text-ink"}`}>{t.value}</div>
-              <div className={`num text-[11px] ${t.chg == null ? "text-muted" : good === false ? "text-down" : good === true ? "text-up" : "text-ink-2"}`}>
+              <div className={`num text-[12px] ${t.chg == null ? "text-muted" : good === false ? "text-down" : good === true ? "text-up" : "text-ink-2"}`}>
                 {t.chg != null ? `${signed(t.chg * 100, 1, "%")} ` : ""}
                 <span className="text-muted">{tx(t.chgLabel)}</span>
               </div>

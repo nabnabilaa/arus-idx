@@ -216,9 +216,9 @@ export function TradeSim({ candles: c }: { candles: Candles }) {
               { k: { id: "Take profit", en: "Take profit" }, v: tpPrice, m: tpDist, c: "text-up" },
             ].map((x) => (
               <div key={x.k.id} className="rounded-lg bg-ground/60 p-2.5 ring-1 ring-line">
-                <dt className="text-[11.5px] text-muted">{tx(x.k)}</dt>
+                <dt className="text-[12px] text-muted">{tx(x.k)}</dt>
                 <dd className={`num mt-0.5 text-[18px] font-semibold ${x.c}`}>{price(x.v, lang)}</dd>
-                <dd className="num text-[11.5px] text-muted">{x.m ? signed(x.m * 100, 1, "%") : tx({ id: `tahan ≤${hold} hari`, en: `hold ≤${hold}d` })}</dd>
+                <dd className="num text-[12px] text-muted">{x.m ? signed(x.m * 100, 1, "%") : tx({ id: `tahan ≤${hold} hari`, en: `hold ≤${hold}d` })}</dd>
               </div>
             ))}
           </dl>
@@ -248,7 +248,7 @@ export function TradeSim({ candles: c }: { candles: Candles }) {
               <dd className="num">{rr != null ? `${rr.toFixed(2)} : 1` : "–"}</dd>
             </div>
           </dl>
-          <p className="mt-3 text-[11.5px] leading-relaxed text-muted">
+          <p className="mt-3 text-[12px] leading-relaxed text-muted">
             <T id="Sudah termasuk biaya beli 0,15% dan jual 0,25%, dibulatkan ke fraksi harga BEI." en="Includes 0.15% buy and 0.25% sell fees, rounded to IDX tick sizes." />
           </p>
         </section>
@@ -263,7 +263,7 @@ export function TradeSim({ candles: c }: { candles: Candles }) {
               <T id="Kamu masuk pada hari seperti apa?" en="What kind of day are you buying after?" />
             </div>
             <Segmented<Cond> label={tx({ id: "Kondisi masuk", en: "Entry condition" })} value={cond} onChange={setCond} options={(["any", "after_up", "after_down"] as Cond[]).map((k) => ({ value: k, label: tx(COND_LABEL[k]) }))} />
-            <p className="mt-1.5 text-[11.5px] text-muted">
+            <p className="mt-1.5 text-[12px] text-muted">
               {tx({
                 id: `“Kencang” = gerak lebih dari ${BIG_MOVE}× gerak normal sehari. Hari ini: ${tx(COND_LABEL[today]).toLowerCase()} (${signed(dayMove(c, n - 1) * 100, 1, "%")}).`,
                 en: `“Big” = a move over ${BIG_MOVE}× the normal daily move. Today: ${tx(COND_LABEL[today]).toLowerCase()} (${signed(dayMove(c, n - 1) * 100, 1, "%")}).`,
@@ -285,7 +285,7 @@ export function TradeSim({ candles: c }: { candles: Candles }) {
                 ].map((x) => (
                   <div key={x.k} className="rounded-lg bg-ground/60 p-3 ring-1 ring-line">
                     <div className={`num text-3xl font-semibold tracking-tight ${x.c}`}>{per100(x.k)}</div>
-                    <div className="text-[11.5px] text-muted">{tx(x.l)}</div>
+                    <div className="text-[12px] text-muted">{tx(x.l)}</div>
                   </div>
                 ))}
               </div>
@@ -305,7 +305,7 @@ export function TradeSim({ candles: c }: { candles: Candles }) {
             </>
           )}
 
-          <p className="mt-5 text-[11.5px] leading-relaxed text-muted">
+          <p className="mt-5 text-[12px] leading-relaxed text-muted">
             <T
               id="Dihitung dari data harian. Trade yang selesai dalam hitungan jam tidak bisa dinilai di sini; angka ini menggambarkan jangkauan gerak antarhari. Kalau CL dan TP tersentuh di hari yang sama, dianggap kena CL dulu. Hasil masa lalu tidak menjamin hasil berikutnya. Ini simulasi untuk gambaran, bukan nasihat keuangan atau ajakan membeli atau menjual."
               en="Computed from daily data. Trades closed within hours can't be judged here; these numbers describe moves across days. If stop and target touch on the same day, the stop is assumed first. Past results don't guarantee future ones. This is an illustration, not financial advice or a recommendation to buy or sell."

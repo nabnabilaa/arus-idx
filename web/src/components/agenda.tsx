@@ -85,12 +85,12 @@ export function AgendaWeek({ items, ranked, asOf, link = true }: { items: Agenda
               <ul className="flex flex-1 flex-col gap-2.5 px-3 py-2.5">
                 {list.slice(0, 5).map((it) => (
                   <li key={`${it.type}-${it.s}`} className="text-[12.5px] leading-snug">
-                    <div className={`text-[10.5px] font-semibold uppercase tracking-wide ${AGENDA_LABEL[it.type].tone}`}>{tx(AGENDA_LABEL[it.type].label)}</div>
+                    <div className={`text-[11.5px] font-semibold uppercase tracking-wide ${AGENDA_LABEL[it.type].tone}`}>{tx(AGENDA_LABEL[it.type].label)}</div>
                     <SymbolLink s={it.s} ranked={ranked.has(it.s)} />
-                    <div className="num text-[11.5px] text-muted">{detail(it)}</div>
+                    <div className="num text-[12px] text-muted">{detail(it)}</div>
                   </li>
                 ))}
-                {list.length > 5 && <li className="text-[11.5px] text-muted">{tx({ id: `+${list.length - 5} lainnya`, en: `+${list.length - 5} more` })}</li>}
+                {list.length > 5 && <li className="text-[12px] text-muted">{tx({ id: `+${list.length - 5} lainnya`, en: `+${list.length - 5} more` })}</li>}
                 {list.length === 0 && <li className="text-[12px] text-muted">{tx({ id: "Tidak ada agenda", en: "Nothing scheduled" })}</li>}
               </ul>
             </motion.div>

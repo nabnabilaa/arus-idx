@@ -385,7 +385,7 @@ export function CandleChart({
         )}
       </div>
       {on.arus && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted">
           <span>{tx({ id: "Pita warna = penilaian Arus tiap hari. Klik satu hari untuk melihat detailnya dan apa yang terjadi sesudahnya.", en: "Colour strip = Arus' call each day. Click a day to see its details and what happened next." })}</span>
           {VERDICT_ORDER.slice().reverse().map((k) => (
             <span key={k} className="inline-flex items-center gap-1">
@@ -462,7 +462,7 @@ function DayPanel({ all, date, ihsgMap, onClose, onStep }: { all: Row[]; date: s
               <div className="absolute inset-y-0 rounded-full" style={{ left: pos(Math.min(r.o, r.c)), width: `${(Math.abs(r.c - r.o) / span) * 100}%`, background: up ? C.up : C.down, minWidth: 3 }} />
               <span className="absolute -top-1 h-4 w-0.5 rounded bg-ink" style={{ left: pos(r.c) }} />
             </div>
-            <div className="num mt-1.5 flex justify-between text-[11.5px] text-muted">
+            <div className="num mt-1.5 flex justify-between text-[12px] text-muted">
               <span>
                 {tx({ id: "Terendah", en: "Low" })} {price(r.l, lang)}
               </span>
@@ -470,7 +470,7 @@ function DayPanel({ all, date, ihsgMap, onClose, onStep }: { all: Row[]; date: s
                 {tx({ id: "Tertinggi", en: "High" })} {price(r.h, lang)}
               </span>
             </div>
-            <div className="num mt-1 text-[11.5px] text-muted">
+            <div className="num mt-1 text-[12px] text-muted">
               {tx({ id: "Buka", en: "Open" })} {price(r.o, lang)} → {tx({ id: "tutup", en: "close" })} {price(r.c, lang)} · {tx({ id: "rentang", en: "range" })} {((span / r.l) * 100).toFixed(1)}%
             </div>
           </div>
@@ -489,7 +489,7 @@ function DayPanel({ all, date, ihsgMap, onClose, onStep }: { all: Row[]; date: s
               <div className="h-2 rounded-full bg-[#9085e9]" style={{ width: `${Math.min(100, ((vMult ?? 0) / 3) * 100)}%` }} />
               <span className="absolute -top-0.5 h-3 w-px bg-ink-2" style={{ left: "33.3%" }} />
             </div>
-            <div className="mt-1 text-[11px] text-muted">{tx({ id: "garis tipis = rata-rata 20 hari", en: "tick = 20-day average" })}</div>
+            <div className="mt-1 text-[12px] text-muted">{tx({ id: "garis tipis = rata-rata 20 hari", en: "tick = 20-day average" })}</div>
           </div>
           <div>
             <div className="flex justify-between text-[12px]">
@@ -505,7 +505,7 @@ function DayPanel({ all, date, ihsgMap, onClose, onStep }: { all: Row[]; date: s
                 style={{ background: r.f >= 0 ? C.up : C.down, left: r.f >= 0 ? "50%" : `${50 - (Math.abs(r.f) / fAbsMax) * 50}%`, width: `${(Math.abs(r.f) / fAbsMax) * 50}%` }}
               />
             </div>
-            <div className="mt-1 text-[11px] text-muted">{tx({ id: "dibanding hari tersibuk 3 bulan", en: "vs the busiest day in 3 months" })}</div>
+            <div className="mt-1 text-[12px] text-muted">{tx({ id: "dibanding hari tersibuk 3 bulan", en: "vs the busiest day in 3 months" })}</div>
           </div>
         </div>
 
@@ -517,9 +517,9 @@ function DayPanel({ all, date, ihsgMap, onClose, onStep }: { all: Row[]; date: s
           <div className="mt-3 grid grid-cols-2 gap-2">
             {outcomes.map((o) => (
               <div key={o.k} className="rounded-lg bg-ground/60 p-2.5 ring-1 ring-line">
-                <div className="text-[11px] text-muted">{tx(o.l)}</div>
+                <div className="text-[12px] text-muted">{tx(o.l)}</div>
                 <div className={`num text-[17px] font-semibold ${o.v == null ? "text-muted" : o.v.ret >= 0 ? "text-up" : "text-down"}`}>{o.v ? signed(o.v.ret * 100, 1, "%") : "–"}</div>
-                {o.v?.rel != null && <div className="num text-[10.5px] text-muted">{signed(o.v.rel * 100, 1, "%")} vs IHSG</div>}
+                {o.v?.rel != null && <div className="num text-[11.5px] text-muted">{signed(o.v.rel * 100, 1, "%")} vs IHSG</div>}
               </div>
             ))}
           </div>

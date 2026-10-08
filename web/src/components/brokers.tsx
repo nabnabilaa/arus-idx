@@ -69,7 +69,7 @@ export function BrokerBehaviour({ p, last }: { p: BrokerProfile; last: number | 
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[720px] border-separate border-spacing-0 text-[13px]">
           <thead>
-            <tr className="text-right text-[11.5px] text-muted">
+            <tr className="text-right text-[12px] text-muted">
               <th className="py-2 pr-3 text-left font-normal">Broker</th>
               <th className="py-2 pr-3 text-left font-normal">{tx({ id: "Gaya", en: "Style" })}</th>
               <th className="py-2 pr-3 font-normal">{tx({ id: "Bersih", en: "Net" })}</th>
@@ -88,13 +88,13 @@ export function BrokerBehaviour({ p, last }: { p: BrokerProfile; last: number | 
                     <Link href={`/broker/${b.code}/`} className="font-semibold text-ink hover:text-arus">
                       {b.code}
                     </Link>
-                    <span className="ml-2 text-[11.5px] text-muted">
+                    <span className="ml-2 text-[12px] text-muted">
                       {b.cohort && COHORT[b.cohort] ? tx(COHORT[b.cohort]) : ""}
                       {b.foreign ? ` · ${tx({ id: "asing", en: "foreign" })}` : ""}
                     </span>
                   </td>
                   <td className="border-t border-line py-2 pr-3 text-left">
-                    <span title={tx(STYLE[b.style].explain)} className={`cursor-help rounded-full px-2 py-0.5 text-[11px] ring-1 ${STYLE[b.style].tone}`}>
+                    <span title={tx(STYLE[b.style].explain)} className={`cursor-help rounded-full px-2 py-0.5 text-[12px] ring-1 ${STYLE[b.style].tone}`}>
                       {tx(STYLE[b.style].label)}
                     </span>
                   </td>
@@ -104,15 +104,15 @@ export function BrokerBehaviour({ p, last }: { p: BrokerProfile; last: number | 
                   </td>
                   <td className="border-t border-line py-2 pr-3 text-ink-2">
                     {price(b.avg_buy, lang)}
-                    {gap != null && <span className={`ml-1 text-[11px] ${gap >= 0 ? "text-up" : "text-down"}`}>({signed(gap * 100, 1, "%")})</span>}
+                    {gap != null && <span className={`ml-1 text-[12px] ${gap >= 0 ? "text-up" : "text-down"}`}>({signed(gap * 100, 1, "%")})</span>}
                   </td>
                   <td className="border-t border-line py-2 pr-3 text-ink-2">
                     {b.buy_ret != null ? signed(b.buy_ret * 100, 1, "%") : "–"}
-                    {b.buy_vol != null && <span className="ml-1 text-[11px] text-muted">vol {b.buy_vol.toFixed(1)}×</span>}
+                    {b.buy_vol != null && <span className="ml-1 text-[12px] text-muted">vol {b.buy_vol.toFixed(1)}×</span>}
                   </td>
                   <td className={`border-t border-line py-2 ${b.follow3 == null ? "text-muted" : b.follow3 >= 0 ? "text-up" : "text-down"}`}>
                     {b.follow3 == null ? "–" : signed(b.follow3 * 100, 1, "%")}
-                    {b.n_follow > 0 && <span className="ml-1 text-[11px] text-muted">({b.n_follow}×)</span>}
+                    {b.n_follow > 0 && <span className="ml-1 text-[12px] text-muted">({b.n_follow}×)</span>}
                   </td>
                 </tr>
               );
@@ -120,7 +120,7 @@ export function BrokerBehaviour({ p, last }: { p: BrokerProfile; last: number | 
           </tbody>
         </table>
       </div>
-      <p className="mt-4 text-[11.5px] leading-relaxed text-muted">
+      <p className="mt-4 text-[12px] leading-relaxed text-muted">
         <T
           id="Arahkan kursor ke label gaya untuk penjelasannya. “Harga di hari belinya” = rata-rata gerak harga pada hari broker itu membeli bersih. “3 hari sesudahnya” dibandingkan dengan saham rata-rata. Periodenya beberapa minggu, jadi ini kebiasaan terbaru, bukan pola yang terbukti."
           en="Hover a style label for its meaning. “Price on its buy days” = the average price move on days the broker net bought. “3 days later” is relative to the median stock. The window is a few weeks, so these are recent habits, not proven patterns."
@@ -167,7 +167,7 @@ function NewsItemRow({ n }: { n: NewsItem }) {
             <span className="num">{dateLabel(n.ts.slice(0, 10), lang, { year: undefined })}</span>
             {host && <span>· {host}</span>}
             {n.symbols.slice(0, 5).map((sym) => (
-              <Link key={sym} href={`/saham/${sym}/`} className="rounded bg-raised px-1.5 py-px text-[11px] font-medium text-ink-2 ring-1 ring-line hover:text-arus">
+              <Link key={sym} href={`/saham/${sym}/`} className="rounded bg-raised px-1.5 py-px text-[12px] font-medium text-ink-2 ring-1 ring-line hover:text-arus">
                 {sym}
               </Link>
             ))}
@@ -234,7 +234,7 @@ export function NewsList({ items, searchable = false }: { items: NewsItem[]; sea
         ))}
       </div>
       {shown.length === 0 && <p className="py-8 text-[14px] text-muted">{tx({ id: "Tidak ada berita yang cocok.", en: "No articles match." })}</p>}
-      <p className="mt-3 flex flex-wrap items-center gap-3 text-[11.5px] text-muted">
+      <p className="mt-3 flex flex-wrap items-center gap-3 text-[12px] text-muted">
         {Object.values(TONE_TAG).map((v) => (
           <span key={v.c} className="inline-flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ background: v.c }} />

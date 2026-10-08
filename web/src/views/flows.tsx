@@ -207,12 +207,12 @@ export function FlowsView({ market, brokers, ranking, bandar, summary, news }: P
                       <div className="text-[15px] font-semibold text-ink group-hover:text-arus">{r.sym}</div>
                       <div className="truncate text-[12px] text-muted">{(r.name ?? "").replace(/^PT\.? /, "").replace(/ Tbk\.?$/, "")}</div>
                     </div>
-                    <span className={`shrink-0 text-[11.5px] font-medium ${tilt === "up" ? "text-[#9cc5f5]" : tilt === "down" ? "text-[#f0a3a3]" : "text-muted"}`}>
+                    <span className={`shrink-0 text-[12px] font-medium ${tilt === "up" ? "text-[#9cc5f5]" : tilt === "down" ? "text-[#f0a3a3]" : "text-muted"}`}>
                       {tilt === "up" ? tx({ id: "Akumulasi", en: "Accumulation" }) : tilt === "down" ? tx({ id: "Distribusi", en: "Distribution" }) : tx({ id: "Seimbang", en: "Balanced" })}
                     </span>
                   </div>
                   <div className="mt-3 flex items-baseline justify-between gap-3">
-                    <span className="text-[11.5px] text-muted">{tx({ id: "Institusi bersih", en: "Institutions net" })}</span>
+                    <span className="text-[12px] text-muted">{tx({ id: "Institusi bersih", en: "Institutions net" })}</span>
                     <span className={`num text-lg font-semibold ${r.inst >= 0 ? "text-up" : "text-down"}`}>{idr(r.inst, lang)}</span>
                   </div>
                   <div className="num mt-1 flex justify-between gap-3 text-[12px] text-muted">

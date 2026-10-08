@@ -232,11 +232,11 @@ export function CompareView({ stocks }: { stocks: CompactStock[] }) {
                         {s.symbol}
                         {lead && <Crown size={14} className="text-warn" />}
                       </Link>
-                      <div className="truncate text-[11.5px] text-muted">{(s.name ?? "").replace(/^PT\.? /, "")}</div>
+                      <div className="truncate text-[12px] text-muted">{(s.name ?? "").replace(/^PT\.? /, "")}</div>
                     </div>
                     <div className="text-right">
                       <div className="num text-[14px] text-ink">{price(s.price, lang)}</div>
-                      <div className="text-[11px] text-muted">{tx({ id: `unggul di ${won}/${contested} ukuran`, en: `leads ${won}/${contested} measures` })}</div>
+                      <div className="text-[12px] text-muted">{tx({ id: `unggul di ${won}/${contested} ukuran`, en: `leads ${won}/${contested} measures` })}</div>
                     </div>
                   </motion.div>
                 );
@@ -275,7 +275,7 @@ export function CompareView({ stocks }: { stocks: CompactStock[] }) {
               {groups.map((g) => (
                 <tbody key={g.t.en}>
                   <tr>
-                    <td colSpan={items.length + 1} className="border-t border-line bg-ground/40 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                    <td colSpan={items.length + 1} className="border-t border-line bg-ground/40 px-4 py-1.5 text-[12px] font-semibold uppercase tracking-wide text-muted">
                       {tx(g.t)}
                     </td>
                   </tr>

@@ -124,7 +124,7 @@ export function StockBrief({ s, agenda, peers, capRank, total }: { s: Stock; age
   const facts: [string, React.ReactNode][] = [
     [tx({ id: "Sektor", en: "Sector" }), sec],
     [tx({ id: "Subsektor", en: "Sub-sector" }), sub],
-    [tx({ id: "Kapitalisasi", en: "Market cap" }), <span key="c">{idr(s.market_cap, lang)}{capRank ? <span className="ml-1 text-[11.5px] text-muted">#{capRank}/{total}</span> : null}</span>],
+    [tx({ id: "Kapitalisasi", en: "Market cap" }), <span key="c">{idr(s.market_cap, lang)}{capRank ? <span className="ml-1 text-[12px] text-muted">#{capRank}/{total}</span> : null}</span>],
     [tx({ id: "Dividen yield", en: "Dividend yield" }), pct(s.yield_ttm, 1)],
     ["PER · PBV", `${x2(s.pe_ttm, lang)} · ${x2(s.pb_mrq, lang)}`],
     ["ROE", pct(s.roe_ttm, 1)],
@@ -164,21 +164,21 @@ export function StockBrief({ s, agenda, peers, capRank, total }: { s: Stock; age
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
             {facts.map(([l, v]) => (
               <div key={l} className="min-w-0">
-                <dt className="text-[11.5px] text-muted">{l}</dt>
+                <dt className="text-[12px] text-muted">{l}</dt>
                 <dd className="num truncate text-[14px] text-ink">{v}</dd>
               </div>
             ))}
           </dl>
           {s.pos_52w != null && (
             <div className="mt-4">
-              <div className="flex justify-between text-[11.5px] text-muted">
+              <div className="flex justify-between text-[12px] text-muted">
                 <span>{tx({ id: "Posisi di rentang setahun", en: "Position in its 1-year range" })}</span>
                 <span className="num text-ink-2">{Math.round(s.pos_52w * 100)}%</span>
               </div>
               <div className="relative mt-1.5 h-2 rounded-full bg-gradient-to-r from-down/40 via-raised to-up/50">
                 <motion.span className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink ring-[3px] ring-surface" initial={{ left: "50%" }} animate={{ left: `${Math.min(100, Math.max(0, s.pos_52w * 100))}%` }} transition={{ type: "spring", stiffness: 200, damping: 22 }} />
               </div>
-              <div className="mt-1 flex justify-between text-[11px] text-muted">
+              <div className="mt-1 flex justify-between text-[12px] text-muted">
                 <span>{tx({ id: "terendah", en: "low" })}</span>
                 <span>{tx({ id: "tertinggi", en: "high" })}</span>
               </div>

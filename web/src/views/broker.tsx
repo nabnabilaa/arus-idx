@@ -145,7 +145,7 @@ export function BrokerDirectory({ rows, period }: { rows: DirectoryRow[]; period
               <span className="text-[17px] font-semibold text-ink group-hover:text-arus">{r.code}</span>
               <span className="min-w-0 truncate text-[12px] text-muted">{r.name}</span>
             </div>
-            <div className="mt-1 text-[11.5px] text-muted">
+            <div className="mt-1 text-[12px] text-muted">
               {tx(COHORT_LABEL[r.cohort ?? "unknown"] ?? COHORT_LABEL.unknown)}
               {r.foreign ? ` · ${tx({ id: "asing", en: "foreign" })}` : ""} · {tx({ id: `aktif di ${r.n_stocks} saham`, en: `active in ${r.n_stocks} stocks` })} · {idr(r.gross, lang)}
             </div>
@@ -236,24 +236,24 @@ export function BrokerDetail({ b, names, prices, sectors, period }: { b: Detail;
         </div>
         <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4 sm:grid-cols-4">
           <div>
-            <dt className="text-[11.5px] text-muted">{tx({ id: "Nilai transaksi", en: "Traded value" })}</dt>
+            <dt className="text-[12px] text-muted">{tx({ id: "Nilai transaksi", en: "Traded value" })}</dt>
             <dd className="num text-[16px] text-ink">{idr(b.gross, lang)}</dd>
           </div>
           <div>
-            <dt className="text-[11.5px] text-muted">{tx({ id: "Bersih", en: "Net" })}</dt>
+            <dt className="text-[12px] text-muted">{tx({ id: "Bersih", en: "Net" })}</dt>
             <dd className={`num text-[16px] ${b.net >= 0 ? "text-up" : "text-down"}`}>
               {b.net >= 0 ? tx({ id: "beli", en: "bought" }) : tx({ id: "jual", en: "sold" })} {idr(Math.abs(b.net), lang)}
             </dd>
           </div>
           <div>
-            <dt className="text-[11.5px] text-muted">{tx({ id: "Aktif di", en: "Active in" })}</dt>
+            <dt className="text-[12px] text-muted">{tx({ id: "Aktif di", en: "Active in" })}</dt>
             <dd className="num text-[16px] text-ink">{tx({ id: `${b.n_stocks} saham`, en: `${b.n_stocks} stocks` })}</dd>
           </div>
           <div>
-            <dt className="text-[11.5px] text-muted">{tx({ id: "3 hari setelah ia beli", en: "3 days after it buys" })}</dt>
+            <dt className="text-[12px] text-muted">{tx({ id: "3 hari setelah ia beli", en: "3 days after it buys" })}</dt>
             <dd className={`num text-[16px] ${avgF == null ? "text-muted" : avgF >= 0 ? "text-up" : "text-down"}`}>
               {avgF == null ? "–" : `${signed(avgF * 100, 1, "%")}`}
-              {nF > 0 && <span className="ml-1 text-[11.5px] text-muted">({nF}×)</span>}
+              {nF > 0 && <span className="ml-1 text-[12px] text-muted">({nF}×)</span>}
             </dd>
           </div>
         </dl>
@@ -311,11 +311,11 @@ export function BrokerDetail({ b, names, prices, sectors, period }: { b: Detail;
                     <Link href={`/saham/${x.s}/`} className="flex items-center gap-3 py-2.5 hover:text-arus">
                       <span className="min-w-0 flex-1">
                         <span className="block text-[14px] font-semibold">{x.s}</span>
-                        <span className="block truncate text-[11.5px] text-muted">{names[x.s]}</span>
+                        <span className="block truncate text-[12px] text-muted">{names[x.s]}</span>
                       </span>
                       <span className="text-right">
                         <span className={`num block text-[14px] ${col.c}`}>{idr(Math.abs(x.net), lang)}</span>
-                        <span className="num block text-[11.5px] text-muted">
+                        <span className="num block text-[12px] text-muted">
                           @{price(x.net >= 0 ? x.avg_buy : x.avg_sell, lang)}
                           {g != null && <span className={g >= 0 ? "text-up" : "text-down"}> ({signed(g * 100, 1, "%")})</span>}
                         </span>
@@ -389,7 +389,7 @@ export function BrokerDetail({ b, names, prices, sectors, period }: { b: Detail;
                     </td>
                     <td className="border-t border-line py-2 pr-4 text-ink-2">#{x.rank}</td>
                     <td className="border-t border-line py-2 pl-2 text-left">
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] ring-1 ${STYLE[x.style].tone}`}>{tx(STYLE[x.style].label)}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[12px] ring-1 ${STYLE[x.style].tone}`}>{tx(STYLE[x.style].label)}</span>
                     </td>
                   </tr>
                 );

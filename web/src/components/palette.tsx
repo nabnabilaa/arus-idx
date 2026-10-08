@@ -93,7 +93,7 @@ export function Palette({ index }: { index: SearchIndex }) {
       >
         <Search size={14} />
         <span className="hidden sm:inline">{tx({ id: "Cari", en: "Search" })}</span>
-        <kbd className="hidden rounded bg-raised px-1.5 text-[10.5px] text-muted ring-1 ring-line md:inline">Ctrl K</kbd>
+        <kbd className="hidden rounded bg-raised px-1.5 text-[11.5px] text-muted ring-1 ring-line md:inline">Ctrl K</kbd>
       </button>
       <AnimatePresence>
         {open && (
@@ -127,14 +127,14 @@ export function Palette({ index }: { index: SearchIndex }) {
                   placeholder={tx({ id: "Cari saham, broker, sektor, atau halaman…", en: "Search stocks, brokers, sectors or pages…" })}
                   className="h-14 w-full bg-transparent text-[15px] text-ink placeholder:text-muted focus:outline-none"
                 />
-                <kbd className="rounded bg-raised px-1.5 text-[10.5px] text-muted ring-1 ring-line">Esc</kbd>
+                <kbd className="rounded bg-raised px-1.5 text-[11.5px] text-muted ring-1 ring-line">Esc</kbd>
               </label>
               <ul className="max-h-[55vh] overflow-y-auto p-2">
                 {hits.length === 0 && <li className="px-3 py-6 text-center text-[13.5px] text-muted">{tx({ id: "Tidak ditemukan.", en: "Nothing found." })}</li>}
                 {hits.map((h, i) => (
                   <li key={`${h.kind}-${h.key}`}>
                     <button onMouseEnter={() => setSel(i)} onClick={() => go(h)} className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left ${i === sel ? "bg-raised" : ""}`}>
-                      <span className="w-16 shrink-0 text-[11px] text-muted">{KIND[h.kind]}</span>
+                      <span className="w-16 shrink-0 text-[12px] text-muted">{KIND[h.kind]}</span>
                       <span className="text-[14px] font-semibold text-ink">{h.title}</span>
                       <span className="min-w-0 truncate text-[12.5px] text-muted">{h.sub}</span>
                     </button>

@@ -160,7 +160,7 @@ function HowToRead() {
       vis: (
         <div className="w-full max-w-56">
           <ScoreBar value={0.56} lo={0.5} hi={0.61} color="#5cc8ff" />
-          <div className="num mt-1 flex justify-between text-[10.5px] text-muted">
+          <div className="num mt-1 flex justify-between text-[11.5px] text-muted">
             <span>40</span>
             <span>50 · {tx({ id: "acak", en: "random" })}</span>
             <span>60</span>
@@ -334,7 +334,7 @@ function MarketToday({ ranking, market, horizon, model }: { ranking: Stock[]; ma
               <div className="sm:hidden">
                 <MarketMap stocks={ranking} horizon={horizon} mode={mode} height={560} />
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] text-muted">
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-muted">
                 {mode === "score" ? (
                   VERDICT_ORDER.map((k) => (
                     <span key={k} className="inline-flex items-center gap-1.5">
@@ -548,7 +548,7 @@ function Screener({ scored }: { scored: Scored[] }) {
           >
             <SlidersHorizontal size={14} />
             <T id="Filter" en="Filters" />
-            {activeCount > 0 && <span className="num rounded bg-arus px-1.5 text-[11px] font-semibold text-ground">{activeCount}</span>}
+            {activeCount > 0 && <span className="num rounded bg-arus px-1.5 text-[12px] font-semibold text-ground">{activeCount}</span>}
           </button>
           <label className="ml-auto flex items-center gap-2 text-[12.5px] text-muted">
             <span className="hidden sm:inline">
@@ -642,7 +642,7 @@ function Screener({ scored }: { scored: Scored[] }) {
                   help={<Term k="liquidity"><T id="Ini batas bawah, bukan batas atas" en="This is a floor, not a cap" /></Term>}
                 >
                   <input type="range" min={0} max={LIQ.length - 1} step={1} value={LIQ.indexOf(f.liq)} onChange={(e) => set("liq", LIQ[+e.target.value])} className="w-full accent-[#5cc8ff]" aria-label="liquidity" />
-                  <div className="num flex justify-between text-[10.5px] text-muted">
+                  <div className="num flex justify-between text-[11.5px] text-muted">
                     {LIQ.map((l) => (
                       <span key={l}>{idr(l, lang)}</span>
                     ))}
@@ -726,7 +726,7 @@ function Screener({ scored }: { scored: Scored[] }) {
                         {s.sharia && <Badge tone="good">{tx({ id: "Syariah", en: "Sharia" })}</Badge>}
                         <RiskBadge s={s} />
                       </span>
-                      <span className="block max-w-60 truncate text-[11.5px] text-muted">{(s.name ?? "").replace(/^PT\.? /, "").replace(/ Tbk\.?$/, "")}</span>
+                      <span className="block max-w-60 truncate text-[12px] text-muted">{(s.name ?? "").replace(/^PT\.? /, "").replace(/ Tbk\.?$/, "")}</span>
                     </Link>
                   </td>
                   <td className="max-w-44 truncate border-t border-line py-2 pr-4 text-[12.5px] text-muted">{s.sub_sector ? (lang === "id" ? SUBSECTOR_ID[s.sub_sector] ?? s.sub_sector : s.sub_sector) : "–"}</td>
@@ -813,7 +813,7 @@ function Field({ label, help, children }: { label: React.ReactNode; help?: React
     <div>
       <div className="mb-1.5 text-[12.5px] text-ink-2">{label}</div>
       {children}
-      {help && <div className="mt-1.5 text-[11.5px] text-muted">{help}</div>}
+      {help && <div className="mt-1.5 text-[12px] text-muted">{help}</div>}
     </div>
   );
 }

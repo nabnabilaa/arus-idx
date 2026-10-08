@@ -40,8 +40,8 @@ function DayBars({ days, fmt }: { days: { d: string; v: number }[]; fmt: (v: num
                 style={{ background: x.v >= 0 ? C.up : C.down, ...(x.v >= 0 ? { bottom: "50%" } : { top: "50%" }) }}
               />
             </div>
-            <div className={`num text-[11.5px] ${x.v >= 0 ? "text-up" : "text-down"}`}>{fmt(x.v)}</div>
-            <div className="text-[11px] text-muted">{dateLabel(x.d, lang, { weekday: "short", day: undefined, month: undefined, year: undefined })}</div>
+            <div className={`num text-[12px] ${x.v >= 0 ? "text-up" : "text-down"}`}>{fmt(x.v)}</div>
+            <div className="text-[12px] text-muted">{dateLabel(x.d, lang, { weekday: "short", day: undefined, month: undefined, year: undefined })}</div>
           </div>
         );
       })}
@@ -62,7 +62,7 @@ function StockLine({ s, name, right, sub, ranked }: { s: string; name?: string |
       </div>
       <div className="shrink-0 text-right">
         <div className="num text-[13.5px]">{right}</div>
-        {sub && <div className="num text-[11px] text-muted">{sub}</div>}
+        {sub && <div className="num text-[12px] text-muted">{sub}</div>}
       </div>
     </li>
   );
@@ -171,11 +171,11 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
         </h1>
         <div className="mt-5 grid grid-cols-2 divide-line overflow-hidden rounded-2xl bg-surface ring-1 ring-line sm:grid-cols-4 sm:divide-x">
           <div className="px-4 py-3">
-            <div className="text-[11.5px] text-muted">IHSG</div>
+            <div className="text-[12px] text-muted">IHSG</div>
             <div className={`num text-xl font-semibold ${red ? "text-down" : "text-up"}`}>{pctS(st.ihsg)}</div>
           </div>
           <div className="px-4 py-3">
-            <div className="text-[11.5px] text-muted">{tx({ id: "Naik : turun", en: "Up : down" })}</div>
+            <div className="text-[12px] text-muted">{tx({ id: "Naik : turun", en: "Up : down" })}</div>
             <div className="num text-xl font-semibold text-ink">
               <span className="text-up">{st.up}</span> : <span className="text-down">{st.down}</span>
             </div>
@@ -185,11 +185,11 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
             </div>
           </div>
           <div className="px-4 py-3">
-            <div className="text-[11.5px] text-muted">{tx({ id: "Asing bersih", en: "Foreign net" })}</div>
+            <div className="text-[12px] text-muted">{tx({ id: "Asing bersih", en: "Foreign net" })}</div>
             <div className={`num text-xl font-semibold ${st.foreign >= 0 ? "text-up" : "text-down"}`}>{idr(st.foreign, lang)}</div>
           </div>
           <div className="px-4 py-3">
-            <div className="text-[11.5px] text-muted">{tx({ id: "Saham paling likuid yang naik", en: "Most liquid stocks up" })}</div>
+            <div className="text-[12px] text-muted">{tx({ id: "Saham paling likuid yang naik", en: "Most liquid stocks up" })}</div>
             <div className="num text-xl font-semibold text-ink">
               {st.big_up}
               <span className="text-[13px] font-normal text-muted">/{st.big_n}</span>
@@ -233,7 +233,7 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
                 { value: "stocks", label: tx({ id: "Per saham", en: "By stock" }) },
               ]}
             />
-            <span className="hidden items-center gap-1.5 text-[11px] text-muted sm:flex">
+            <span className="hidden items-center gap-1.5 text-[12px] text-muted sm:flex">
               {mode === "price" ? (level === "sector" ? "−5%" : "−10%") : tx({ id: "jual", en: "sell" })}
               <span className="h-2 w-28 rounded-full" style={{ background: "linear-gradient(90deg, rgba(230,103,103,0.94), rgba(148,163,184,0.15), rgba(57,135,229,0.94))" }} />
               {mode === "price" ? (level === "sector" ? "+5%" : "+10%") : tx({ id: "beli", en: "buy" })}
@@ -265,15 +265,15 @@ export function WeeklyView({ w, ranked }: { w: WeeklyRecap; ranked: string[] }) 
       {/* 3 · the week by day and by sector */}
       <section className="mt-6 grid gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <Panel title={tx({ id: "Hari demi hari", en: "Day by day" })}>
-          <div className="text-[11.5px] text-muted">IHSG</div>
+          <div className="text-[12px] text-muted">IHSG</div>
           <DayBars days={w.ihsg_days.map((x) => ({ d: x.d, v: x.chg }))} fmt={(v) => pctS(v)} />
-          <div className="mt-3 border-t border-line pt-3 text-[11.5px] text-muted">{tx({ id: "Dana asing bersih", en: "Foreign net" })}</div>
+          <div className="mt-3 border-t border-line pt-3 text-[12px] text-muted">{tx({ id: "Dana asing bersih", en: "Foreign net" })}</div>
           <DayBars days={w.foreign.days.map((x) => ({ d: x.d, v: x.net }))} fmt={(v) => idr(v, lang)} />
         </Panel>
         <Panel title={tx({ id: "Sektor (median)", en: "Sectors (median)" })}>
           <ul className="grid gap-x-8 gap-y-2 md:grid-cols-2">
             {w.sectors.map((x, i) => (
-              <li key={x.sector} className="grid grid-cols-[minmax(0,8.5rem)_minmax(0,1fr)_3.2rem] items-center gap-2 text-[11.5px]">
+              <li key={x.sector} className="grid grid-cols-[minmax(0,8.5rem)_minmax(0,1fr)_3.2rem] items-center gap-2 text-[12px]">
                 <span className="truncate text-ink-2">{sec(x.sector)}</span>
                 <span className="relative h-2">
                   <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />

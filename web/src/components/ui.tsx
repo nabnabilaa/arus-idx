@@ -61,7 +61,7 @@ export function HorizonToggle({ size = "md" }: { size?: "md" | "lg" }) {
         label: (
           <span className="flex items-baseline gap-1.5">
             {tx(HORIZON_LABEL[h].name)}
-            {size === "lg" && <span className="hidden text-[11px] text-muted sm:inline">{tx(HORIZON_LABEL[h].who)}</span>}
+            {size === "lg" && <span className="hidden text-[12px] text-muted sm:inline">{tx(HORIZON_LABEL[h].who)}</span>}
           </span>
         ),
       }))}
@@ -88,7 +88,7 @@ export function VerdictBadge({ v, size = "sm" }: { v: VerdictKey; size?: "sm" | 
   const { tx } = useLang();
   const d = VERDICT[v];
   return (
-    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full ring-1 ${d.ring} ${d.bg} ${d.text} ${size === "md" ? "px-2.5 py-1 text-[12.5px]" : "px-2 py-0.5 text-[11.5px]"} font-medium`}>
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full ring-1 ${d.ring} ${d.bg} ${d.text} ${size === "md" ? "px-2.5 py-1 text-[12.5px]" : "px-2 py-0.5 text-[12px]"} font-medium`}>
       <span className="h-1.5 w-1.5 rounded-full" style={{ background: d.color }} />
       {tx(d.label)}
     </span>
@@ -100,7 +100,7 @@ export function Reason({ k, pctl, helps }: { k: FeatureKey; pctl: number | null 
   const { tx } = useLang();
   return (
     <span
-      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] ring-1 ${
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[12px] ring-1 ${
         helps ? "bg-up/10 text-[#9cc5f5] ring-up/25" : "bg-down/10 text-[#f0a3a3] ring-down/25"
       }`}
     >
@@ -118,7 +118,7 @@ export function Badge({ children, tone = "neutral", title }: { children: React.R
     current: "text-arus ring-arus/40 bg-arus/10",
   }[tone];
   return (
-    <span title={title} className={`inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10.5px] font-medium tracking-wide ring-1 ${cls}`}>
+    <span title={title} className={`inline-flex items-center whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11.5px] font-medium tracking-wide ring-1 ${cls}`}>
       {children}
     </span>
   );

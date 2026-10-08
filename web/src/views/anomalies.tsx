@@ -74,7 +74,7 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
                   <span className={`num w-14 shrink-0 text-[12.5px] ${up ? "text-up" : "text-down"}`}>{signed((s.ret_1 ?? 0) * 100, 1, "%")}</span>
                   <span className="flex min-w-0 flex-1 flex-wrap gap-1.5">
                     {events.map((e) => (
-                      <span key={e} className={`rounded-full px-2 py-0.5 text-[11.5px] ring-1 ${EVENT[e].sign > 0 && e !== "return_up" ? "bg-up/10 text-[#9cc5f5] ring-up/30" : "bg-down/10 text-[#f0a3a3] ring-down/30"}`}>
+                      <span key={e} className={`rounded-full px-2 py-0.5 text-[12px] ring-1 ${EVENT[e].sign > 0 && e !== "return_up" ? "bg-up/10 text-[#9cc5f5] ring-up/30" : "bg-down/10 text-[#f0a3a3] ring-down/30"}`}>
                         {tx(EVENT[e].label)}
                       </span>
                     ))}
@@ -99,7 +99,7 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
                                 </div>
                                 <div className="mt-0.5 text-[12.5px] text-ink-2">{detail(s, e)}</div>
                                 {h?.beat5 != null && (
-                                  <div className="mt-0.5 text-[11.5px] text-muted">
+                                  <div className="mt-0.5 text-[12px] text-muted">
                                     {tx({ id: `Sesudah kejadian seperti ini: unggul ${Math.round(h.beat5 * 100)} dari 100 kali dalam 5 hari`, en: `After events like this: won ${Math.round(h.beat5 * 100)} times in 100 over 5 days` })}
                                   </div>
                                 )}
@@ -204,7 +204,7 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
                 className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-[12.5px] ring-1 transition-colors duration-150 ${focus === e ? "bg-arus/15 text-arus ring-arus/40" : "text-ink-2 ring-line hover:text-ink"}`}
               >
                 {e === "all" ? tx({ id: "Semua", en: "All" }) : tx(EVENT[e].label)}
-                <span className="num text-[11px] text-muted">{e === "all" ? ranking.filter((s) => strength2(s) >= min).length : countToday(e)}</span>
+                <span className="num text-[12px] text-muted">{e === "all" ? ranking.filter((s) => strength2(s) >= min).length : countToday(e)}</span>
               </button>
             ))}
           </div>
@@ -265,14 +265,14 @@ export function AnomaliesView({ ranking, history }: { ranking: Stock[]; history:
                 <span className="mt-3 grid grid-cols-2 gap-2">
                   <span>
                     <span className={`num block text-2xl font-semibold ${tone(b1)}`}>{b1 ?? "–"}</span>
-                    <span className="block text-[11px] text-muted">{tx({ id: "dari 100, besok", en: "of 100, next day" })}</span>
+                    <span className="block text-[12px] text-muted">{tx({ id: "dari 100, besok", en: "of 100, next day" })}</span>
                   </span>
                   <span>
                     <span className={`num block text-2xl font-semibold ${tone(b5)}`}>{b5 ?? "–"}</span>
-                    <span className="block text-[11px] text-muted">{tx({ id: "dari 100, 5 hari", en: "of 100, 5 days" })}</span>
+                    <span className="block text-[12px] text-muted">{tx({ id: "dari 100, 5 hari", en: "of 100, 5 days" })}</span>
                   </span>
                 </span>
-                <span className="mt-3 flex items-center justify-between text-[11.5px] text-muted">
+                <span className="mt-3 flex items-center justify-between text-[12px] text-muted">
                   <span>{h ? tx({ id: `${h.n5.toLocaleString("id-ID")} kejadian`, en: `${h.n5.toLocaleString("en-US")} events` }) : ""}</span>
                   <span className="num text-ink-2">{tx({ id: `${countToday(e)} hari ini`, en: `${countToday(e)} today` })}</span>
                 </span>

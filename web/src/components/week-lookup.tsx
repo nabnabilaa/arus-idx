@@ -91,7 +91,7 @@ export function WeekLookup({ w, ranked }: { w: WeeklyRecap; ranked: Set<string> 
                 [tx({ id: "Nilai transaksi", en: "Value traded" }), idr(row[2], lang), "text-ink"],
               ].map(([l, v, t]) => (
                 <div key={l} className="rounded-xl bg-ground/60 px-3.5 py-3 ring-1 ring-line">
-                  <div className="text-[11.5px] text-muted">{l}</div>
+                  <div className="text-[12px] text-muted">{l}</div>
                   <div className={`num mt-0.5 text-lg font-semibold ${t}`}>{v}</div>
                 </div>
               ))}
@@ -114,7 +114,7 @@ export function WeekLookup({ w, ranked }: { w: WeeklyRecap; ranked: Set<string> 
                     transition={{ type: "spring", stiffness: 200, damping: 22 }}
                   />
                 </div>
-                <div className="mt-1 flex justify-between text-[11px] text-muted">
+                <div className="mt-1 flex justify-between text-[12px] text-muted">
                   <span>{tx({ id: "terburuk", en: "worst" })}</span>
                   <span>{tx({ id: "terbaik", en: "best" })}</span>
                 </div>

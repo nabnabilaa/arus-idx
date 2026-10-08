@@ -108,25 +108,25 @@ export function ChainCard({ c, path, ranked, i = 0, card }: { c: InsiderChain; p
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-line pt-3 sm:grid-cols-4">
         <div>
-          <dt className="text-[11px] text-muted">{tx({ id: "Total", en: "Total" })}</dt>
+          <dt className="text-[12px] text-muted">{tx({ id: "Total", en: "Total" })}</dt>
           <dd className="num text-[14px] text-ink">{idr(c.val, lang)}</dd>
-          <dd className="num text-[11px] text-muted">{shares(c.sh, lang)} {tx({ id: "lembar", en: "shares" })}</dd>
+          <dd className="num text-[12px] text-muted">{shares(c.sh, lang)} {tx({ id: "lembar", en: "shares" })}</dd>
         </div>
         <div>
-          <dt className="text-[11px] text-muted">{tx({ id: "Harga rata-rata", en: "Average price" })}</dt>
+          <dt className="text-[12px] text-muted">{tx({ id: "Harga rata-rata", en: "Average price" })}</dt>
           <dd className="num text-[14px] text-ink">{price(c.avg, lang)}</dd>
         </div>
         <div>
-          <dt className="text-[11px] text-muted">{tx({ id: "Kepemilikan", en: "Stake" })}</dt>
+          <dt className="text-[12px] text-muted">{tx({ id: "Kepemilikan", en: "Stake" })}</dt>
           <dd className="num text-[14px] text-ink">{c.pa != null ? `${c.pa.toLocaleString(lang === "id" ? "id-ID" : "en-US", { maximumFractionDigits: 2 })}%` : "–"}</dd>
           {c.pb != null && c.pa != null && (
-            <dd className={`num text-[11px] ${c.pa >= c.pb ? "text-[#7fd4a8]" : "text-[#f0a3a3]"}`}>{signed(c.pa - c.pb, 2, lang === "id" ? " poin" : " pts")}</dd>
+            <dd className={`num text-[12px] ${c.pa >= c.pb ? "text-[#7fd4a8]" : "text-[#f0a3a3]"}`}>{signed(c.pa - c.pb, 2, lang === "id" ? " poin" : " pts")}</dd>
           )}
         </div>
         <div>
-          <dt className="text-[11px] text-muted">{tx({ id: "Harga kini vs rata-rata", en: "Now vs average" })}</dt>
+          <dt className="text-[12px] text-muted">{tx({ id: "Harga kini vs rata-rata", en: "Now vs average" })}</dt>
           <dd className={`num text-[14px] ${c.vs == null ? "text-muted" : c.vs >= 0 ? "text-up" : "text-down"}`}>{c.vs == null ? "–" : signed(c.vs * 100, 1, "%")}</dd>
-          <dd className="num text-[11px] text-muted">{price(c.now, lang)}</dd>
+          <dd className="num text-[12px] text-muted">{price(c.now, lang)}</dd>
         </div>
       </dl>
     </motion.article>
@@ -140,7 +140,7 @@ export function FilingRow({ e, name, ranked, ksei, showSymbol = true }: { e: Ins
   return (
     <li className="flex flex-col gap-2 rounded-xl bg-surface px-4 py-3 ring-1 ring-line sm:flex-row sm:items-center sm:gap-4">
       <div className="flex min-w-0 flex-1 items-start gap-3">
-        <span className={`mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${buy ? "bg-aqua/15 text-[#7fd4a8]" : "bg-down/15 text-[#f0a3a3]"}`}>
+        <span className={`mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[12px] font-semibold ${buy ? "bg-aqua/15 text-[#7fd4a8]" : "bg-down/15 text-[#f0a3a3]"}`}>
           {buy ? tx({ id: "BELI", en: "BUY" }) : tx({ id: "JUAL", en: "SELL" })}
         </span>
         <div className="min-w-0">
@@ -168,15 +168,15 @@ export function FilingRow({ e, name, ranked, ksei, showSymbol = true }: { e: Ins
       <div className="grid shrink-0 grid-cols-3 gap-4 pl-11 text-right sm:pl-0">
         <div>
           <div className="num text-[13.5px] text-ink">{idr(e.val, lang)}</div>
-          <div className="num text-[11px] text-muted">@ {price(e.px, lang)}</div>
+          <div className="num text-[12px] text-muted">@ {price(e.px, lang)}</div>
         </div>
         <div>
           <div className="num text-[13.5px] text-ink">{e.pa != null ? `${e.pa.toLocaleString(lang === "id" ? "id-ID" : "en-US", { maximumFractionDigits: 2 })}%` : "–"}</div>
-          <div className={`num text-[11px] ${delta == null ? "text-muted" : delta >= 0 ? "text-[#7fd4a8]" : "text-[#f0a3a3]"}`}>{delta == null ? "" : signed(delta, 2, lang === "id" ? " poin" : " pts")}</div>
+          <div className={`num text-[12px] ${delta == null ? "text-muted" : delta >= 0 ? "text-[#7fd4a8]" : "text-[#f0a3a3]"}`}>{delta == null ? "" : signed(delta, 2, lang === "id" ? " poin" : " pts")}</div>
         </div>
         <div>
           <div className={`num text-[13.5px] ${e.since == null ? "text-muted" : e.since >= 0 ? "text-up" : "text-down"}`}>{e.since == null ? "–" : signed(e.since * 100, 1, "%")}</div>
-          <div className="text-[11px] text-muted">
+          <div className="text-[12px] text-muted">
             {e.url ? (
               <a href={`${ksei}${e.url}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 hover:text-arus">
                 <FileText size={11} /> KSEI
@@ -203,14 +203,14 @@ export function AfterCard({ label, note, a, i = 0 }: { label: string; note: stri
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div>
           <div className={`num text-2xl font-semibold ${tone(b5)}`}>{b5 ?? "–"}</div>
-          <div className="text-[11px] text-muted">{tx({ id: "dari 100, 5 hari", en: "of 100, 5 days" })}</div>
+          <div className="text-[12px] text-muted">{tx({ id: "dari 100, 5 hari", en: "of 100, 5 days" })}</div>
         </div>
         <div>
           <div className={`num text-2xl font-semibold ${tone(b20)}`}>{b20 ?? "–"}</div>
-          <div className="text-[11px] text-muted">{tx({ id: "dari 100, 20 hari", en: "of 100, 20 days" })}</div>
+          <div className="text-[12px] text-muted">{tx({ id: "dari 100, 20 hari", en: "of 100, 20 days" })}</div>
         </div>
       </div>
-      <p className="mt-3 text-[11.5px] leading-relaxed text-muted">
+      <p className="mt-3 text-[12px] leading-relaxed text-muted">
         {note} {a ? tx({ id: `${a.n20.toLocaleString("id-ID")} kejadian dengan data 20 hari; median ${pct(a.med20, 1)} vs saham biasa.`, en: `${a.n20.toLocaleString("en-US")} events with 20-day data; median ${pct(a.med20, 1)} vs a typical stock.` }) : ""}
       </p>
     </motion.div>

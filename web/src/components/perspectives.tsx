@@ -47,7 +47,7 @@ function Card({ i, icon, who, when, children }: { i: number; icon: React.ReactNo
         <span className="grid h-8 w-8 place-items-center rounded-lg bg-arus/12 text-arus">{icon}</span>
         <div className="leading-tight">
           <div className="text-[13.5px] font-semibold text-ink">{who}</div>
-          <div className="text-[11.5px] text-muted">{when}</div>
+          <div className="text-[12px] text-muted">{when}</div>
         </div>
       </div>
       <div className="mt-4 flex flex-1 flex-col">{children}</div>

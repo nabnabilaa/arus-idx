@@ -218,7 +218,7 @@ export function GlobalView({ s, candles, macro, ihsg }: { s: Stock; candles: Can
         </section>
       )}
 
-      <p className="text-[11.5px] leading-relaxed text-muted">
+      <p className="text-[12px] leading-relaxed text-muted">
         <T
           id="“Hari bergerak tajam” = 20% hari dengan pergerakan faktor terbesar sepanjang histori Arus. Sumber: FRED (Federal Reserve Bank of St. Louis) dan kurs referensi Bank Sentral Eropa; harga saham dari Sectors."
           en="“Big-move days” = the 20% of days with the largest factor moves over Arus' history. Sources: FRED (Federal Reserve Bank of St. Louis) and European Central Bank reference rates; stock prices from Sectors."

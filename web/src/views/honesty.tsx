@@ -240,7 +240,7 @@ export function HonestyView({ meta, models, coneCoverage, anomalyHistory }: Pick
                   <tr key={r.size} className="num text-right">
                     <td className="border-t border-line px-4 py-2.5 text-left text-ink">
                       {tx(r.size === "large" ? { id: "Besar", en: "Large" } : r.size === "mid" ? { id: "Menengah", en: "Mid" } : { id: "Kecil", en: "Small" })}
-                      <span className="ml-2 text-[11.5px] text-muted">{r.n_stocks} {tx({ id: "saham", en: "stocks" })}</span>
+                      <span className="ml-2 text-[12px] text-muted">{r.n_stocks} {tx({ id: "saham", en: "stocks" })}</span>
                     </td>
                     <td className={`border-t border-line px-4 py-2.5 ${r.auc > 0.5 ? "text-up" : "text-down"}`}>{r.auc.toFixed(3)}</td>
                     <td className="border-t border-line px-4 py-2.5 text-ink-2">

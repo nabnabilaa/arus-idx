@@ -156,7 +156,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
             ] as [Bi, string, string][]
           ).map(([l, val, tone], i) => (
             <div key={i}>
-              <dt className="text-[11.5px] text-muted">{tx(l)}</dt>
+              <dt className="text-[12px] text-muted">{tx(l)}</dt>
               <dd className={`num text-[15px] ${tone || "text-ink"}`}>{val}</dd>
             </div>
           ))}
@@ -170,7 +170,7 @@ export function StockView({ stock: s, candles, broker, bandar, macro, weights, p
       <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }} className="mt-6 min-w-0 rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5">
         {candles ? <CandleChart data={candles} levels={levels} ihsg={ihsg} horizon={horizon} cone={cone?.[20]} height={480} /> : null}
         {coneCoverage?.["20"] && (
-          <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
+          <p className="mt-2 text-[12px] leading-relaxed text-muted">
             <T
               id="Area biru di kanan grafik: rentang harga wajar sebulan ke depan. Dari data lalu, 8 dari 10 kali harga berakhir di dalam area ini. Area ini tidak menebak arah."
               en="The blue area on the right: the typical price range over the next month. In past data, 8 times in 10 the price ended inside it. It doesn't call a direction."

@@ -164,7 +164,7 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
                   <button onClick={() => setOpen(isOpen ? null : sec.sub_sector)} aria-expanded={isOpen} className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 px-4 py-2.5 text-left hover:bg-raised/40 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_90px_110px_130px_auto] sm:px-5">
                     <span className="min-w-0">
                       <span className="block truncate text-[14px] font-medium text-ink">{label(sec.sub_sector)}</span>
-                      <span className="block text-[11.5px] text-muted">{sec.n} {tx({ id: "saham", en: "stocks" })}</span>
+                      <span className="block text-[12px] text-muted">{sec.n} {tx({ id: "saham", en: "stocks" })}</span>
                     </span>
                     {/* strength vs IHSG over a month, on one scale for every row */}
                     <span className="relative hidden h-2 rounded-full bg-raised sm:block" aria-hidden>
@@ -176,15 +176,15 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
                     </span>
                     <span className={`num text-right text-[13px] ${(sec.rs_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>
                       {signed((sec.rs_20 ?? 0) * 100, 1, "%")}
-                      <span className="block text-[10.5px] text-muted">{tx({ id: "vs IHSG 1 bln", en: "vs IHSG 1 mo" })}</span>
+                      <span className="block text-[11.5px] text-muted">{tx({ id: "vs IHSG 1 bln", en: "vs IHSG 1 mo" })}</span>
                     </span>
                     <span className={`num hidden text-right text-[13px] sm:block ${(sec.rs_60 ?? 0) >= 0 ? "text-up" : "text-down"}`}>
                       {signed((sec.rs_60 ?? 0) * 100, 1, "%")}
-                      <span className="block text-[10.5px] text-muted">{tx({ id: "vs IHSG 3 bln", en: "vs IHSG 3 mo" })}</span>
+                      <span className="block text-[11.5px] text-muted">{tx({ id: "vs IHSG 3 bln", en: "vs IHSG 3 mo" })}</span>
                     </span>
                     <span className={`num hidden text-right text-[13px] sm:block ${(sec.foreign_net_20 ?? 0) >= 0 ? "text-up" : "text-down"}`}>
                       {idr(sec.foreign_net_20, lang)}
-                      <span className="block text-[10.5px] text-muted">{tx({ id: "asing 1 bln", en: "foreign 1 mo" })}</span>
+                      <span className="block text-[11.5px] text-muted">{tx({ id: "asing 1 bln", en: "foreign 1 mo" })}</span>
                     </span>
                     <ChevronDown size={16} className={`shrink-0 text-muted transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                   </button>
@@ -194,7 +194,7 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
                         <div className="overflow-x-auto px-4 pb-4 sm:px-5">
                           <table className="w-full min-w-[560px] border-separate border-spacing-0 text-[13px]">
                             <thead>
-                              <tr className="text-right text-[11px] text-muted">
+                              <tr className="text-right text-[12px] text-muted">
                                 <th className="py-1.5 pr-3 text-left font-normal">{tx({ id: "Saham", en: "Stock" })}</th>
                                 <th className="py-1.5 pr-3 font-normal">{tx({ id: "Harga", en: "Price" })}</th>
                                 <th className="py-1.5 pr-3 font-normal">{tx({ id: "Hari ini", en: "Today" })}</th>
@@ -210,7 +210,7 @@ export function SectorsView({ sectors, sectorTs, stocks }: Pick<Bundle, "sectors
                                     <Link href={`/saham/${x.symbol}/`} className="font-semibold text-ink hover:text-arus">
                                       {x.symbol}
                                     </Link>
-                                    <span className="ml-2 hidden text-[11.5px] text-muted lg:inline">{x.name}</span>
+                                    <span className="ml-2 hidden text-[12px] text-muted lg:inline">{x.name}</span>
                                   </td>
                                   <td className="border-t border-line py-1.5 pr-3 text-ink-2">{price(x.price, lang)}</td>
                                   <td className={`border-t border-line py-1.5 pr-3 ${(x.ret_1 ?? 0) >= 0 ? "text-up" : "text-down"}`}>{signed((x.ret_1 ?? 0) * 100, 1, "%")}</td>

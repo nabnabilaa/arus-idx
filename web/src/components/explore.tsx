@@ -49,7 +49,7 @@ export function Explore({ st }: { st: ExploreStats }) {
               <p className="mt-0.5 text-[13px] leading-snug text-ink-2">{tx(it.q)}</p>
               <div className="mt-auto flex items-baseline gap-1.5 pt-3">
                 <span className={`num font-semibold text-ink ${i === 0 ? "text-3xl" : "text-lg"}`}>{it.stat}</span>
-                <span className="text-[11.5px] text-muted">{tx(it.statNote)}</span>
+                <span className="text-[12px] text-muted">{tx(it.statNote)}</span>
               </div>
             </Link>
           </motion.div>

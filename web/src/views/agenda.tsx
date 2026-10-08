@@ -79,13 +79,13 @@ function Soon({ items, ranked, today }: { items: AgendaItem[]; ranked: Set<strin
               >
                 <div className="w-11 shrink-0 text-center">
                   <div className="num text-xl font-semibold leading-none text-ink">{d.getDate()}</div>
-                  <div className="mt-0.5 text-[10.5px] uppercase text-muted">{d.toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { month: "short" })}</div>
+                  <div className="mt-0.5 text-[11.5px] uppercase text-muted">{d.toLocaleDateString(lang === "id" ? "id-ID" : "en-GB", { month: "short" })}</div>
                 </div>
                 <span className="h-9 w-[3px] shrink-0 rounded-full" style={{ background: st.color }} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <Sym s={it.s} ranked={ranked.has(it.s)} className="text-[15px] font-semibold text-ink" />
-                    <span className="text-[11.5px] font-medium" style={{ color: st.color }}>{tx(AGENDA_LABEL[it.type].label)}</span>
+                    <span className="text-[12px] font-medium" style={{ color: st.color }}>{tx(AGENDA_LABEL[it.type].label)}</span>
                   </div>
                   <div className="num truncate text-[12.5px] text-ink-2">
                     {it.type === "dividend" && it.yield != null ? (
@@ -98,7 +98,7 @@ function Soon({ items, ranked, today }: { items: AgendaItem[]; ranked: Set<strin
                   </div>
                 </div>
                 {cd && (
-                  <span className="shrink-0 text-right text-[11.5px] text-muted">
+                  <span className="shrink-0 text-right text-[12px] text-muted">
                     {it.type === "dividend" ? tx({ id: "beli s.d.", en: "buy by" }) : ""}
                     <span className={`block text-[12px] font-medium ${cd.id === "hari ini" || cd.id === "besok" ? "text-warn" : "text-ink-2"}`}>{tx(cd)}</span>
                   </span>
@@ -254,7 +254,7 @@ function MonthCalendar({ items, ranked, asOf }: { items: AgendaItem[]; ranked: S
             </button>
           ))}
         </div>
-        <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] text-muted">
+        <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[12px] text-muted">
           {weekdays.map((w) => (
             <div key={w} className="pb-1">{w}</div>
           ))}
@@ -286,7 +286,7 @@ function MonthCalendar({ items, ranked, asOf }: { items: AgendaItem[]; ranked: S
             );
           })}
         </div>
-        <div className="mt-4 flex flex-wrap gap-3 text-[11.5px] text-muted">
+        <div className="mt-4 flex flex-wrap gap-3 text-[12px] text-muted">
           {(["dividend", "agm", "right_issue", "stock_split", "warrant"] as AgendaType[]).map((t) => (
             <span key={t} className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full" style={{ background: TYPE_STYLE[t].color }} />
@@ -308,11 +308,11 @@ function MonthCalendar({ items, ranked, asOf }: { items: AgendaItem[]; ranked: S
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-2">
                       <Sym s={it.s} ranked={ranked.has(it.s)} className="text-[15px] font-semibold text-ink" />
-                      <span className="text-[11.5px] font-semibold uppercase tracking-wide" style={{ color: TYPE_STYLE[it.type].color }}>{tx(AGENDA_LABEL[it.type].label)}</span>
+                      <span className="text-[12px] font-semibold uppercase tracking-wide" style={{ color: TYPE_STYLE[it.type].color }}>{tx(AGENDA_LABEL[it.type].label)}</span>
                     </div>
                     <div className="truncate text-[12px] text-muted">{shortName(it.name)}</div>
                     <div className="num mt-1 text-[12.5px] text-ink-2">{detail(it)}</div>
-                    {it.type === "agm" && it.place && <div className="mt-0.5 truncate text-[11.5px] text-muted">{it.place}</div>}
+                    {it.type === "agm" && it.place && <div className="mt-0.5 truncate text-[12px] text-muted">{it.place}</div>}
                   </div>
                 </li>
               ))}
@@ -349,7 +349,7 @@ function RightsCards({ items, ranked }: { items: AgendaItem[]; ranked: Set<strin
               <motion.div className="h-full bg-arus/70" initial={{ width: "100%" }} whileInView={{ width: `${(1 - (it.dilution ?? 0)) * 100}%` }} viewport={{ once: true }} transition={{ duration: 0.9, ease: EASE }} />
               <div className="h-full flex-1 bg-warn/60" />
             </div>
-            <div className="mt-1 flex justify-between text-[11px] text-muted">
+            <div className="mt-1 flex justify-between text-[12px] text-muted">
               <span>{tx({ id: "kepemilikanmu", en: "your stake" })}</span>
               <span>{tx({ id: "saham baru", en: "new shares" })}</span>
             </div>
@@ -464,7 +464,7 @@ export function AgendaView({ book, ranked }: { book: AgendaBook; ranked: string[
               ].map(([v, l, t]) => (
                 <div key={l} className="rounded-xl bg-surface px-3.5 py-3 ring-1 ring-line">
                   <dd className={`num text-xl font-semibold ${t}`}>{v}</dd>
-                  <dt className="text-[11.5px] text-muted">{l}</dt>
+                  <dt className="text-[12px] text-muted">{l}</dt>
                 </div>
               ))}
             </dl>

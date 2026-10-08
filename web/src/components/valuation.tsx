@@ -124,7 +124,7 @@ export function PbRoe({ s, peers, fin }: { s: Stock; peers: ValPeer[]; fin: FinH
               [tx({ id: "PBV wajar (ROE ÷ 12%)", en: "Justified P/B (ROE ÷ 12%)" }), fmtX(simple)],
             ].map(([l, v]) => (
               <div key={l} className="rounded-lg bg-ground/60 px-3 py-2.5 ring-1 ring-line">
-                <dt className="text-[11.5px] text-muted">{l}</dt>
+                <dt className="text-[12px] text-muted">{l}</dt>
                 <dd className="num text-[16px] text-ink">{v}</dd>
               </div>
             ))}
@@ -139,7 +139,7 @@ export function PbRoe({ s, peers, fin }: { s: Stock; peers: ValPeer[]; fin: FinH
                   </span>
                 ))}
               </div>
-              <p className="mt-1.5 text-[11.5px] text-muted">
+              <p className="mt-1.5 text-[12px] text-muted">
                 {tx({ id: "Hijau: di atas biaya modal 12%. ROE yang stabil membuat PBV tinggi lebih bisa dibenarkan.", en: "Green: above the 12% cost of equity. A steady ROE makes a higher P/B easier to justify." })}
               </p>
             </div>
@@ -148,7 +148,7 @@ export function PbRoe({ s, peers, fin }: { s: Stock; peers: ValPeer[]; fin: FinH
         {line && (
           <div className="mx-auto w-full max-w-[460px]">
             <Scatter s={{ pb, roe }} pts={line.pts} line={line} />
-            <p className="mt-1 text-[11.5px] text-muted">
+            <p className="mt-1 text-[12px] text-muted">
               {tx({
                 id: `Titik abu-abu: ${line.pts.length} saham ${line.level === "sub" ? "sesubsektor" : "sesektor"} yang laba. Garis putus-putus: PBV yang biasa diberikan pasar untuk tiap tingkat ROE (median PBV ÷ ROE, sekitar ${(line.b * 0.1).toFixed(2).replace(".", ",")}× per 10% ROE). Titik biru: ${s.symbol}. Di bawah garis berarti lebih murah dari sesamanya.`,
                 en: `Grey dots: ${line.pts.length} profitable ${line.level === "sub" ? "sub-sector" : "sector"} peers. Dashed line: the P/B the market usually pays for each level of ROE (median P/B ÷ ROE, about ${(line.b * 0.1).toFixed(2)}× per 10% ROE). Blue dot: ${s.symbol}. Below the line means cheaper than peers.`,
